@@ -58,9 +58,18 @@ Farm (name, postcode)
  └── GroupMovement (group, from field → to field, date)   one row per move, so history is kept
 ```
 
-Every record carries a `farmId`, ready for per-farm access control.
+Every record carries a `farmId`. Farms belong to users through a membership table, so only a farm's members can see or change its data.
 
 A group's forecast uses the most precise location available: its field's **map pin**, then the field's **postcode**, then the **farm postcode**.
+
+## Accounts and privacy
+
+- Sign up with an email and password. Passwords are hashed with scrypt and a random salt per user; they are never stored or logged.
+- The session is a random token in an **httpOnly, SameSite=Lax** cookie (Secure in production). The database stores only a hash of the token, and logging out deletes the session.
+- Every query and mutation that touches user data checks that you belong to the farm (or own the pet). Someone else's records simply come back as "not found". A test runs every operation in the schema against another user's data, and fails if a new operation is added without being covered.
+- The postcode forecast stays public, because it reads no user data.
+
+Choices like these are listed, with the reason for each, in [docs/decisions.md](docs/decisions.md).
 
 ## How the risk engine works (and its limits)
 
@@ -109,8 +118,9 @@ npm run dev:web               # http://localhost:5173 (proxies /graphql to the A
 
 - **Risk engine:** boundary tests (just below, on, and just above every threshold), hand-worked THI values, and a contract test that runs every module over a grid of weather and checks every result has a valid level, score and reason.
 - **Repositories:** one shared contract suite runs against the in-memory fake and against real Postgres (when `TEST_DATABASE_URL` is set: run `npm run db:test:prepare` first). CI runs both, using a Postgres service container.
+- **Access control:** a second user tries every query and mutation against the first user's farm, field, group, pet and log, and the first user's data is checked before and after (FR-8.4).
 - **API:** external clients tested with mocked `fetch`. The GraphQL layer is tested end-to-end through Yoga with fake clients, including invalid postcodes, unknown postcodes, weather API down, postcode API down, and Redis down. No test ever calls a real external API.
-- **Frontend:** React Testing Library tests for risk cards, the chart, the log form, the disclaimer, and the forecast page's loading and error states.
+- **Frontend:** React Testing Library tests for risk cards, the chart, the log form, the disclaimer, the forecast page's loading and error states, log in / sign up, the signed-in route guard, and the farm, field, group and move forms.
 
 ## Project layout
 
