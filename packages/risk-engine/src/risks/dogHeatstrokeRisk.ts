@@ -2,7 +2,7 @@ import { LEVEL_SCORE } from '../levels';
 import type { DailyRisk, DailyWeather, RiskModule } from '../types';
 
 // Heuristic thresholds based on the day's maximum temperature.
-// TODO(verify source): check against UK veterinary guidance on dogs in hot weather.
+// heuristic TODO(verify source): check against UK veterinary guidance on dogs in hot weather.
 export const HEATSTROKE_MEDIUM_MAX_C = 20;
 export const HEATSTROKE_HIGH_MAX_C = 25;
 

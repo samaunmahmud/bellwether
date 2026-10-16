@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Location } from '../src/clients/postcodesClient';
-import { buildTestApp, fakePostcodes, UXBRIDGE } from './fakes';
+import type { WeatherClient } from '../src/clients/weatherClient';
+import { buildTestApp, fakeDays, fakePostcodes, fakeWeather, UXBRIDGE } from './fakes';
 
 const WESTMINSTER: Location = {
   postcode: 'SW1A 1AA',
@@ -357,5 +358,140 @@ describe('farms, fields and livestock groups', () => {
       const res = await gql(query, variables);
       expect((res.errors as Errors)?.[0]?.extensions?.code).toBe(expected);
     }
+  });
+});
+
+describe('group forecasts use the group’s details (FR-3.0 to FR-3.4)', () => {
+  const GROUP_RISKS = /* GraphQL */ `
+    query ($id: ID!) {
+      farm(id: $id) {
+        groups {
+          name
+          forecast {
+            risks {
+              riskId
+              days {
+                date
+                level
+                reason
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  type GroupRisks = {
+    farm: {
+      groups: Array<{
+        name: string;
+        forecast: {
+          risks: Array<{ riskId: string; days: Array<{ level: string; reason: string }> }>;
+        };
+      }>;
+    };
+  };
+
+  /** Every day of a month, wet enough to max out that month's fluke value. */
+  function wetMonth(yearMonth: string) {
+    const [y, m] = yearMonth.split('-').map(Number);
+    const length = new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+    return Array.from({ length }, (_, i) => ({
+      ...fakeDays(1)[0]!,
+      date: `${yearMonth}-${String(i + 1).padStart(2, '0')}`,
+      precipitationMm: i < 20 ? 6 : 0,
+      et0Mm: 1,
+    }));
+  }
+
+  async function setUp(
+    groupInput: Record<string, unknown>,
+    options: { weather?: WeatherClient; now?: Date } = {},
+  ) {
+    const t = buildTestApp({
+      ...(options.weather ? { weather: options.weather } : {}),
+      ...(options.now ? { now: () => options.now! } : {}),
+    });
+    const gql = await t.signedIn();
+    const farm = await gql<{ createFarm: { id: string } }>(CREATE_FARM, {
+      input: { name: 'Hill Farm', postcode: 'UB8 3PH' },
+    });
+    const farmId = farm.data!.createFarm.id;
+    const created = await gql(CREATE_GROUP, {
+      input: { farmId, name: 'Group', headCount: 10, ...groupInput },
+    });
+    expect(created.errors).toBeUndefined();
+    const res = await gql<GroupRisks>(GROUP_RISKS, { id: farmId });
+    expect(res.errors).toBeUndefined();
+    return { risks: res.data!.farm.groups[0]!.forecast.risks, t };
+  }
+
+  const sheep = { species: 'SHEEP', livestockClass: 'EWES' };
+  const ids = (risks: Array<{ riskId: string }>) => risks.map((r) => r.riskId);
+
+  it('adds lamb chill only for sheep lambing during the forecast (FR-3.2)', async () => {
+    const lambing = await setUp({ ...sheep, lambingStart: '2026-05-20', lambingEnd: '2026-06-05' });
+    expect(ids(lambing.risks)).toContain('lamb-chill');
+
+    const notLambing = await setUp(sheep);
+    expect(ids(notLambing.risks)).not.toContain('lamb-chill');
+  });
+
+  it('raises blowfly risk for a flock with no shearing date (FR-3.4)', async () => {
+    const { risks } = await setUp(sheep);
+    const blowfly = risks.find((r) => r.riskId === 'sheep-blowfly')!;
+    expect(blowfly.days[0]!.reason).toMatch(/no shearing date is recorded/);
+  });
+
+  it('notes that housed cattle may see different conditions (FR-3.1)', async () => {
+    const { risks } = await setUp({
+      species: 'CATTLE',
+      livestockClass: 'BEEF_CATTLE',
+      housed: true,
+    });
+    const heat = risks.find((r) => r.riskId === 'cattle-heat-stress')!;
+    expect(heat.days[0]!.reason).toMatch(/housed/);
+  });
+
+  it('asks for past weather up to the last full week the archive has (FR-3.3)', async () => {
+    const weather = fakeWeather();
+    const { t } = await setUp(sheep, { weather: weather.client });
+    // Forecast starts 1 June 2026: season May; archive is ~5 days behind (27 May),
+    // rounded down to Sunday 24 May so the season result changes weekly.
+    expect(weather.historyCalls).toEqual([
+      { lat: 51.53, lon: -0.47, start: '2026-05-01', end: '2026-05-24' },
+    ]);
+    expect(t).toBeDefined();
+  });
+
+  it('includes liver fluke when a season’s weather is available (FR-3.3)', async () => {
+    const january = fakeDays(14).map((d, i) => ({
+      ...d,
+      date: `2026-01-${String(i + 10).padStart(2, '0')}`,
+    }));
+    const season2025 = ['05', '06', '07', '08', '09', '10'].flatMap((m) => wetMonth(`2025-${m}`));
+    const weather = fakeWeather(january, season2025);
+
+    const { risks } = await setUp(
+      { species: 'CATTLE', livestockClass: 'BEEF_CATTLE' },
+      { weather: weather.client, now: new Date('2026-01-10T07:00:00Z') },
+    );
+    const fluke = risks.find((r) => r.riskId === 'liver-fluke')!;
+    expect(fluke.days[0]!.level).toBe('HIGH');
+    expect(fluke.days[0]!.reason).toMatch(/from May–Oct 2025 weather/);
+    expect(weather.historyCalls[0]).toMatchObject({ start: '2025-05-01', end: '2025-10-31' });
+  });
+
+  it('still forecasts the other risks if past weather is unavailable', async () => {
+    const weather = fakeWeather();
+    const failing: WeatherClient = {
+      getDailyForecast: weather.client.getDailyForecast,
+      getHistory: async () => {
+        throw new Error('archive down');
+      },
+    };
+    const { risks } = await setUp(sheep, { weather: failing });
+    expect(ids(risks)).toEqual(['sheep-blowfly']);
   });
 });

@@ -7,3 +7,4 @@ export { cattleHeatStressRisk, calculateTHI } from './risks/cattleHeatStressRisk
 export { sheepBlowflyRisk } from './risks/sheepBlowflyRisk';
 export { lambChillRisk, calculateChillIndex } from './risks/lambChillRisk';
 export { liverFlukeRisk } from './risks/liverFlukeRisk';
+export { addDays, daysBetween } from './dates';

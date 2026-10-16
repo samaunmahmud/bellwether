@@ -3,7 +3,7 @@ import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from
 
 // Heuristic thresholds. Ticks are most active in mild, humid conditions and
 // quieter when cold, or when hot and dry.
-// TODO(verify source): check these against UK veterinary / parasitology guidance.
+// heuristic TODO(verify source): check these against UK veterinary / parasitology guidance.
 export const TICK_COLD_MEAN_C = 5;
 export const TICK_ACTIVE_MEAN_C = 7;
 export const TICK_HUMID_PCT = 80;
