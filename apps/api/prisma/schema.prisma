@@ -30,14 +30,61 @@ enum CattleType {
   BEEF
 }
 
+// --- Users and sessions (FR-8.1) ---
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  // Trimmed and lower-cased before it gets here (A12)
+  email        String   @unique
+  // scrypt$N$r$p$salt$hash (A9)
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  sessions    Session[]
+  memberships FarmMember[]
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  // SHA-256 of the cookie token; the token itself is never stored (A10)
+  tokenHash String   @unique
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Worker and Viewer permissions arrive with FR-8.2 (A13)
+enum FarmRole {
+  OWNER
+  WORKER
+  VIEWER
+}
+
+model FarmMember {
+  farmId    String   @db.Uuid
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      FarmRole
+  createdAt DateTime @default(now())
+
+  @@id([farmId, userId])
+  @@index([userId])
+}
+
+// --- Farms (FR-2) ---
+
 model Farm {
   id        String   @id @default(uuid()) @db.Uuid
-  // userId / members arrive with auth (FR-8.1)
   name      String
   postcode  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  members   FarmMember[]
   fields    Field[]
   groups    LivestockGroup[]
   movements GroupMovement[]

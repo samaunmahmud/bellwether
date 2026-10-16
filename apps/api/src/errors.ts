@@ -1,7 +1,13 @@
 import { createGraphQLError } from 'graphql-yoga';
 
 export type AppErrorCode =
-  'INVALID_POSTCODE' | 'POSTCODE_NOT_FOUND' | 'UPSTREAM_UNAVAILABLE' | 'NOT_FOUND' | 'BAD_INPUT';
+  | 'INVALID_POSTCODE'
+  | 'POSTCODE_NOT_FOUND'
+  | 'UPSTREAM_UNAVAILABLE'
+  | 'NOT_FOUND'
+  | 'BAD_INPUT'
+  | 'UNAUTHENTICATED'
+  | 'BAD_CREDENTIALS';
 
 /**
  * Errors safe to show to the user. Yoga exposes GraphQL errors and masks everything else.
