@@ -8,7 +8,7 @@ import type {
 } from '../repositories/briefingRepository';
 import type { BriefingService, BriefingView } from '../services/briefingService';
 import type { FarmService } from '../services/farmService';
-import type { TaskInput, TaskService } from '../services/taskService';
+import type { TaskInput, TaskService, TaskUpdate } from '../services/taskService';
 
 const SEND_AT = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -54,6 +54,10 @@ export function createBriefingResolvers(deps: BriefingResolverDeps) {
         taskService.createTask(requireUser(ctx).id, args.input),
       setTaskDone: (_: unknown, args: { id: string; done: boolean }, ctx: GraphQLContext) =>
         taskService.setDone(requireUser(ctx).id, args.id, args.done),
+      updateTask: (_: unknown, args: { id: string; input: TaskUpdate }, ctx: GraphQLContext) =>
+        taskService.updateTask(requireUser(ctx).id, args.id, args.input),
+      deleteTask: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        taskService.deleteTask(requireUser(ctx).id, args.id),
       setBriefingPreferences: async (
         _: unknown,
         args: { farmId: string; input: BriefingPreferences },
@@ -77,7 +81,7 @@ export function createBriefingResolvers(deps: BriefingResolverDeps) {
     Task: {
       overdue: (task: Task) => taskService.isOverdue(task),
       group: (task: Task, _: unknown, ctx: GraphQLContext) =>
-        farmService.getGroup(requireUser(ctx).id, task.groupId),
+        task.groupId ? farmService.getGroup(requireUser(ctx).id, task.groupId) : null,
     },
   };
 }

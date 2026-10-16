@@ -265,6 +265,53 @@ describe('tasks (FR-5.2, FR-5.5)', () => {
     });
     expect((await briefing(gql, farmId)).overdueTasks).toEqual([]);
   });
+
+  it('makes farm-wide, repeating tasks; ticking one off makes the next (FR-5.3)', async () => {
+    const { gql, farmId } = await farmWithClock();
+    const created = await gql<{ createTask: { id: string } }>(CREATE_TASK, {
+      input: { farmId, title: 'Check water troughs', dueDate: '2026-06-01', repeatEveryDays: 7 },
+    });
+    expect(created.errors).toBeUndefined();
+    await gql(`mutation ($id: ID!) { setTaskDone(id: $id, done: true) { done } }`, {
+      id: created.data!.createTask.id,
+    });
+    const list = await gql<{ tasks: unknown[] }>(
+      `query ($farmId: ID!) { tasks(farmId: $farmId) { dueDate done group { name } repeatEveryDays } }`,
+      { farmId },
+    );
+    expect(list.data!.tasks).toEqual([
+      { dueDate: '2026-06-01', done: true, group: null, repeatEveryDays: 7 },
+      { dueDate: '2026-06-08', done: false, group: null, repeatEveryDays: 7 },
+    ]);
+  });
+
+  it('edits and deletes a task', async () => {
+    const { gql, farmId } = await farmWithClock();
+    const groupId = await addGroup(gql, farmId, UNSHORN_EWES);
+    const created = await gql<{ createTask: { id: string } }>(CREATE_TASK, {
+      input: { groupId, title: 'Check feet', dueDate: '2026-06-03' },
+    });
+    const id = created.data!.createTask.id;
+    const updated = await gql<{ updateTask: unknown }>(
+      `mutation ($id: ID!) {
+        updateTask(id: $id, input: { title: "Trim feet", groupId: null, note: "Hoof shears" }) {
+          title note group { name }
+        }
+      }`,
+      { id },
+    );
+    expect(updated.data!.updateTask).toEqual({
+      title: 'Trim feet',
+      note: 'Hoof shears',
+      group: null,
+    });
+
+    const deleted = await gql<{ deleteTask: boolean }>(
+      `mutation ($id: ID!) { deleteTask(id: $id) }`,
+      { id },
+    );
+    expect(deleted.data!.deleteTask).toBe(true);
+  });
 });
 
 describe('briefing email preferences (FR-4.3)', () => {

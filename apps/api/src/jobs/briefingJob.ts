@@ -73,7 +73,7 @@ export function createBriefingJob(deps: BriefingJobDeps) {
             overdueTasks: overdue.map((t) => ({
               title: t.title,
               dueDate: t.dueDate,
-              groupName: groupNames.get(t.groupId) ?? '',
+              groupName: t.groupId ? (groupNames.get(t.groupId) ?? '') : 'Whole farm',
             })),
           }),
         });

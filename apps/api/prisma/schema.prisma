@@ -243,18 +243,23 @@ model RecordRevision {
 // --- Tasks and briefings (FR-5, FR-4) ---
 
 model Task {
-  id        String         @id @default(uuid()) @db.Uuid
-  seq       Int            @default(autoincrement())
-  farmId    String         @db.Uuid
-  farm      Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  groupId   String         @db.Uuid
-  group     LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  title     String
-  dueDate   DateTime       @db.Date
-  note      String?
-  done      Boolean        @default(false)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id              String          @id @default(uuid()) @db.Uuid
+  seq             Int             @default(autoincrement())
+  farmId          String          @db.Uuid
+  farm            Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  // Null for a farm-wide task (FR-5.3)
+  groupId         String?         @db.Uuid
+  group           LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title           String
+  dueDate         DateTime        @db.Date
+  note            String?
+  done            Boolean         @default(false)
+  // FR-5.3: repeats this many days after its due date once done
+  repeatEveryDays Int?
+  // The follow-up made when a repeating task was done, so it's only made once
+  nextTaskId      String?         @db.Uuid
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([farmId, dueDate])
 }

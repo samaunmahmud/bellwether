@@ -8,6 +8,7 @@ import {
   type BriefingRepository,
   type NewTask,
   type Task,
+  type TaskPatch,
   type TaskRepository,
 } from './briefingRepository';
 
@@ -23,6 +24,8 @@ const taskSelect = {
   dueDate: true,
   note: true,
   done: true,
+  repeatEveryDays: true,
+  nextTaskId: true,
 } as const;
 
 const toTask = (row: Omit<Task, 'dueDate'> & { dueDate: Date }): Task => ({
@@ -60,6 +63,23 @@ export class PrismaTaskRepository implements TaskRepository {
 
   async setDone(id: string, done: boolean) {
     return toTask(await this.db.task.update({ where: { id }, data: { done }, select: taskSelect }));
+  }
+
+  async updateTask(id: string, patch: TaskPatch) {
+    if (!isUuid(id)) return null;
+    const { dueDate, ...rest } = patch;
+    const data: Record<string, unknown> = Object.fromEntries(
+      Object.entries(rest).filter(([, value]) => value !== undefined),
+    );
+    if (dueDate !== undefined) data.dueDate = toDb(dueDate);
+    const { count } = await this.db.task.updateMany({ where: { id }, data });
+    return count ? this.getTask(id) : null;
+  }
+
+  async deleteTask(id: string) {
+    if (!isUuid(id)) return false;
+    const { count } = await this.db.task.deleteMany({ where: { id } });
+    return count > 0;
   }
 }
 

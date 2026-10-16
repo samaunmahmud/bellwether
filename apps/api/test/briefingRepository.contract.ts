@@ -43,6 +43,8 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
         dueDate: '2026-06-12',
         note: null,
         done: false,
+        repeatEveryDays: null,
+        nextTaskId: null,
       });
       expect(await f.tasks.getTask(task.id)).toEqual(task);
 
@@ -78,7 +80,73 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
       expect((await f.tasks.listTasks(farmId)).map((t) => t.id)).toEqual([sooner.id, later.id]);
     });
 
+    it('stores farm-wide and repeating tasks', async () => {
+      const { farmId } = await f.newFarm();
+      const task = await f.tasks.createTask({
+        farmId,
+        groupId: null,
+        title: 'Check water troughs',
+        dueDate: '2026-06-12',
+        note: null,
+        repeatEveryDays: 7,
+      });
+      expect(task).toMatchObject({ groupId: null, repeatEveryDays: 7, nextTaskId: null });
+      expect(await f.tasks.getTask(task.id)).toEqual(task);
+    });
+
+    it('updates only the given fields, and null clears optional ones', async () => {
+      const { farmId, groupId } = await f.newFarm();
+      const task = await f.tasks.createTask({
+        farmId,
+        groupId,
+        title: 'A',
+        dueDate: '2026-06-12',
+        note: 'n',
+        repeatEveryDays: 7,
+      });
+      const next = await f.tasks.createTask({
+        farmId,
+        groupId,
+        title: 'A',
+        dueDate: '2026-06-19',
+        note: null,
+      });
+      const updated = await f.tasks.updateTask(task.id, {
+        title: 'B',
+        groupId: null,
+        note: null,
+        repeatEveryDays: null,
+        nextTaskId: next.id,
+      });
+      expect(updated).toEqual({
+        ...task,
+        title: 'B',
+        groupId: null,
+        note: null,
+        repeatEveryDays: null,
+        nextTaskId: next.id,
+      });
+      expect(await f.tasks.getTask(task.id)).toEqual(updated);
+    });
+
+    it('deletes a task', async () => {
+      const { farmId, groupId } = await f.newFarm();
+      const task = await f.tasks.createTask({
+        farmId,
+        groupId,
+        title: 'A',
+        dueDate: '2026-06-12',
+        note: null,
+      });
+      expect(await f.tasks.deleteTask(task.id)).toBe(true);
+      expect(await f.tasks.getTask(task.id)).toBeNull();
+      expect(await f.tasks.deleteTask(task.id)).toBe(false);
+    });
+
     it('returns null for an unknown task', async () => {
+      expect(
+        await f.tasks.updateTask('00000000-0000-0000-0000-000000000000', { title: 'x' }),
+      ).toBeNull();
       expect(await f.tasks.getTask('00000000-0000-0000-0000-000000000000')).toBeNull();
     });
   });
@@ -131,6 +199,8 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
   describe('ids that are not UUIDs', () => {
     it('are treated as not found', async () => {
       expect(await f.tasks.getTask('x')).toBeNull();
+      expect(await f.tasks.updateTask('x', { title: 'y' })).toBeNull();
+      expect(await f.tasks.deleteTask('x')).toBe(false);
       expect(await f.tasks.listTasks('x')).toEqual([]);
       expect(await f.briefings.getRun('x', '2026-06-10')).toBeNull();
       expect(await f.briefings.latestRun('x')).toBeNull();

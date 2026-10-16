@@ -306,7 +306,10 @@ export const typeDefs = /* GraphQL */ `
     note: String
     done: Boolean!
     overdue: Boolean!
-    group: LivestockGroup!
+    "Null for a farm-wide task"
+    group: LivestockGroup
+    "When done, the next one is made this many days later on the same schedule (FR-5.3)"
+    repeatEveryDays: Int
   }
 
   type BriefingPreferences {
@@ -317,11 +320,23 @@ export const typeDefs = /* GraphQL */ `
     alwaysSend: Boolean!
   }
 
+  "Give a groupId, or a farmId for a farm-wide task."
   input CreateTaskInput {
-    groupId: ID!
+    groupId: ID
+    farmId: ID
     title: String!
     dueDate: String!
     note: String
+    repeatEveryDays: Int
+  }
+
+  "Omitted fields are unchanged; null clears the group (whole farm), note or repeat."
+  input UpdateTaskInput {
+    title: String
+    dueDate: String
+    note: String
+    groupId: ID
+    repeatEveryDays: Int
   }
 
   input BriefingPreferencesInput {
@@ -476,7 +491,11 @@ export const typeDefs = /* GraphQL */ `
     "Rebuilds today's briefing now"
     refreshBriefing(farmId: ID!): Briefing!
     createTask(input: CreateTaskInput!): Task!
+    "Done on a repeating task also makes the next one (FR-5.3)"
     setTaskDone(id: ID!, done: Boolean!): Task!
+    updateTask(id: ID!, input: UpdateTaskInput!): Task!
+    "False if the task isn't yours"
+    deleteTask(id: ID!): Boolean!
     setBriefingPreferences(farmId: ID!, input: BriefingPreferencesInput!): BriefingPreferences!
   }
 `;

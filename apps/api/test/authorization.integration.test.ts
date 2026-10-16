@@ -79,6 +79,17 @@ const CROSS_USER: Record<string, Attempt> = {
     const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
     expect(res.data).toEqual({ deleteLogEntry: false });
   },
+  updateTask: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateTask(id: $id, input: { title: "Mine" }) { id } }`,
+      { id: ann.taskId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteTask: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteTask(id: $id) }`, { id: ann.taskId });
+    expect(res.data).toEqual({ deleteTask: false });
+  },
   correctTreatment: async (bob, ann) => {
     const res = await bob(
       `mutation ($id: ID!) {
@@ -210,6 +221,13 @@ const CROSS_USER: Record<string, Attempt> = {
       { groupId: ann.groupId },
     );
     expect(code(res)).toBe('NOT_FOUND');
+    const farmWide = await bob(
+      `mutation ($farmId: ID!) {
+        createTask(input: { farmId: $farmId, title: "Sneaky", dueDate: "2026-06-01" }) { id }
+      }`,
+      { farmId: ann.farmId },
+    );
+    expect(code(farmWide)).toBe('NOT_FOUND');
   },
   setTaskDone: async (bob, ann) => {
     const res = await bob(`mutation ($id: ID!) { setTaskDone(id: $id, done: true) { id } }`, {
@@ -260,6 +278,8 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
   addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
   deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  updateTask: `mutation { updateTask(id: "x", input: { title: "X" }) { id } }`,
+  deleteTask: `mutation { deleteTask(id: "x") }`,
   correctTreatment: `mutation { correctTreatment(id: "x", input: {}, reason: "x") { id } }`,
   voidTreatment: `mutation { voidTreatment(id: "x", reason: "x") { id } }`,
   correctObservation: `mutation { correctObservation(id: "x", input: {}, reason: "x") { id } }`,

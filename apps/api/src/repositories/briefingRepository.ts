@@ -5,14 +5,23 @@ import type { BriefingContent } from '../domain/briefing';
 export interface Task {
   id: string;
   farmId: string;
-  groupId: string;
+  /** Null for a farm-wide task (FR-5.3) */
+  groupId: string | null;
   title: string;
   dueDate: string;
   note: string | null;
   done: boolean;
+  /** FR-5.3: when done, the next one is due this many days later on the same schedule */
+  repeatEveryDays: number | null;
+  /** The follow-up already made for a repeating task, so it's only made once */
+  nextTaskId: string | null;
 }
 
-export type NewTask = Omit<Task, 'id' | 'done'>;
+export type NewTask = Omit<Task, 'id' | 'done' | 'repeatEveryDays' | 'nextTaskId'> & {
+  repeatEveryDays?: number | null;
+};
+
+export type TaskPatch = Partial<Omit<Task, 'id' | 'farmId' | 'done'>>;
 
 export interface TaskRepository {
   createTask(input: NewTask): Promise<Task>;
@@ -20,6 +29,9 @@ export interface TaskRepository {
   /** Earliest due first; ties in the order they were created. */
   listTasks(farmId: string): Promise<Task[]>;
   setDone(id: string, done: boolean): Promise<Task>;
+  /** Null if there's no such task. */
+  updateTask(id: string, patch: TaskPatch): Promise<Task | null>;
+  deleteTask(id: string): Promise<boolean>;
 }
 
 /** FR-4.3: a member's email settings for one farm. */
@@ -58,7 +70,13 @@ export class InMemoryTaskRepository implements TaskRepository {
   constructor(private newId: () => string = randomUUID) {}
 
   async createTask(input: NewTask) {
-    const task: Task = { ...input, id: this.newId(), done: false };
+    const task: Task = {
+      ...input,
+      repeatEveryDays: input.repeatEveryDays ?? null,
+      id: this.newId(),
+      done: false,
+      nextTaskId: null,
+    };
     this.tasks.push({ ...task, seq: ++this.seq });
     return task;
   }
@@ -80,6 +98,21 @@ export class InMemoryTaskRepository implements TaskRepository {
     if (!found) throw new Error(`Task ${id} not found`);
     found.done = done;
     return this.strip(found);
+  }
+
+  async updateTask(id: string, patch: TaskPatch) {
+    const found = this.tasks.find((t) => t.id === id);
+    if (!found) return null;
+    for (const [key, value] of Object.entries(patch)) {
+      if (value !== undefined) Object.assign(found, { [key]: value });
+    }
+    return this.strip(found);
+  }
+
+  async deleteTask(id: string) {
+    const before = this.tasks.length;
+    this.tasks = this.tasks.filter((t) => t.id !== id);
+    return this.tasks.length < before;
   }
 
   private strip({ seq: _seq, ...task }: Task & { seq: number }): Task {
