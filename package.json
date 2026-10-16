@@ -1,5 +1,5 @@
 {
-  "name": "animalcast",
+  "name": "bellwether",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@animalcast/api & npm run dev --workspace=@animalcast/web",
-    "dev:api": "npm run dev --workspace=@animalcast/api",
-    "dev:web": "npm run dev --workspace=@animalcast/web",
+    "dev": "npm run dev --workspace=@bellwether/api & npm run dev --workspace=@bellwether/web",
+    "dev:api": "npm run dev --workspace=@bellwether/api",
+    "dev:web": "npm run dev --workspace=@bellwether/web",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

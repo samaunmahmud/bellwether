@@ -6,5 +6,5 @@ export default defineConfig({
   target: 'node20',
   clean: true,
   // The risk engine is a TypeScript-source workspace package, so bundle it into the API build.
-  noExternal: ['@animalcast/risk-engine'],
+  noExternal: ['@bellwether/risk-engine'],
 });

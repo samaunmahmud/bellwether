@@ -22,5 +22,5 @@ const app = createApp({
 });
 
 createServer(app).listen(config.port, () => {
-  logger.info(`AnimalCast API running at http://localhost:${config.port}/graphql`);
+  logger.info(`Bellwether API running at http://localhost:${config.port}/graphql`);
 });

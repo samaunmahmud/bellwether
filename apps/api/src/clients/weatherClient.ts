@@ -1,4 +1,4 @@
-import type { DailyWeather } from '@animalcast/risk-engine';
+import type { DailyWeather } from '@bellwether/risk-engine';
 
 export interface WeatherClient {
   /** 14-day daily forecast. Throws when the service is unavailable. */

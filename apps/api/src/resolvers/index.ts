@@ -1,4 +1,4 @@
-import type { AnimalCategory } from '@animalcast/risk-engine';
+import type { AnimalCategory } from '@bellwether/risk-engine';
 import { appError } from '../errors';
 import type { Animal, AnimalRepository } from '../repositories/animalRepository';
 import type { ForecastService } from '../services/forecastService';

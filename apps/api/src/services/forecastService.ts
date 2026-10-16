@@ -3,7 +3,7 @@ import {
   type AnimalCategory,
   type DailyRisk,
   type RiskContext,
-} from '@animalcast/risk-engine';
+} from '@bellwether/risk-engine';
 import { getOrLoad, TTL, type Cache } from '../cache/cache';
 import type { Location, PostcodeClient } from '../clients/postcodesClient';
 import type { WeatherClient } from '../clients/weatherClient';

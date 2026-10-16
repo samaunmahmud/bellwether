@@ -38,7 +38,7 @@ Node API (GraphQL Yoga) ── Redis cache (falls back to direct calls if Redis 
         │
         ├── postcodes.io  → postcode → lat/long
         ├── Open-Meteo    → 14-day daily forecast
-        └── @animalcast/risk-engine (pure TypeScript, no I/O)
+        └── @bellwether/risk-engine (pure TypeScript, no I/O)
                  tick · dog heatstroke · cattle heat stress · sheep blowfly
 ```
 

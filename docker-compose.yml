@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: animalcast
-      POSTGRES_PASSWORD: animalcast
-      POSTGRES_DB: animalcast
+      POSTGRES_USER: bellwether
+      POSTGRES_PASSWORD: bellwether
+      POSTGRES_DB: bellwether
     ports:
       - '5432:5432'
     volumes:

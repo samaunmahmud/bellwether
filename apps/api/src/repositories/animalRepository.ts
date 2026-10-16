@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AnimalCategory } from '@animalcast/risk-engine';
+import type { AnimalCategory } from '@bellwether/risk-engine';
 
 export interface LogEntry {
   id: string;

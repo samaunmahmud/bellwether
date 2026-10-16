@@ -1,6 +1,6 @@
 // Target schema for Phase 2's database work.
 // Not wired up yet: the MVP uses InMemoryAnimalRepository.
-// To enable: npm i -D prisma -w @animalcast/api && npm i @prisma/client -w @animalcast/api,
+// To enable: npm i -D prisma -w @bellwether/api && npm i @prisma/client -w @bellwether/api,
 // then `npx prisma migrate dev` and add a PrismaAnimalRepository.
 
 generator client {

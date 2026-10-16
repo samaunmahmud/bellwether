@@ -8,7 +8,7 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <NavLink to="/" className="brand">
-          AnimalCast
+          Bellwether
         </NavLink>
         <nav>
           <NavLink to="/">Forecast</NavLink>

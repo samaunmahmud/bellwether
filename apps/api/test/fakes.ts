@@ -1,4 +1,4 @@
-import type { DailyWeather } from '@animalcast/risk-engine';
+import type { DailyWeather } from '@bellwether/risk-engine';
 import { MemoryCache, type Cache } from '../src/cache/cache';
 import type { Location, PostcodeClient } from '../src/clients/postcodesClient';
 import type { WeatherClient } from '../src/clients/weatherClient';
