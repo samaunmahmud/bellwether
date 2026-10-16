@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/coverage
+apps/api/src/generated
+.git
+.github
+.idea
+.env
+.env.*
+!.env.example
+*.log
+CLAUDE.md
+docs

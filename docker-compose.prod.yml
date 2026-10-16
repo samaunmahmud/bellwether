@@ -1,0 +1,54 @@
+# The whole stack built from the Dockerfiles, as it would run in production.
+#   docker compose -f docker-compose.prod.yml up --build
+# App: http://localhost:8088   Mail inbox: http://localhost:8188
+name: bellwether-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bellwether
+      POSTGRES_PASSWORD: bellwether
+      POSTGRES_DB: bellwether
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bellwether']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - '8188:8025'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://bellwether:bellwether@postgres:5432/bellwether
+      REDIS_URL: redis://redis:6379
+      SMTP_URL: smtp://mailpit:1025
+      APP_URL: http://localhost:8088
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      API_URL: http://api:4000
+    ports:
+      - '8088:8080'
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
