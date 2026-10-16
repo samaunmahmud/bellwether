@@ -1,8 +1,11 @@
 import { afterAll, describe } from 'vitest';
 import { createPrismaClient } from '../src/db/prisma';
 import { PrismaFarmRepository } from '../src/repositories/prismaFarmRepository';
+import { PrismaRecordsRepository } from '../src/repositories/prismaRecordsRepository';
 import { PrismaUserRepository } from '../src/repositories/prismaUserRepository';
 import { farmRepositoryContract } from './farmRepository.contract';
+import { sheepGroup } from './farmRepository.contract';
+import { recordsRepositoryContract } from './recordsRepository.contract';
 import { userRepositoryContract } from './userRepository.contract';
 
 // The same contract suites as the in-memory fakes, run against real Postgres.
@@ -35,6 +38,25 @@ describe.skipIf(!testDatabaseUrl)('Postgres repositories', () => {
               data: { email: `user${++n}@example.com`, passwordHash: 'x' },
             })
           ).id,
+      };
+    });
+  });
+
+  describe('PrismaRecordsRepository', () => {
+    recordsRepositoryContract(async () => {
+      await reset();
+      const farms = new PrismaFarmRepository(prisma);
+      let n = 0;
+      return {
+        repo: new PrismaRecordsRepository(prisma),
+        newGroup: async () => {
+          const user = await prisma.user.create({
+            data: { email: `records${++n}@example.com`, passwordHash: 'x' },
+          });
+          const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
+          const group = await farms.createGroup(sheepGroup(farm.id), null);
+          return { farmId: farm.id, groupId: group.id };
+        },
       };
     });
   });

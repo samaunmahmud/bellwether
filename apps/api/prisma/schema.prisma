@@ -84,10 +84,12 @@ model Farm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members   FarmMember[]
-  fields    Field[]
-  groups    LivestockGroup[]
-  movements GroupMovement[]
+  members      FarmMember[]
+  fields       Field[]
+  groups       LivestockGroup[]
+  movements    GroupMovement[]
+  treatments   Treatment[]
+  observations Observation[]
 }
 
 model Field {
@@ -133,7 +135,9 @@ model LivestockGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movements GroupMovement[]
+  movements    GroupMovement[]
+  treatments   Treatment[]
+  observations Observation[]
 
   @@index([farmId])
 }
@@ -154,4 +158,47 @@ model GroupMovement {
   createdAt   DateTime       @default(now())
 
   @@index([groupId, movedOn])
+}
+
+// --- Records (FR-6) ---
+// No delete: records are never hard-deleted (FR-6.5); edits with history arrive in P2.
+
+model Treatment {
+  id                 String         @id @default(uuid()) @db.Uuid
+  // Insertion order, to break ties between records on the same day
+  seq                Int            @default(autoincrement())
+  farmId             String         @db.Uuid
+  farm               Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId            String         @db.Uuid
+  group              LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  date               DateTime       @db.Date
+  // Typed by the farmer from the label; never suggested by Bellwether
+  productName        String
+  batchNumber        String?
+  quantityUsed       String?
+  animalsTreated     Int
+  administeredBy     String
+  reason             String?
+  // Copied by the farmer from the product label or vet instructions (FR-6.3)
+  meatWithdrawalDays Int
+  milkWithdrawalDays Int?
+  createdAt          DateTime       @default(now())
+
+  @@index([groupId, date])
+  @@index([farmId, date])
+}
+
+model Observation {
+  id        String         @id @default(uuid()) @db.Uuid
+  seq       Int            @default(autoincrement())
+  farmId    String         @db.Uuid
+  farm      Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId   String         @db.Uuid
+  group     LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  date      DateTime       @db.Date
+  type      String
+  note      String?
+  createdAt DateTime       @default(now())
+
+  @@index([groupId, date])
 }

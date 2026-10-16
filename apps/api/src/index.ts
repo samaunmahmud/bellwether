@@ -10,6 +10,8 @@ import { createLogger } from './logger';
 import { InMemoryAnimalRepository } from './repositories/animalRepository';
 import { InMemoryFarmRepository } from './repositories/farmRepository';
 import { PrismaFarmRepository } from './repositories/prismaFarmRepository';
+import { PrismaRecordsRepository } from './repositories/prismaRecordsRepository';
+import { InMemoryRecordsRepository } from './repositories/recordsRepository';
 import { PrismaUserRepository } from './repositories/prismaUserRepository';
 import { InMemoryUserRepository } from './repositories/userRepository';
 
@@ -25,6 +27,7 @@ if (!config.redisUrl) logger.warn('REDIS_URL not set, using in-memory cache');
 const prisma = config.databaseUrl ? createPrismaClient(config.databaseUrl) : null;
 const farms = prisma ? new PrismaFarmRepository(prisma) : new InMemoryFarmRepository();
 const users = prisma ? new PrismaUserRepository(prisma) : new InMemoryUserRepository();
+const records = prisma ? new PrismaRecordsRepository(prisma) : new InMemoryRecordsRepository();
 if (!prisma) logger.warn('DATABASE_URL not set, users and farm data are kept in memory only');
 
 const app = createApp({
@@ -34,6 +37,7 @@ const app = createApp({
   animals: new InMemoryAnimalRepository(),
   farms,
   users,
+  records,
   logger,
   secureCookies: config.secureCookies,
 });

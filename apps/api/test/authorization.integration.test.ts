@@ -11,6 +11,11 @@ import { buildTestApp, type Gql } from './fakes';
 // Operations that read no user data, so anyone may call them (A15).
 const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut'];
 
+const TREATMENT_FIELDS = `
+  groupId: $groupId, date: "2026-06-01", productName: "X", animalsTreated: 1,
+  administeredBy: "Bob", meatWithdrawalDays: 0
+`;
+
 interface AnnsData {
   farmId: string;
   fieldId: string;
@@ -99,6 +104,35 @@ const CROSS_USER: Record<string, Attempt> = {
     );
     expect(code(res)).toBe('NOT_FOUND');
   },
+  livestockGroup: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { livestockGroup(id: $id) { id } }`, {
+      id: ann.groupId,
+    });
+    expect(res.data).toEqual({ livestockGroup: null });
+  },
+  treatments: async (bob, ann) => {
+    const res = await bob(
+      `query ($farmId: ID!) { treatments(farmId: $farmId, from: "2026-01-01", to: "2026-12-31") { id } }`,
+      { farmId: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  recordTreatment: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($groupId: ID!) { recordTreatment(input: { ${TREATMENT_FIELDS} }) { id } }`,
+      { groupId: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  recordObservation: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($groupId: ID!) {
+        recordObservation(input: { groupId: $groupId, date: "2026-06-01", type: "Check" }) { id }
+      }`,
+      { groupId: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
   moveLivestockGroup: async (bob, ann, bobs) => {
     const move = `mutation ($groupId: ID!, $fieldId: ID!) {
       moveLivestockGroup(input: { groupId: $groupId, toFieldId: $fieldId, movedOn: "2026-06-01" }) { id }
@@ -128,6 +162,13 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createLivestockGroup: `mutation { createLivestockGroup(input: {
     farmId: "x", name: "X", species: SHEEP, livestockClass: EWES, headCount: 1 }) { id } }`,
   updateLivestockGroup: `mutation { updateLivestockGroup(id: "x", input: { headCount: 1 }) { id } }`,
+  livestockGroup: `query { livestockGroup(id: "x") { id } }`,
+  treatments: `query { treatments(farmId: "x", from: "2026-01-01", to: "2026-12-31") { id } }`,
+  recordTreatment: `mutation { recordTreatment(input: {
+    groupId: "x", date: "2026-06-01", productName: "X", animalsTreated: 1,
+    administeredBy: "X", meatWithdrawalDays: 0 }) { id } }`,
+  recordObservation: `mutation { recordObservation(input: {
+    groupId: "x", date: "2026-06-01", type: "Check" }) { id } }`,
   moveLivestockGroup: `mutation { moveLivestockGroup(input: {
     groupId: "x", toFieldId: "y", movedOn: "2026-06-01" }) { id } }`,
 };
@@ -151,6 +192,15 @@ const ANNS_DATA = /* GraphQL */ `
         }
         movements {
           id
+        }
+        treatments {
+          id
+        }
+        observations {
+          id
+        }
+        withdrawal {
+          inWithdrawal
         }
       }
     }
@@ -186,6 +236,16 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     }`,
     { farmId, fieldId },
   );
+  const groupId = group.data!.createLivestockGroup.id;
+  await ann(`mutation ($groupId: ID!) { recordTreatment(input: { ${TREATMENT_FIELDS} }) { id } }`, {
+    groupId,
+  });
+  await ann(
+    `mutation ($groupId: ID!) {
+      recordObservation(input: { groupId: $groupId, date: "2026-06-01", type: "Check" }) { id }
+    }`,
+    { groupId },
+  );
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -198,7 +258,7 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     farmId,
     fieldId,
     otherFieldId,
-    groupId: group.data!.createLivestockGroup.id,
+    groupId,
     animalId,
     logId: log.data!.addLogEntry.id,
   };

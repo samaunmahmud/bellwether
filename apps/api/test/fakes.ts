@@ -7,6 +7,7 @@ import { createApp } from '../src/app';
 import { silentLogger } from '../src/logger';
 import { InMemoryAnimalRepository } from '../src/repositories/animalRepository';
 import { InMemoryFarmRepository } from '../src/repositories/farmRepository';
+import { InMemoryRecordsRepository } from '../src/repositories/recordsRepository';
 import { InMemoryUserRepository } from '../src/repositories/userRepository';
 
 export const UXBRIDGE: Location = {
@@ -94,6 +95,7 @@ export function buildTestApp(overrides: Partial<Parameters<typeof createApp>[0]>
     animals: new InMemoryAnimalRepository(),
     farms: new InMemoryFarmRepository(),
     users: new InMemoryUserRepository(),
+    records: new InMemoryRecordsRepository(),
     // Low scrypt cost keeps tests fast
     hasher: createScryptHasher(2 ** 10),
     logger: silentLogger,

@@ -118,6 +118,69 @@ export const typeDefs = /* GraphQL */ `
     "Newest first"
     movements: [GroupMovement!]!
     forecast: GroupForecast!
+    farm: Farm!
+    "Newest first (FR-6.1)"
+    treatments: [Treatment!]!
+    "Newest first (FR-6.6)"
+    observations: [Observation!]!
+    "Whether the group is in withdrawal today (FR-6.2)"
+    withdrawal: WithdrawalStatus!
+  }
+
+  # --- Records (FR-6) ---
+
+  "A treatment record. Product and withdrawal periods are typed in by the farmer from the label or vet."
+  type Treatment {
+    id: ID!
+    date: String!
+    productName: String!
+    batchNumber: String
+    quantityUsed: String
+    animalsTreated: Int!
+    administeredBy: String!
+    reason: String
+    meatWithdrawalDays: Int!
+    milkWithdrawalDays: Int
+    "First day out of meat withdrawal"
+    meatWithdrawalEnds: String!
+    "First day out of milk withdrawal, if a milk period was entered"
+    milkWithdrawalEnds: String
+    group: LivestockGroup!
+  }
+
+  type Observation {
+    id: ID!
+    date: String!
+    type: String!
+    note: String
+  }
+
+  type WithdrawalStatus {
+    inWithdrawal: Boolean!
+    "Latest meat withdrawal end still to come"
+    meatEnds: String
+    "Latest milk withdrawal end still to come"
+    milkEnds: String
+  }
+
+  input RecordTreatmentInput {
+    groupId: ID!
+    date: String!
+    productName: String!
+    batchNumber: String
+    quantityUsed: String
+    animalsTreated: Int!
+    administeredBy: String!
+    reason: String
+    meatWithdrawalDays: Int!
+    milkWithdrawalDays: Int
+  }
+
+  input RecordObservationInput {
+    groupId: ID!
+    date: String!
+    type: String!
+    note: String
   }
 
   type GroupMovement {
@@ -207,6 +270,9 @@ export const typeDefs = /* GraphQL */ `
     animal(id: ID!): Animal
     farms: [Farm!]!
     farm(id: ID!): Farm
+    livestockGroup(id: ID!): LivestockGroup
+    "A farm's treatments from 'from' to 'to' inclusive, oldest first (FR-6.4)"
+    treatments(farmId: ID!, from: String!, to: String!): [Treatment!]!
   }
 
   type Mutation {
@@ -230,5 +296,7 @@ export const typeDefs = /* GraphQL */ `
     logIn(email: String!, password: String!): User!
     "Ends the session and clears the cookie."
     logOut: Boolean!
+    recordTreatment(input: RecordTreatmentInput!): Treatment!
+    recordObservation(input: RecordObservationInput!): Observation!
   }
 `;
