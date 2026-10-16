@@ -170,12 +170,65 @@ export const typeDefs = /* GraphQL */ `
     "First day out of milk withdrawal, if a milk period was entered"
     milkWithdrawalEnds: String
     group: LivestockGroup!
+    "Voided records stay on file but don't count for withdrawal (FR-6.5)"
+    voided: Boolean!
+    voidedAt: String
+    voidReason: String
+    "Corrections and voids, newest first"
+    history: [RecordRevision!]!
   }
 
   type Observation {
     id: ID!
     date: String!
     type: String!
+    note: String
+    voided: Boolean!
+    voidedAt: String
+    voidReason: String
+    "Corrections and voids, newest first"
+    history: [RecordRevision!]!
+  }
+
+  enum RevisionAction {
+    EDITED
+    VOIDED
+  }
+
+  "One correction or void (FR-6.5). Never changed or deleted."
+  type RecordRevision {
+    id: ID!
+    action: RevisionAction!
+    "ISO timestamp"
+    at: String!
+    "Email of whoever made the change"
+    by: String!
+    reason: String!
+    changes: [FieldChange!]!
+  }
+
+  type FieldChange {
+    field: String!
+    from: String
+    to: String
+  }
+
+  "Omitted fields are unchanged. To move a record to another group, void it and record it again."
+  input CorrectTreatmentInput {
+    date: String
+    productName: String
+    batchNumber: String
+    quantityUsed: String
+    animalsTreated: Int
+    administeredBy: String
+    reason: String
+    meatWithdrawalDays: Int
+    milkWithdrawalDays: Int
+  }
+
+  input CorrectObservationInput {
+    date: String
+    type: String
     note: String
   }
 
@@ -414,6 +467,12 @@ export const typeDefs = /* GraphQL */ `
     logOut: Boolean!
     recordTreatment(input: RecordTreatmentInput!): Treatment!
     recordObservation(input: RecordObservationInput!): Observation!
+    "Corrects a treatment; 'reason' is kept in its history (FR-6.5)"
+    correctTreatment(id: ID!, input: CorrectTreatmentInput!, reason: String!): Treatment!
+    "Marks a treatment void. It is never deleted (FR-6.5)."
+    voidTreatment(id: ID!, reason: String!): Treatment!
+    correctObservation(id: ID!, input: CorrectObservationInput!, reason: String!): Observation!
+    voidObservation(id: ID!, reason: String!): Observation!
     "Rebuilds today's briefing now"
     refreshBriefing(farmId: ID!): Briefing!
     createTask(input: CreateTaskInput!): Task!

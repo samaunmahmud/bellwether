@@ -71,3 +71,15 @@ describe('withdrawalStatus (FR-6.2 acceptance)', () => {
     });
   });
 });
+
+describe('withdrawalStatus with voided treatments (FR-6.5)', () => {
+  it('ignores a voided treatment', () => {
+    const voided = {
+      date: '2026-06-01',
+      meatWithdrawalDays: 28,
+      milkWithdrawalDays: null,
+      voidedAt: '2026-06-02T09:00:00.000Z',
+    };
+    expect(withdrawalStatus([voided], '2026-06-10').inWithdrawal).toBe(false);
+  });
+});

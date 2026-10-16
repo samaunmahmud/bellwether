@@ -179,3 +179,109 @@ describe('treatments export (FR-6.4)', () => {
     ]);
   });
 });
+
+describe('corrections and voids (FR-6.5)', () => {
+  const CORRECT = /* GraphQL */ `
+    mutation ($id: ID!, $input: CorrectTreatmentInput!, $reason: String!) {
+      correctTreatment(id: $id, input: $input, reason: $reason) {
+        id
+        batchNumber
+        voided
+        history {
+          action
+          by
+          reason
+          at
+          changes {
+            field
+            from
+            to
+          }
+        }
+      }
+    }
+  `;
+
+  it('corrects a treatment and shows who changed what, and why', async () => {
+    const { gql, groupId } = await setUp('2026-06-28T09:00:00Z');
+    const saved = await gql<{ recordTreatment: { id: string } }>(RECORD_TREATMENT, {
+      input: { ...treatment(groupId), batchNumber: 'B123' },
+    });
+    const res = await gql<{ correctTreatment: Record<string, unknown> }>(CORRECT, {
+      id: saved.data!.recordTreatment.id,
+      input: { batchNumber: 'B124' },
+      reason: 'Typo',
+    });
+    expect(res.errors).toBeUndefined();
+    expect(res.data!.correctTreatment).toEqual({
+      id: saved.data!.recordTreatment.id,
+      batchNumber: 'B124',
+      voided: false,
+      history: [
+        {
+          action: 'EDITED',
+          by: 'ann@example.com',
+          reason: 'Typo',
+          at: '2026-06-28T09:00:00.000Z',
+          changes: [{ field: 'Batch number', from: 'B123', to: 'B124' }],
+        },
+      ],
+    });
+  });
+
+  it('voids a treatment: still listed, marked void, and the group leaves withdrawal', async () => {
+    const { gql, groupId } = await setUp('2026-06-28T09:00:00Z');
+    const saved = await gql<{ recordTreatment: { id: string } }>(RECORD_TREATMENT, {
+      input: { ...treatment(groupId), date: '2026-06-20' },
+    });
+    const res = await gql<{ voidTreatment: { voided: boolean; voidReason: string } }>(
+      `mutation ($id: ID!) {
+        voidTreatment(id: $id, reason: "Entered twice") { voided voidReason }
+      }`,
+      { id: saved.data!.recordTreatment.id },
+    );
+    expect(res.data!.voidTreatment).toEqual({ voided: true, voidReason: 'Entered twice' });
+
+    const group = await gql<{
+      livestockGroup: { withdrawal: { inWithdrawal: boolean }; treatments: unknown[] };
+    }>(GROUP, { id: groupId });
+    expect(group.data!.livestockGroup.withdrawal.inWithdrawal).toBe(false);
+    expect(group.data!.livestockGroup.treatments).toHaveLength(1);
+  });
+
+  it('corrects and voids a check', async () => {
+    const { gql, groupId } = await setUp('2026-06-28T09:00:00Z');
+    const saved = await gql<{ recordObservation: { id: string } }>(RECORD_OBSERVATION, {
+      input: { groupId, date: '2026-06-27', type: 'Flock inspected' },
+    });
+    const id = saved.data!.recordObservation.id;
+    const fixed = await gql<{ correctObservation: { note: string } }>(
+      `mutation ($id: ID!) {
+        correctObservation(id: $id, input: { note: "2 struck" }, reason: "Add note") { note }
+      }`,
+      { id },
+    );
+    expect(fixed.data!.correctObservation.note).toBe('2 struck');
+    const voided = await gql<{ voidObservation: { voided: boolean; history: unknown[] } }>(
+      `mutation ($id: ID!) { voidObservation(id: $id, reason: "Wrong group") { voided history { action } } }`,
+      { id },
+    );
+    expect(voided.data!.voidObservation).toEqual({
+      voided: true,
+      history: [{ action: 'VOIDED' }, { action: 'EDITED' }],
+    });
+  });
+
+  it('needs a reason', async () => {
+    const { gql, groupId } = await setUp('2026-06-28T09:00:00Z');
+    const saved = await gql<{ recordTreatment: { id: string } }>(RECORD_TREATMENT, {
+      input: treatment(groupId),
+    });
+    const res = await gql(CORRECT, {
+      id: saved.data!.recordTreatment.id,
+      input: { batchNumber: 'B9' },
+      reason: '  ',
+    });
+    expect(res.errors?.[0]?.extensions?.code).toBe('BAD_INPUT');
+  });
+});

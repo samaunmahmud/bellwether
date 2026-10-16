@@ -24,6 +24,8 @@ interface AnnsData {
   groupId: string;
   animalId: string;
   logId: string;
+  treatmentId: string;
+  observationId: string;
 }
 
 interface BobsData {
@@ -76,6 +78,36 @@ const CROSS_USER: Record<string, Attempt> = {
   deleteLogEntry: async (bob, ann) => {
     const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
     expect(res.data).toEqual({ deleteLogEntry: false });
+  },
+  correctTreatment: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) {
+        correctTreatment(id: $id, input: { batchNumber: "X" }, reason: "Mine") { id }
+      }`,
+      { id: ann.treatmentId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  voidTreatment: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { voidTreatment(id: $id, reason: "x") { id } }`, {
+      id: ann.treatmentId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  correctObservation: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) {
+        correctObservation(id: $id, input: { note: "X" }, reason: "Mine") { id }
+      }`,
+      { id: ann.observationId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  voidObservation: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { voidObservation(id: $id, reason: "x") { id } }`, {
+      id: ann.observationId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
   },
   updateLogEntry: async (bob, ann) => {
     const res = await bob(
@@ -228,6 +260,10 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
   addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
   deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  correctTreatment: `mutation { correctTreatment(id: "x", input: {}, reason: "x") { id } }`,
+  voidTreatment: `mutation { voidTreatment(id: "x", reason: "x") { id } }`,
+  correctObservation: `mutation { correctObservation(id: "x", input: {}, reason: "x") { id } }`,
+  voidObservation: `mutation { voidObservation(id: "x", reason: "x") { id } }`,
   updateLogEntry: `mutation { updateLogEntry(id: "x", input: { type: "X" }) { id } }`,
   updateAnimal: `mutation { updateAnimal(id: "x", input: { name: "X" }) { id } }`,
   deleteAnimal: `mutation { deleteAnimal(id: "x") }`,
@@ -276,9 +312,13 @@ const ANNS_DATA = /* GraphQL */ `
         }
         treatments {
           id
+          batchNumber
+          voided
         }
         observations {
           id
+          note
+          voided
         }
         withdrawal {
           inWithdrawal
@@ -318,10 +358,11 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     { farmId, fieldId },
   );
   const groupId = group.data!.createLivestockGroup.id;
-  await ann(`mutation ($groupId: ID!) { recordTreatment(input: { ${TREATMENT_FIELDS} }) { id } }`, {
-    groupId,
-  });
-  await ann(
+  const treatment = await ann<{ recordTreatment: Id }>(
+    `mutation ($groupId: ID!) { recordTreatment(input: { ${TREATMENT_FIELDS} }) { id } }`,
+    { groupId },
+  );
+  const observation = await ann<{ recordObservation: Id }>(
     `mutation ($groupId: ID!) {
       recordObservation(input: { groupId: $groupId, date: "2026-06-01", type: "Check" }) { id }
     }`,
@@ -349,6 +390,8 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     taskId: task.data!.createTask.id,
     animalId,
     logId: log.data!.addLogEntry.id,
+    treatmentId: treatment.data!.recordTreatment.id,
+    observationId: observation.data!.recordObservation.id,
   };
 }
 

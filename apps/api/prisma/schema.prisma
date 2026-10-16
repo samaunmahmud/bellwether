@@ -45,6 +45,7 @@ model User {
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
   pets           Pet[]
+  revisions      RecordRevision[]
 }
 
 model Session {
@@ -94,6 +95,7 @@ model Farm {
   treatments     Treatment[]
   observations   Observation[]
   tasks          Task[]
+  revisions      RecordRevision[]
   briefingRuns   BriefingRun[]
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
@@ -169,7 +171,7 @@ model GroupMovement {
 }
 
 // --- Records (FR-6) ---
-// No delete: records are never hard-deleted (FR-6.5); edits with history arrive in P2.
+// No delete: records are never hard-deleted. Corrections and voids keep a RecordRevision (FR-6.5).
 
 model Treatment {
   id                 String         @id @default(uuid()) @db.Uuid
@@ -190,6 +192,8 @@ model Treatment {
   // Copied by the farmer from the product label or vet instructions (FR-6.3)
   meatWithdrawalDays Int
   milkWithdrawalDays Int?
+  voidedAt           DateTime?
+  voidReason         String?
   createdAt          DateTime       @default(now())
 
   @@index([groupId, date])
@@ -197,18 +201,43 @@ model Treatment {
 }
 
 model Observation {
-  id        String         @id @default(uuid()) @db.Uuid
-  seq       Int            @default(autoincrement())
-  farmId    String         @db.Uuid
-  farm      Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  groupId   String         @db.Uuid
-  group     LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  date      DateTime       @db.Date
-  type      String
-  note      String?
-  createdAt DateTime       @default(now())
+  id         String         @id @default(uuid()) @db.Uuid
+  seq        Int            @default(autoincrement())
+  farmId     String         @db.Uuid
+  farm       Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId    String         @db.Uuid
+  group      LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  date       DateTime       @db.Date
+  type       String
+  note       String?
+  voidedAt   DateTime?
+  voidReason String?
+  createdAt  DateTime       @default(now())
 
   @@index([groupId, date])
+}
+
+// FR-6.5: one correction or void of a treatment or observation. Append-only.
+model RecordRevision {
+  id           String   @id @default(uuid()) @db.Uuid
+  seq          Int      @default(autoincrement())
+  farmId       String   @db.Uuid
+  farm         Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  // 'TREATMENT' or 'OBSERVATION'
+  recordType   String
+  recordId     String   @db.Uuid
+  // 'EDITED' or 'VOIDED'
+  action       String
+  reason       String
+  editedById   String?  @db.Uuid
+  editedByUser User?    @relation(fields: [editedById], references: [id], onDelete: SetNull)
+  // The editor's email at the time, kept even if the account goes
+  editedBy     String
+  editedAt     DateTime
+  // [{ field, from, to }]
+  changes      Json
+
+  @@index([recordId])
 }
 
 // --- Tasks and briefings (FR-5, FR-4) ---
