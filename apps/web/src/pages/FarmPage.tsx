@@ -79,6 +79,9 @@ export function FarmPage() {
         <Link to={`/farms/${farm.id}/briefing`} className="button">
           Morning briefing
         </Link>
+        <Link to={`/farms/${farm.id}/tasks`} className="button button--secondary">
+          Tasks
+        </Link>
         <Link to={`/farms/${farm.id}/records`}>Treatment records</Link>
       </p>
 

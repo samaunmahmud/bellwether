@@ -9,6 +9,7 @@ import { FarmPage } from './pages/FarmPage';
 import { FarmsPage } from './pages/FarmsPage';
 import { GroupPage } from './pages/GroupPage';
 import { RecordsPage } from './pages/RecordsPage';
+import { TasksPage } from './pages/TasksPage';
 import { ForecastPage } from './pages/ForecastPage';
 import { HomePage } from './pages/HomePage';
 import { PetPage } from './pages/PetPage';
@@ -31,6 +32,7 @@ export function App() {
           <Route path="/farms/:id" element={signedIn(<FarmPage />)} />
           <Route path="/farms/:id/briefing" element={signedIn(<BriefingPage />)} />
           <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
+          <Route path="/farms/:id/tasks" element={signedIn(<TasksPage />)} />
           <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
           <Route path="/pets/:id" element={signedIn(<PetPage />)} />

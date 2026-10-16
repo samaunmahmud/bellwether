@@ -97,3 +97,45 @@ export const SET_BRIEFING_PREFERENCES = gql`
     }
   }
 `;
+
+// FR-5.3: the farm's task list
+
+export const TASKS_PAGE_QUERY = gql`
+  query TasksPage($farmId: ID!) {
+    farm(id: $farmId) {
+      id
+      name
+      groups {
+        id
+        name
+      }
+    }
+    tasks(farmId: $farmId) {
+      id
+      title
+      dueDate
+      note
+      done
+      overdue
+      repeatEveryDays
+      group {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const UPDATE_TASK = gql`
+  mutation UpdateTask($id: ID!, $input: UpdateTaskInput!) {
+    updateTask(id: $id, input: $input) {
+      id
+    }
+  }
+`;
+
+export const DELETE_TASK = gql`
+  mutation DeleteTask($id: ID!) {
+    deleteTask(id: $id)
+  }
+`;

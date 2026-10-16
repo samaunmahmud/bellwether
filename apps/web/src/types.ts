@@ -180,7 +180,8 @@ export interface Briefing {
     id: string;
     title: string;
     dueDate: string;
-    group: { id: string; name: string };
+    /** Null for a farm-wide task */
+    group: { id: string; name: string } | null;
   }>;
   groups: Array<{
     groupId: string;
@@ -189,4 +190,16 @@ export interface Briefing {
     items: BriefingItem[];
   }>;
   quietGroups: Array<{ groupId: string; groupName: string }>;
+}
+
+/** FR-5.3: a task on the farm's task list */
+export interface FarmTask {
+  id: string;
+  title: string;
+  dueDate: string;
+  note: string | null;
+  done: boolean;
+  overdue: boolean;
+  repeatEveryDays: number | null;
+  group: { id: string; name: string } | null;
 }

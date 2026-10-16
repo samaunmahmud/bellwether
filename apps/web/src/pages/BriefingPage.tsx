@@ -137,7 +137,7 @@ export function BriefingPage() {
                   <strong>{task.title}</strong>
                   <br />
                   <span className="muted">
-                    {task.group.name} · was due {shortDay(task.dueDate)}
+                    {task.group?.name ?? 'Whole farm'} · was due {shortDay(task.dueDate)}
                   </span>
                 </span>
                 <button
