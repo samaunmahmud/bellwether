@@ -301,7 +301,7 @@ export function createFarmService(deps: FarmServiceDeps) {
     async locateGroup(group: LivestockGroup): Promise<ResolvedLocation> {
       const farm = await requireFarm(group.farmId);
       const field = group.currentFieldId ? await repo.getField(group.currentFieldId) : null;
-      const ref = resolveLocationRef(farm, field);
+      const ref = resolveLocationRef(farm, field, group.housed);
       if (ref.source === 'PIN') return { ...ref, postcode: null };
       const location = await locations.findPostcode(ref.postcode);
       return {

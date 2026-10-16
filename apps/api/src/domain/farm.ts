@@ -65,8 +65,13 @@ export type LocationRef =
   | { source: 'PIN'; latitude: number; longitude: number }
   | { source: 'FIELD_POSTCODE' | 'FARM_POSTCODE'; postcode: string };
 
-/** FR-2.2: where to get weather for a group. A pin beats the field postcode, which beats the farm postcode. */
-export function resolveLocationRef(farm: Farm, field: Field | null): LocationRef {
+/**
+ * FR-2.2: where to get weather for a group. A pin beats the field postcode, which beats the farm postcode.
+ * Housed groups always use the farm postcode, on the assumption that sheds are at the farmstead
+ * (docs/decisions.md, A1).
+ */
+export function resolveLocationRef(farm: Farm, field: Field | null, housed: boolean): LocationRef {
+  if (housed) return { source: 'FARM_POSTCODE', postcode: farm.postcode };
   if (field && field.latitude !== null && field.longitude !== null) {
     return { source: 'PIN', latitude: field.latitude, longitude: field.longitude };
   }

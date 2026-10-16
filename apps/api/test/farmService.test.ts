@@ -384,6 +384,17 @@ describe('farmService', () => {
   });
 
   describe('locateGroup (FR-2.2)', () => {
+    it('uses the farm postcode for a housed group in a pinned field', async () => {
+      const field = await s.service.createField({
+        farmId,
+        name: 'Hill',
+        latitude: 54.1,
+        longitude: -2.5,
+      });
+      const group = await s.service.createGroup(sheep({ currentFieldId: field.id, housed: true }));
+      expect((await s.service.locateGroup(group)).source).toBe('FARM_POSTCODE');
+    });
+
     it('uses the pin of the group’s field', async () => {
       const field = await s.service.createField({
         farmId,
