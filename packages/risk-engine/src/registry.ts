@@ -1,5 +1,6 @@
 import { cattleHeatStressRisk } from './risks/cattleHeatStressRisk';
 import { dogHeatstrokeRisk } from './risks/dogHeatstrokeRisk';
+import { lambChillRisk } from './risks/lambChillRisk';
 import { sheepBlowflyRisk } from './risks/sheepBlowflyRisk';
 import { tickRisk } from './risks/tickRisk';
 import type { AnimalCategory, DailyWeather, DateRange, RiskContext, RiskModule } from './types';
@@ -13,6 +14,7 @@ export const riskModules: readonly RiskModule[] = [
   dogHeatstrokeRisk,
   cattleHeatStressRisk,
   sheepBlowflyRisk,
+  lambChillRisk,
 ];
 
 export function getRiskModules(category?: AnimalCategory): RiskModule[] {

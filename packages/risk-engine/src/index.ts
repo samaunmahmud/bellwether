@@ -5,3 +5,4 @@ export { tickRisk } from './risks/tickRisk';
 export { dogHeatstrokeRisk } from './risks/dogHeatstrokeRisk';
 export { cattleHeatStressRisk, calculateTHI } from './risks/cattleHeatStressRisk';
 export { sheepBlowflyRisk } from './risks/sheepBlowflyRisk';
+export { lambChillRisk, calculateChillIndex } from './risks/lambChillRisk';

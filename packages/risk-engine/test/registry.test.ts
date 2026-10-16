@@ -14,6 +14,7 @@ describe('registry', () => {
     expect(getRiskModules('farm').map((m) => m.id)).toEqual([
       'cattle-heat-stress',
       'sheep-blowfly',
+      'lamb-chill',
     ]);
     expect(getRiskModules()).toHaveLength(riskModules.length);
   });
