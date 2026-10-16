@@ -93,16 +93,31 @@ function toMovement(row: Omit<GroupMovement, 'movedOn'> & { movedOn: Date }): Gr
 export class PrismaFarmRepository implements FarmRepository {
   constructor(private db: PrismaClient) {}
 
-  createFarm(input: NewFarm) {
-    return this.db.farm.create({ data: input, select: farmSelect });
+  createFarm(input: NewFarm, ownerId: string) {
+    return this.db.farm.create({
+      data: { ...input, members: { create: { userId: ownerId, role: 'OWNER' } } },
+      select: farmSelect,
+    });
   }
 
   getFarm(id: string) {
     return this.db.farm.findUnique({ where: { id }, select: farmSelect });
   }
 
-  listFarms() {
-    return this.db.farm.findMany({ orderBy: { name: 'asc' }, select: farmSelect });
+  listFarmsForUser(userId: string) {
+    return this.db.farm.findMany({
+      where: { members: { some: { userId } } },
+      orderBy: { name: 'asc' },
+      select: farmSelect,
+    });
+  }
+
+  async getRole(farmId: string, userId: string) {
+    const member = await this.db.farmMember.findUnique({
+      where: { farmId_userId: { farmId, userId } },
+      select: { role: true },
+    });
+    return member?.role ?? null;
   }
 
   createField(input: NewField): Promise<Field> {

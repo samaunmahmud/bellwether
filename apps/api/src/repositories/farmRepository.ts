@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Farm, Field, GroupMovement, LivestockGroup } from '../domain/farm';
+import type { Farm, FarmRole, Field, GroupMovement, LivestockGroup } from '../domain/farm';
 
 export type NewFarm = Omit<Farm, 'id'>;
 export type NewField = Omit<Field, 'id'>;
@@ -16,9 +16,13 @@ export type GroupPatch = Partial<
  * Business rules live in farmService; this layer only stores and fetches.
  */
 export interface FarmRepository {
-  createFarm(input: NewFarm): Promise<Farm>;
+  /** Creates the farm with `ownerId` as its OWNER, in one write (A13). */
+  createFarm(input: NewFarm, ownerId: string): Promise<Farm>;
   getFarm(id: string): Promise<Farm | null>;
-  listFarms(): Promise<Farm[]>;
+  /** Farms the user is a member of, sorted by name (FR-8.4). */
+  listFarmsForUser(userId: string): Promise<Farm[]>;
+  /** The user's role on the farm, or null if they are not a member. */
+  getRole(farmId: string, userId: string): Promise<FarmRole | null>;
 
   createField(input: NewField): Promise<Field>;
   getField(id: string): Promise<Field | null>;
@@ -42,6 +46,7 @@ const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompar
 
 export class InMemoryFarmRepository implements FarmRepository {
   private farms = new Map<string, Farm>();
+  private members: Array<{ farmId: string; userId: string; role: FarmRole }> = [];
   private fields = new Map<string, Field>();
   private groups = new Map<string, LivestockGroup>();
   private movements: Array<GroupMovement & { seq: number }> = [];
@@ -49,9 +54,10 @@ export class InMemoryFarmRepository implements FarmRepository {
 
   constructor(private newId: () => string = randomUUID) {}
 
-  async createFarm(input: NewFarm) {
+  async createFarm(input: NewFarm, ownerId: string) {
     const farm = { ...input, id: this.newId() };
     this.farms.set(farm.id, farm);
+    this.members.push({ farmId: farm.id, userId: ownerId, role: 'OWNER' });
     return { ...farm };
   }
 
@@ -60,8 +66,16 @@ export class InMemoryFarmRepository implements FarmRepository {
     return farm ? { ...farm } : null;
   }
 
-  async listFarms() {
-    return [...this.farms.values()].sort(byName).map((f) => ({ ...f }));
+  async listFarmsForUser(userId: string) {
+    const farmIds = new Set(this.members.filter((m) => m.userId === userId).map((m) => m.farmId));
+    return [...this.farms.values()]
+      .filter((f) => farmIds.has(f.id))
+      .sort(byName)
+      .map((f) => ({ ...f }));
+  }
+
+  async getRole(farmId: string, userId: string) {
+    return this.members.find((m) => m.farmId === farmId && m.userId === userId)?.role ?? null;
   }
 
   async createField(input: NewField) {

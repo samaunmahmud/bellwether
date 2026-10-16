@@ -5,6 +5,8 @@ export interface Config {
   postcodesApiBase: string;
   weatherApiBase: string;
   logLevel: 'debug' | 'info';
+  /** Session cookies get `Secure` in production (A10). */
+  secureCookies: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -15,5 +17,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     postcodesApiBase: env.POSTCODES_API_BASE ?? 'https://api.postcodes.io',
     weatherApiBase: env.WEATHER_API_BASE ?? 'https://api.open-meteo.com',
     logLevel: env.LOG_LEVEL === 'debug' ? 'debug' : 'info',
+    secureCookies: env.NODE_ENV === 'production',
   };
 }

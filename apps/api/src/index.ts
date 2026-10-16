@@ -10,6 +10,8 @@ import { createLogger } from './logger';
 import { InMemoryAnimalRepository } from './repositories/animalRepository';
 import { InMemoryFarmRepository } from './repositories/farmRepository';
 import { PrismaFarmRepository } from './repositories/prismaFarmRepository';
+import { PrismaUserRepository } from './repositories/prismaUserRepository';
+import { InMemoryUserRepository } from './repositories/userRepository';
 
 // Local dev: npm runs workspace scripts from apps/api, so the repo-root .env is two levels up.
 if (existsSync('../../.env')) process.loadEnvFile('../../.env');
@@ -20,10 +22,10 @@ const logger = createLogger(config.logLevel);
 const cache = config.redisUrl ? createRedisCache(config.redisUrl) : new MemoryCache();
 if (!config.redisUrl) logger.warn('REDIS_URL not set, using in-memory cache');
 
-const farms = config.databaseUrl
-  ? new PrismaFarmRepository(createPrismaClient(config.databaseUrl))
-  : new InMemoryFarmRepository();
-if (!config.databaseUrl) logger.warn('DATABASE_URL not set, farm data is kept in memory only');
+const prisma = config.databaseUrl ? createPrismaClient(config.databaseUrl) : null;
+const farms = prisma ? new PrismaFarmRepository(prisma) : new InMemoryFarmRepository();
+const users = prisma ? new PrismaUserRepository(prisma) : new InMemoryUserRepository();
+if (!prisma) logger.warn('DATABASE_URL not set, users and farm data are kept in memory only');
 
 const app = createApp({
   postcodes: createPostcodesIoClient(config.postcodesApiBase),
@@ -31,7 +33,9 @@ const app = createApp({
   cache,
   animals: new InMemoryAnimalRepository(),
   farms,
+  users,
   logger,
+  secureCookies: config.secureCookies,
 });
 
 createServer(app).listen(config.port, () => {

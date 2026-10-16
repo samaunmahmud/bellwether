@@ -1,6 +1,8 @@
 export type Species = 'CATTLE' | 'SHEEP';
 export type LivestockClass = 'EWES' | 'LAMBS' | 'RAMS' | 'DAIRY_COWS' | 'BEEF_CATTLE' | 'CALVES';
 export type CattleType = 'DAIRY' | 'BEEF';
+/** Only OWNER is used until FR-8.2 (A13). */
+export type FarmRole = 'OWNER' | 'WORKER' | 'VIEWER';
 
 /** FR-2.1 */
 export interface Farm {

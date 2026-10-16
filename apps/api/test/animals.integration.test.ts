@@ -55,7 +55,7 @@ type Animal = {
 
 describe('animals and logs', () => {
   it('creates an animal, adds logs (newest first) and deletes one', async () => {
-    const { gql } = buildTestApp();
+    const gql = await buildTestApp().signedIn();
 
     const created = await gql<{ createAnimal: { id: string; category: string } }>(CREATE, {
       name: ' Bella ',
@@ -92,7 +92,7 @@ describe('animals and logs', () => {
   });
 
   it('looks up a single animal by id, or returns null', async () => {
-    const { gql } = buildTestApp();
+    const gql = await buildTestApp().signedIn();
     const created = await gql<{ createAnimal: { id: string } }>(CREATE, {
       name: 'North field flock',
       species: 'sheep',
@@ -109,13 +109,13 @@ describe('animals and logs', () => {
   });
 
   it('rejects a log entry for an unknown animal', async () => {
-    const { gql } = buildTestApp();
+    const gql = await buildTestApp().signedIn();
     const res = await gql(ADD_LOG, { animalId: 'missing', date: '2026-06-01', type: 'Tick check' });
     expect(res.errors?.[0]?.extensions?.code).toBe('NOT_FOUND');
   });
 
   it('rejects a blank name', async () => {
-    const { gql } = buildTestApp();
+    const gql = await buildTestApp().signedIn();
     const res = await gql(CREATE, { name: '   ', species: 'dog', category: 'PET' });
     expect(res.errors?.[0]?.extensions?.code).toBe('BAD_INPUT');
   });

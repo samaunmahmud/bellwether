@@ -12,6 +12,8 @@ export interface LogEntry {
 
 export interface Animal {
   id: string;
+  /** The user who added it. Pets are scoped per user until FR-2.6 (A15). */
+  ownerId: string;
   name: string;
   species: string;
   category: AnimalCategory;
@@ -26,14 +28,14 @@ export interface NewLogEntry {
 }
 
 /**
- * Storage for animals and their logs. The MVP uses the in-memory version below.
- * TODO(phase 2): add a PrismaAnimalRepository backed by prisma/schema.prisma and switch to it in index.ts.
+ * Storage for pet animals and their logs, kept in memory until FR-2.6 / FR-6.6 replace them (A7).
  */
 export interface AnimalRepository {
-  listAnimals(): Promise<Animal[]>;
+  listAnimals(ownerId: string): Promise<Animal[]>;
   getAnimal(id: string): Promise<Animal | null>;
   createAnimal(input: Omit<Animal, 'id'>): Promise<Animal>;
   listLogs(animalId: string): Promise<LogEntry[]>;
+  getLog(id: string): Promise<LogEntry | null>;
   addLog(input: NewLogEntry): Promise<LogEntry>;
   deleteLog(id: string): Promise<boolean>;
 }
@@ -44,8 +46,8 @@ export class InMemoryAnimalRepository implements AnimalRepository {
 
   constructor(private newId: () => string = randomUUID) {}
 
-  async listAnimals() {
-    return [...this.animals.values()];
+  async listAnimals(ownerId: string) {
+    return [...this.animals.values()].filter((a) => a.ownerId === ownerId);
   }
 
   async getAnimal(id: string) {
@@ -62,6 +64,10 @@ export class InMemoryAnimalRepository implements AnimalRepository {
     return [...this.logs.values()]
       .filter((l) => l.animalId === animalId)
       .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  async getLog(id: string) {
+    return this.logs.get(id) ?? null;
   }
 
   async addLog(input: NewLogEntry) {

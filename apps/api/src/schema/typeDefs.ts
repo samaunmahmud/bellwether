@@ -192,7 +192,16 @@ export const typeDefs = /* GraphQL */ `
     movedOn: String!
   }
 
+  # --- Users (FR-8.1) ---
+
+  type User {
+    id: ID!
+    email: String!
+  }
+
   type Query {
+    "The signed-in user, or null."
+    me: User
     forecast(postcode: String!, category: AnimalCategory!, highExposureHabitat: Boolean): Forecast!
     animals: [Animal!]!
     animal(id: ID!): Animal
@@ -215,5 +224,11 @@ export const typeDefs = /* GraphQL */ `
     createLivestockGroup(input: CreateLivestockGroupInput!): LivestockGroup!
     updateLivestockGroup(id: ID!, input: UpdateLivestockGroupInput!): LivestockGroup!
     moveLivestockGroup(input: MoveLivestockGroupInput!): GroupMovement!
+    "Creates an account and signs in (sets the session cookie)."
+    signUp(email: String!, password: String!): User!
+    "Signs in (sets the session cookie)."
+    logIn(email: String!, password: String!): User!
+    "Ends the session and clears the cookie."
+    logOut: Boolean!
   }
 `;

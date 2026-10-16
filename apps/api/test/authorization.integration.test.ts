@@ -1,0 +1,276 @@
+import { buildSchema, type GraphQLObjectType } from 'graphql';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { typeDefs } from '../src/schema/typeDefs';
+import { buildTestApp, type Gql } from './fakes';
+
+/**
+ * FR-8.4: a user can't read or change another farm's (or another owner's) data
+ * through any query or mutation.
+ */
+
+// Operations that read no user data, so anyone may call them (A15).
+const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut'];
+
+interface AnnsData {
+  farmId: string;
+  fieldId: string;
+  otherFieldId: string;
+  groupId: string;
+  animalId: string;
+  logId: string;
+}
+
+interface BobsData {
+  farmId: string;
+  groupId: string;
+}
+
+type Attempt = (bob: Gql, ann: AnnsData, bobs: BobsData) => Promise<void>;
+
+const code = (res: { errors?: Array<{ extensions?: { code?: string } }> }) =>
+  res.errors?.[0]?.extensions?.code;
+
+// Every protected operation, with what happens when Bob aims it at Ann's data.
+const CROSS_USER: Record<string, Attempt> = {
+  farms: async (bob, _ann, bobs) => {
+    // Only Bob's own farm, never Ann's
+    expect((await bob(`query { farms { id } }`)).data).toEqual({ farms: [{ id: bobs.farmId }] });
+  },
+  farm: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { farm(id: $id) { id } }`, { id: ann.farmId });
+    expect(res.data).toEqual({ farm: null });
+  },
+  animals: async (bob) => {
+    expect((await bob(`query { animals { id } }`)).data).toEqual({ animals: [] });
+  },
+  animal: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { animal(id: $id) { id } }`, { id: ann.animalId });
+    expect(res.data).toEqual({ animal: null });
+  },
+  // Creating your own records is allowed; the snapshot check below proves Ann's are untouched.
+  createAnimal: async (bob) => {
+    const res = await bob(
+      `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
+    );
+    expect(res.errors).toBeUndefined();
+  },
+  createFarm: async (bob) => {
+    const res = await bob(
+      `mutation { createFarm(input: { name: "Bob's other farm", postcode: "UB8 3PH" }) { id } }`,
+    );
+    expect(res.errors).toBeUndefined();
+  },
+  addLogEntry: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { addLogEntry(animalId: $id, date: "2026-06-01", type: "Tick check") { id } }`,
+      { id: ann.animalId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteLogEntry: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
+    expect(res.data).toEqual({ deleteLogEntry: false });
+  },
+  createField: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($farmId: ID!) { createField(input: { farmId: $farmId, name: "Sneaky" }) { id } }`,
+      { farmId: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  createLivestockGroup: async (bob, ann, bobs) => {
+    const create = `mutation ($farmId: ID!, $fieldId: ID) {
+      createLivestockGroup(input: {
+        farmId: $farmId, name: "Sneaky", species: SHEEP, livestockClass: EWES, headCount: 1,
+        currentFieldId: $fieldId
+      }) { id }
+    }`;
+    // On Ann's farm
+    expect(code(await bob(create, { farmId: ann.farmId }))).toBe('NOT_FOUND');
+    // On Bob's farm, but in Ann's field
+    expect(code(await bob(create, { farmId: bobs.farmId, fieldId: ann.fieldId }))).toBe(
+      'NOT_FOUND',
+    );
+  },
+  updateLivestockGroup: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateLivestockGroup(id: $id, input: { headCount: 1 }) { id } }`,
+      { id: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  moveLivestockGroup: async (bob, ann, bobs) => {
+    const move = `mutation ($groupId: ID!, $fieldId: ID!) {
+      moveLivestockGroup(input: { groupId: $groupId, toFieldId: $fieldId, movedOn: "2026-06-01" }) { id }
+    }`;
+    // Ann's group
+    expect(code(await bob(move, { groupId: ann.groupId, fieldId: ann.otherFieldId }))).toBe(
+      'NOT_FOUND',
+    );
+    // Bob's group into Ann's field
+    expect(code(await bob(move, { groupId: bobs.groupId, fieldId: ann.fieldId }))).toBe(
+      'NOT_FOUND',
+    );
+  },
+};
+
+// A minimal call to each protected operation, used to check it refuses anonymous users.
+const ANONYMOUS_CALLS: Record<string, string> = {
+  farms: `query { farms { id } }`,
+  farm: `query { farm(id: "x") { id } }`,
+  animals: `query { animals { id } }`,
+  animal: `query { animal(id: "x") { id } }`,
+  createAnimal: `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
+  createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
+  addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
+  deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  createField: `mutation { createField(input: { farmId: "x", name: "X" }) { id } }`,
+  createLivestockGroup: `mutation { createLivestockGroup(input: {
+    farmId: "x", name: "X", species: SHEEP, livestockClass: EWES, headCount: 1 }) { id } }`,
+  updateLivestockGroup: `mutation { updateLivestockGroup(id: "x", input: { headCount: 1 }) { id } }`,
+  moveLivestockGroup: `mutation { moveLivestockGroup(input: {
+    groupId: "x", toFieldId: "y", movedOn: "2026-06-01" }) { id } }`,
+};
+
+const ANNS_DATA = /* GraphQL */ `
+  query {
+    farms {
+      id
+      name
+      postcode
+      fields {
+        id
+        name
+      }
+      groups {
+        id
+        name
+        headCount
+        currentField {
+          id
+        }
+        movements {
+          id
+        }
+      }
+    }
+    animals {
+      id
+      name
+      logs {
+        id
+      }
+    }
+  }
+`;
+
+async function setUpAnn(ann: Gql): Promise<AnnsData> {
+  type Id = { id: string };
+  const farm = await ann<{ createFarm: Id }>(
+    `mutation { createFarm(input: { name: "Ann's farm", postcode: "UB8 3PH" }) { id } }`,
+  );
+  const farmId = farm.data!.createFarm.id;
+  const field = (name: string) =>
+    ann<{ createField: Id }>(
+      `mutation ($farmId: ID!, $name: String!) { createField(input: { farmId: $farmId, name: $name }) { id } }`,
+      { farmId, name },
+    );
+  const fieldId = (await field('Top')).data!.createField.id;
+  const otherFieldId = (await field('Lower')).data!.createField.id;
+  const group = await ann<{ createLivestockGroup: Id }>(
+    `mutation ($farmId: ID!, $fieldId: ID!) {
+      createLivestockGroup(input: {
+        farmId: $farmId, name: "Ewes", species: SHEEP, livestockClass: EWES, headCount: 80,
+        currentFieldId: $fieldId
+      }) { id }
+    }`,
+    { farmId, fieldId },
+  );
+  const animal = await ann<{ createAnimal: Id }>(
+    `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
+  );
+  const animalId = animal.data!.createAnimal.id;
+  const log = await ann<{ addLogEntry: Id }>(
+    `mutation ($id: ID!) { addLogEntry(animalId: $id, date: "2026-05-01", type: "Tick check") { id } }`,
+    { id: animalId },
+  );
+  return {
+    farmId,
+    fieldId,
+    otherFieldId,
+    groupId: group.data!.createLivestockGroup.id,
+    animalId,
+    logId: log.data!.addLogEntry.id,
+  };
+}
+
+async function setUpBob(bob: Gql): Promise<BobsData> {
+  const farm = await bob<{ createFarm: { id: string } }>(
+    `mutation { createFarm(input: { name: "Bob's farm", postcode: "UB8 3PH" }) { id } }`,
+  );
+  const farmId = farm.data!.createFarm.id;
+  const group = await bob<{ createLivestockGroup: { id: string } }>(
+    `mutation ($farmId: ID!) {
+      createLivestockGroup(input: {
+        farmId: $farmId, name: "Bob's flock", species: SHEEP, livestockClass: EWES, headCount: 10
+      }) { id }
+    }`,
+    { farmId },
+  );
+  return { farmId, groupId: group.data!.createLivestockGroup.id };
+}
+
+function operationNames(): string[] {
+  const schema = buildSchema(typeDefs);
+  const fields = (type: GraphQLObjectType | null | undefined) =>
+    Object.keys(type?.getFields() ?? {});
+  return [...fields(schema.getQueryType()), ...fields(schema.getMutationType())];
+}
+
+describe('farm and owner scoping (FR-8.4)', () => {
+  let ann: Gql;
+  let bob: Gql;
+  let annsData: AnnsData;
+  let bobsData: BobsData;
+
+  beforeEach(async () => {
+    const t = buildTestApp();
+    ann = await t.signedIn('ann@example.com');
+    bob = await t.signedIn('bob@example.com');
+    annsData = await setUpAnn(ann);
+    bobsData = await setUpBob(bob);
+  });
+
+  it('covers every query and mutation in the schema', () => {
+    // A new operation must be added to CROSS_USER (or PUBLIC) before this passes.
+    const covered = new Set([...PUBLIC, ...Object.keys(CROSS_USER)]);
+    expect(operationNames().filter((name) => !covered.has(name))).toEqual([]);
+    expect(Object.keys(ANONYMOUS_CALLS).sort()).toEqual(Object.keys(CROSS_USER).sort());
+  });
+
+  it.each(Object.keys(CROSS_USER))('%s: Bob can’t reach Ann’s data', async (operation) => {
+    const before = await ann(ANNS_DATA);
+    await CROSS_USER[operation]!(bob, annsData, bobsData);
+    const after = await ann(ANNS_DATA);
+    expect(after).toEqual(before);
+  });
+
+  it.each(Object.entries(ANONYMOUS_CALLS))(
+    '%s: refuses anonymous users',
+    async (_operation, query) => {
+      const { gql } = buildTestApp();
+      const res = await gql(query);
+      expect(code(res)).toBe('UNAUTHENTICATED');
+    },
+  );
+
+  it('still lets Ann see all her own data', async () => {
+    const res = await ann<{
+      farms: Array<{ groups: Array<{ movements: unknown[] }> }>;
+      animals: Array<{ logs: unknown[] }>;
+    }>(ANNS_DATA);
+    expect(res.data!.farms).toHaveLength(1);
+    expect(res.data!.farms[0]!.groups[0]!.movements).toHaveLength(1);
+    expect(res.data!.animals[0]!.logs).toHaveLength(1);
+  });
+});

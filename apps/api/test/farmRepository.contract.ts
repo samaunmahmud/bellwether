@@ -26,11 +26,20 @@ export function sheepGroup(farmId: string, overrides: Partial<NewGroup> = {}): N
  * Behaviour every FarmRepository must share. Runs against the in-memory fake
  * and, when a test database is available, against Postgres via Prisma.
  */
-export function farmRepositoryContract(makeRepo: () => Promise<FarmRepository>) {
+export interface FarmRepositoryFixture {
+  repo: FarmRepository;
+  /** Creates a user that can own farms (a real row in Postgres). */
+  newUserId(): Promise<string>;
+}
+
+export function farmRepositoryContract(makeFixture: () => Promise<FarmRepositoryFixture>) {
   let repo: FarmRepository;
+  let owner: string;
+  let newUserId: () => Promise<string>;
 
   beforeEach(async () => {
-    repo = await makeRepo();
+    ({ repo, newUserId } = await makeFixture());
+    owner = await newUserId();
   });
 
   /** A new-field input copied from an existing field, without its id. */
@@ -40,7 +49,7 @@ export function farmRepositoryContract(makeRepo: () => Promise<FarmRepository>) 
   });
 
   async function farmWithField() {
-    const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' });
+    const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' }, owner);
     const field = await repo.createField({
       farmId: farm.id,
       name: 'Top field',
@@ -53,10 +62,24 @@ export function farmRepositoryContract(makeRepo: () => Promise<FarmRepository>) 
 
   describe('farms', () => {
     it('creates, gets and lists farms', async () => {
-      const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' });
+      const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' }, owner);
       expect(farm).toEqual({ id: expect.any(String), name: 'Hill Farm', postcode: 'UB8 3PH' });
       expect(await repo.getFarm(farm.id)).toEqual(farm);
-      expect(await repo.listFarms()).toEqual([farm]);
+    });
+
+    it('makes the creator the farm owner (FR-8.1, A13)', async () => {
+      const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' }, owner);
+      expect(await repo.getRole(farm.id, owner)).toBe('OWNER');
+      expect(await repo.getRole(farm.id, await newUserId())).toBeNull();
+    });
+
+    it('lists only the farms a user belongs to, sorted by name (FR-8.4)', async () => {
+      const someoneElse = await newUserId();
+      const b = await repo.createFarm({ name: 'B Farm', postcode: 'UB8 3PH' }, owner);
+      const a = await repo.createFarm({ name: 'A Farm', postcode: 'UB8 3PH' }, owner);
+      await repo.createFarm({ name: 'Their farm', postcode: 'UB8 3PH' }, someoneElse);
+      expect(await repo.listFarmsForUser(owner)).toEqual([a, b]);
+      expect(await repo.listFarmsForUser(await newUserId())).toEqual([]);
     });
 
     it('returns null for an unknown farm', async () => {
@@ -73,7 +96,7 @@ export function farmRepositoryContract(makeRepo: () => Promise<FarmRepository>) 
 
     it('lists only the given farm’s fields, sorted by name', async () => {
       const { farm, field } = await farmWithField();
-      const other = await repo.createFarm({ name: 'Other', postcode: 'SW1A 1AA' });
+      const other = await repo.createFarm({ name: 'Other', postcode: 'SW1A 1AA' }, owner);
       await repo.createField(copyOf(field, { farmId: other.id, name: 'Elsewhere' }));
       const bottom = await repo.createField({
         farmId: farm.id,
@@ -150,7 +173,7 @@ export function farmRepositoryContract(makeRepo: () => Promise<FarmRepository>) 
 
     it('lists only the given farm’s groups, sorted by name', async () => {
       const { farm } = await farmWithField();
-      const other = await repo.createFarm({ name: 'Other', postcode: 'SW1A 1AA' });
+      const other = await repo.createFarm({ name: 'Other', postcode: 'SW1A 1AA' }, owner);
       await repo.createGroup(sheepGroup(other.id), null);
       const b = await repo.createGroup(sheepGroup(farm.id, { name: 'B flock' }), null);
       const a = await repo.createGroup(sheepGroup(farm.id, { name: 'A flock' }), null);

@@ -145,14 +145,25 @@ export function createFarmService(deps: FarmServiceDeps) {
   const { repo, locations } = deps;
   const today = () => londonToday((deps.now ?? (() => new Date()))());
 
-  async function requireFarm(id: string) {
-    const farm = await repo.getFarm(id);
+  /** The farm, if the user is a member. Someone else's farm is "not found" (FR-8.4, A14). */
+  async function findFarm(userId: string, id: string) {
+    const role = await repo.getRole(id, userId);
+    return role ? repo.getFarm(id) : null;
+  }
+
+  async function requireFarm(userId: string, id: string) {
+    const farm = await findFarm(userId, id);
     if (!farm) throw appError('NOT_FOUND', `Farm ${id} not found`);
     return farm;
   }
 
-  async function requireGroup(id: string) {
+  async function findGroup(userId: string, id: string) {
     const group = await repo.getGroup(id);
+    return group && (await repo.getRole(group.farmId, userId)) ? group : null;
+  }
+
+  async function requireGroup(userId: string, id: string) {
+    const group = await findGroup(userId, id);
     if (!group) throw appError('NOT_FOUND', `Livestock group ${id} not found`);
     return group;
   }
@@ -165,25 +176,28 @@ export function createFarmService(deps: FarmServiceDeps) {
   }
 
   return {
-    listFarms: () => repo.listFarms(),
-    getFarm: (id: string) => repo.getFarm(id),
+    // Every method that takes a userId checks farm membership (FR-8.4).
+    listFarms: (userId: string) => repo.listFarmsForUser(userId),
+    getFarm: findFarm,
+    getGroup: findGroup,
+
+    // Children of a record the caller has already been allowed to see (GraphQL nested fields).
     getField: (id: string) => repo.getField(id),
     listFields: (farmId: string) => repo.listFields(farmId),
-    getGroup: (id: string) => repo.getGroup(id),
     listGroups: (farmId: string) => repo.listGroups(farmId),
     listMovements: (groupId: string) => repo.listMovements(groupId),
 
     /** FR-2.1 */
-    async createFarm(input: FarmInput) {
+    async createFarm(userId: string, input: FarmInput) {
       const name = requireName(input.name, 'Farm');
       const location = await locations.findPostcode(input.postcode);
-      return repo.createFarm({ name, postcode: location.postcode });
+      return repo.createFarm({ name, postcode: location.postcode }, userId);
     },
 
     /** FR-2.2 */
-    async createField(input: FieldInput) {
+    async createField(userId: string, input: FieldInput) {
       const name = requireName(input.name, 'Field');
-      await requireFarm(input.farmId);
+      await requireFarm(userId, input.farmId);
 
       const latitude = input.latitude ?? null;
       const longitude = input.longitude ?? null;
@@ -208,8 +222,8 @@ export function createFarmService(deps: FarmServiceDeps) {
     },
 
     /** FR-2.3, FR-2.5. A starting field is recorded as the group's first movement, dated today. */
-    async createGroup(input: GroupInput) {
-      await requireFarm(input.farmId);
+    async createGroup(userId: string, input: GroupInput) {
+      await requireFarm(userId, input.farmId);
       const currentFieldId = input.currentFieldId ?? null;
       if (currentFieldId) await requireFieldOnFarm(currentFieldId, input.farmId);
 
@@ -235,8 +249,8 @@ export function createFarmService(deps: FarmServiceDeps) {
       return repo.createGroup(group, currentFieldId ? today() : null);
     },
 
-    async updateGroup(id: string, update: GroupUpdate) {
-      const existing = await requireGroup(id);
+    async updateGroup(userId: string, id: string, update: GroupUpdate) {
+      const existing = await requireGroup(userId, id);
 
       const patch: GroupPatch = {};
       if (update.name != null) patch.name = requireName(update.name, 'Group');
@@ -268,12 +282,12 @@ export function createFarmService(deps: FarmServiceDeps) {
      * FR-2.4. Every move is kept. A backdated move (before the latest recorded one) is added to the
      * history without changing where the group is now.
      */
-    async moveGroup(input: MoveInput) {
+    async moveGroup(userId: string, input: MoveInput) {
       if (!isIsoDate(input.movedOn))
         throw appError('BAD_INPUT', 'Move date must be a date in the form YYYY-MM-DD');
       if (input.movedOn > today()) throw appError('BAD_INPUT', 'Move date cannot be in the future');
 
-      const group = await requireGroup(input.groupId);
+      const group = await requireGroup(userId, input.groupId);
       await requireFieldOnFarm(input.toFieldId, group.farmId);
 
       const history = await repo.listMovements(group.id);
@@ -299,7 +313,8 @@ export function createFarmService(deps: FarmServiceDeps) {
 
     /** FR-2.2: the coordinates to forecast for this group, and where they came from. */
     async locateGroup(group: LivestockGroup): Promise<ResolvedLocation> {
-      const farm = await requireFarm(group.farmId);
+      const farm = await repo.getFarm(group.farmId);
+      if (!farm) throw appError('NOT_FOUND', `Farm ${group.farmId} not found`);
       const field = group.currentFieldId ? await repo.getField(group.currentFieldId) : null;
       const ref = resolveLocationRef(farm, field, group.housed);
       if (ref.source === 'PIN') return { ...ref, postcode: null };

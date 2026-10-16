@@ -94,15 +94,16 @@ type Errors = Array<{ extensions?: { code?: string } }> | undefined;
 async function setupFarm() {
   const postcodes = fakePostcodes([UXBRIDGE, WESTMINSTER]);
   const t = buildTestApp({ postcodes: postcodes.client });
-  const farm = await t.gql<{ createFarm: { id: string; postcode: string } }>(CREATE_FARM, {
+  const gql = await t.signedIn();
+  const farm = await gql<{ createFarm: { id: string; postcode: string } }>(CREATE_FARM, {
     input: { name: 'Hill Farm', postcode: 'ub8 3ph' },
   });
-  return { ...t, farmId: farm.data!.createFarm.id };
+  return { ...t, gql, farmId: farm.data!.createFarm.id };
 }
 
 describe('farms, fields and livestock groups', () => {
   it('creates a farm with a normalised postcode (FR-2.1)', async () => {
-    const { gql } = buildTestApp();
+    const gql = await buildTestApp().signedIn();
     const res = await gql(CREATE_FARM, { input: { name: ' Hill Farm ', postcode: 'ub83ph' } });
     expect(res.errors).toBeUndefined();
     expect(res.data).toEqual({
