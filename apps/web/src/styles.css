@@ -84,7 +84,13 @@ a {
 
 .topbar nav {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
+}
+
+.topbar__user {
+  font-size: 0.9rem;
 }
 
 .topbar a {
@@ -124,6 +130,8 @@ a {
 }
 
 .form--inline {
+  display: grid;
+  gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   align-items: end;
   margin: 16px 0;
@@ -364,4 +372,33 @@ select:focus-visible {
   .log__row {
     grid-template-columns: 1fr auto;
   }
+}
+
+h2 {
+  margin: 32px 0 12px;
+  font-size: 1.2rem;
+}
+
+.narrow {
+  max-width: 420px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.list > li {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.list__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }

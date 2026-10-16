@@ -15,3 +15,9 @@ export function shortDay(iso: string): string {
   const date = new Date(`${iso}T12:00:00`);
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
+
+/** "2026-03-01" → "1 Mar" */
+export function dayMonth(iso: string): string {
+  const date = new Date(`${iso}T12:00:00`);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
