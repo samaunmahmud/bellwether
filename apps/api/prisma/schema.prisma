@@ -1,0 +1,41 @@
+// Target schema for Phase 2's database work.
+// Not wired up yet: the MVP uses InMemoryAnimalRepository.
+// To enable: npm i -D prisma -w @animalcast/api && npm i @prisma/client -w @animalcast/api,
+// then `npx prisma migrate dev` and add a PrismaAnimalRepository.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AnimalCategory {
+  PET
+  FARM
+}
+
+model Animal {
+  id        String         @id @default(uuid())
+  // userId String? — add when authentication arrives
+  name      String
+  species   String
+  category  AnimalCategory
+  createdAt DateTime       @default(now())
+  logs      LogEntry[]
+}
+
+model LogEntry {
+  id          String    @id @default(uuid())
+  animal      Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId    String
+  date        DateTime  @db.Date
+  type        String
+  note        String?
+  nextDueDate DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+
+  @@index([animalId])
+}
