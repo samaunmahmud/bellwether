@@ -15,6 +15,7 @@ describe('registry', () => {
       'cattle-heat-stress',
       'sheep-blowfly',
       'lamb-chill',
+      'liver-fluke',
     ]);
     expect(getRiskModules()).toHaveLength(riskModules.length);
   });
