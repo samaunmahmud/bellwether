@@ -1,41 +1,110 @@
-// Target schema for Phase 2's database work.
-// Not wired up yet: the MVP uses InMemoryAnimalRepository.
-// To enable: npm i -D prisma -w @bellwether/api && npm i @prisma/client -w @bellwether/api,
-// then `npx prisma migrate dev` and add a PrismaAnimalRepository.
+// Farm data model (FR-2). Every record carries farmId (FR-2.7) so access can be scoped per farm.
+// The old pet Animal/LogEntry model stays in memory until FR-2.6 / FR-6.6 replace it.
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-enum AnimalCategory {
-  PET
-  FARM
+enum Species {
+  CATTLE
+  SHEEP
 }
 
-model Animal {
-  id        String         @id @default(uuid())
-  // userId String? — add when authentication arrives
+enum LivestockClass {
+  EWES
+  LAMBS
+  RAMS
+  DAIRY_COWS
+  BEEF_CATTLE
+  CALVES
+}
+
+enum CattleType {
+  DAIRY
+  BEEF
+}
+
+model Farm {
+  id        String   @id @default(uuid()) @db.Uuid
+  // userId / members arrive with auth (FR-8.1)
   name      String
-  species   String
-  category  AnimalCategory
-  createdAt DateTime       @default(now())
-  logs      LogEntry[]
+  postcode  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fields    Field[]
+  groups    LivestockGroup[]
+  movements GroupMovement[]
 }
 
-model LogEntry {
-  id          String    @id @default(uuid())
-  animal      Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId    String
-  date        DateTime  @db.Date
-  type        String
-  note        String?
-  nextDueDate DateTime? @db.Date
-  createdAt   DateTime  @default(now())
+model Field {
+  id        String   @id @default(uuid()) @db.Uuid
+  farmId    String   @db.Uuid
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name      String
+  postcode  String?
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
 
-  @@index([animalId])
+  currentGroups LivestockGroup[] @relation("CurrentField")
+  movesFrom     GroupMovement[]  @relation("FromField")
+  movesTo       GroupMovement[]  @relation("ToField")
+
+  @@index([farmId])
+}
+
+model LivestockGroup {
+  id             String         @id @default(uuid()) @db.Uuid
+  farmId         String         @db.Uuid
+  farm           Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name           String
+  species        Species
+  livestockClass LivestockClass
+  headCount      Int
+  currentFieldId String?        @db.Uuid
+  currentField   Field?         @relation("CurrentField", fields: [currentFieldId], references: [id], onDelete: SetNull)
+  housed         Boolean        @default(false)
+
+  // Sheep only
+  lastShearingDate       DateTime? @db.Date
+  lambingStart           DateTime? @db.Date
+  lambingEnd             DateTime? @db.Date
+  lambsAtGrassThisSpring Boolean   @default(false)
+
+  // Cattle only
+  cattleType   CattleType?
+  calvingStart DateTime?   @db.Date
+  calvingEnd   DateTime?   @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements GroupMovement[]
+
+  @@index([farmId])
+}
+
+model GroupMovement {
+  id          String         @id @default(uuid()) @db.Uuid
+  // Insertion order, to break ties between moves on the same day
+  seq         Int            @default(autoincrement())
+  farmId      String         @db.Uuid
+  farm        Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId     String         @db.Uuid
+  group       LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromFieldId String?        @db.Uuid
+  fromField   Field?         @relation("FromField", fields: [fromFieldId], references: [id], onDelete: SetNull)
+  toFieldId   String         @db.Uuid
+  toField     Field          @relation("ToField", fields: [toFieldId], references: [id], onDelete: Cascade)
+  movedOn     DateTime       @db.Date
+  createdAt   DateTime       @default(now())
+
+  @@index([groupId, movedOn])
 }
