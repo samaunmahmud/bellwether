@@ -73,6 +73,13 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
       expect(await repo.getRole(farm.id, await newUserId())).toBeNull();
     });
 
+    it('lists every farm id and a farm’s members, for the briefing job (FR-4.5)', async () => {
+      const a = await repo.createFarm({ name: 'A Farm', postcode: 'UB8 3PH' }, owner);
+      const b = await repo.createFarm({ name: 'B Farm', postcode: 'UB8 3PH' }, await newUserId());
+      expect((await repo.listFarmIds()).sort()).toEqual([a.id, b.id].sort());
+      expect(await repo.listMembers(a.id)).toEqual([{ userId: owner, role: 'OWNER' }]);
+    });
+
     it('lists only the farms a user belongs to, sorted by name (FR-8.4)', async () => {
       const someoneElse = await newUserId();
       const b = await repo.createFarm({ name: 'B Farm', postcode: 'UB8 3PH' }, owner);

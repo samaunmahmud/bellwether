@@ -23,6 +23,9 @@ export interface FarmRepository {
   listFarmsForUser(userId: string): Promise<Farm[]>;
   /** The user's role on the farm, or null if they are not a member. */
   getRole(farmId: string, userId: string): Promise<FarmRole | null>;
+  /** Every farm, for the daily briefing job (FR-4.5). */
+  listFarmIds(): Promise<string[]>;
+  listMembers(farmId: string): Promise<Array<{ userId: string; role: FarmRole }>>;
 
   createField(input: NewField): Promise<Field>;
   getField(id: string): Promise<Field | null>;
@@ -76,6 +79,16 @@ export class InMemoryFarmRepository implements FarmRepository {
 
   async getRole(farmId: string, userId: string) {
     return this.members.find((m) => m.farmId === farmId && m.userId === userId)?.role ?? null;
+  }
+
+  async listFarmIds() {
+    return [...this.farms.keys()];
+  }
+
+  async listMembers(farmId: string) {
+    return this.members
+      .filter((m) => m.farmId === farmId)
+      .map(({ userId, role }) => ({ userId, role }));
   }
 
   async createField(input: NewField) {

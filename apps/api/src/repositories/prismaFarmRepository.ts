@@ -112,6 +112,18 @@ export class PrismaFarmRepository implements FarmRepository {
     });
   }
 
+  async listFarmIds() {
+    return (await this.db.farm.findMany({ select: { id: true } })).map((f) => f.id);
+  }
+
+  listMembers(farmId: string) {
+    return this.db.farmMember.findMany({
+      where: { farmId },
+      orderBy: { createdAt: 'asc' },
+      select: { userId: true, role: true },
+    });
+  }
+
   async getRole(farmId: string, userId: string) {
     const member = await this.db.farmMember.findUnique({
       where: { farmId_userId: { farmId, userId } },

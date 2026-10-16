@@ -40,8 +40,10 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
-  sessions    Session[]
-  memberships FarmMember[]
+  sessions       Session[]
+  memberships    FarmMember[]
+  briefingPrefs  BriefingPreference[]
+  briefingEmails BriefingEmail[]
 }
 
 model Session {
@@ -84,12 +86,16 @@ model Farm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members      FarmMember[]
-  fields       Field[]
-  groups       LivestockGroup[]
-  movements    GroupMovement[]
-  treatments   Treatment[]
-  observations Observation[]
+  members        FarmMember[]
+  fields         Field[]
+  groups         LivestockGroup[]
+  movements      GroupMovement[]
+  treatments     Treatment[]
+  observations   Observation[]
+  tasks          Task[]
+  briefingRuns   BriefingRun[]
+  briefingPrefs  BriefingPreference[]
+  briefingEmails BriefingEmail[]
 }
 
 model Field {
@@ -138,6 +144,7 @@ model LivestockGroup {
   movements    GroupMovement[]
   treatments   Treatment[]
   observations Observation[]
+  tasks        Task[]
 
   @@index([farmId])
 }
@@ -201,4 +208,62 @@ model Observation {
   createdAt DateTime       @default(now())
 
   @@index([groupId, date])
+}
+
+// --- Tasks and briefings (FR-5, FR-4) ---
+
+model Task {
+  id        String         @id @default(uuid()) @db.Uuid
+  seq       Int            @default(autoincrement())
+  farmId    String         @db.Uuid
+  farm      Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId   String         @db.Uuid
+  group     LivestockGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title     String
+  dueDate   DateTime       @db.Date
+  note      String?
+  done      Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([farmId, dueDate])
+}
+
+// One stored briefing per farm per UK date (FR-4.5)
+model BriefingRun {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmId      String   @db.Uuid
+  farm        Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  generatedAt DateTime
+  content     Json
+  createdAt   DateTime @default(now())
+
+  @@unique([farmId, date])
+}
+
+// Per user, per farm email settings (FR-4.3)
+model BriefingPreference {
+  farmId       String  @db.Uuid
+  farm         Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  userId       String  @db.Uuid
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled Boolean @default(true)
+  // HH:MM, Europe/London
+  sendAt       String  @default("06:00")
+  alwaysSend   Boolean @default(false)
+
+  @@id([farmId, userId])
+}
+
+// One row per user per farm per day, claimed before sending so an email goes out at most once
+model BriefingEmail {
+  farmId    String   @db.Uuid
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@id([farmId, userId, date])
 }
