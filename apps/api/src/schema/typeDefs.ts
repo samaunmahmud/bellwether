@@ -110,8 +110,13 @@ export const typeDefs = /* GraphQL */ `
     id: ID!
     name: String!
     postcode: String!
+    "Active fields, by name"
     fields: [Field!]!
+    "Active groups, by name"
     groups: [LivestockGroup!]!
+    archivedFields: [Field!]!
+    "Sold or finished groups; their records are kept"
+    archivedGroups: [LivestockGroup!]!
   }
 
   type Field {
@@ -120,6 +125,8 @@ export const typeDefs = /* GraphQL */ `
     postcode: String
     latitude: Float
     longitude: Float
+    archived: Boolean!
+    archivedOn: String
   }
 
   type LivestockGroup {
@@ -149,6 +156,9 @@ export const typeDefs = /* GraphQL */ `
     observations: [Observation!]!
     "Whether the group is in withdrawal today (FR-6.2)"
     withdrawal: WithdrawalStatus!
+    "Set when the group was sold or finished"
+    archivedOn: String
+    archiveReason: String
   }
 
   # --- Records (FR-6) ---
@@ -418,6 +428,26 @@ export const typeDefs = /* GraphQL */ `
     calvingEnd: String
   }
 
+  "Omitted fields are unchanged."
+  input UpdateFarmInput {
+    name: String
+    postcode: String
+  }
+
+  "Omitted fields are unchanged; null clears the postcode or map pin."
+  input UpdateFieldInput {
+    name: String
+    postcode: String
+    latitude: Float
+    longitude: Float
+  }
+
+  input ArchiveLivestockGroupInput {
+    "The day it was sold or finished"
+    archivedOn: String!
+    reason: String!
+  }
+
   input MoveLivestockGroupInput {
     groupId: ID!
     toFieldId: ID!
@@ -474,6 +504,15 @@ export const typeDefs = /* GraphQL */ `
     createLivestockGroup(input: CreateLivestockGroupInput!): LivestockGroup!
     updateLivestockGroup(id: ID!, input: UpdateLivestockGroupInput!): LivestockGroup!
     moveLivestockGroup(input: MoveLivestockGroupInput!): GroupMovement!
+    updateFarm(id: ID!, input: UpdateFarmInput!): Farm!
+    "Deletes the farm and everything on it. confirmName must match the farm's name."
+    deleteFarm(id: ID!, confirmName: String!): Boolean!
+    updateField(id: ID!, input: UpdateFieldInput!): Field!
+    "Archived fields keep their history but take no new moves"
+    setFieldArchived(id: ID!, archived: Boolean!): Field!
+    "For a sold or finished group: records are kept, briefings skip it"
+    archiveLivestockGroup(id: ID!, input: ArchiveLivestockGroupInput!): LivestockGroup!
+    restoreLivestockGroup(id: ID!): LivestockGroup!
     "Creates an account and signs in (sets the session cookie)."
     signUp(email: String!, password: String!): User!
     "Signs in (sets the session cookie)."

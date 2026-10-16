@@ -9,6 +9,7 @@ const field = (overrides: Partial<Field> = {}): Field => ({
   postcode: null,
   latitude: null,
   longitude: null,
+  archivedOn: null,
   ...overrides,
 });
 

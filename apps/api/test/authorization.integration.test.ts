@@ -79,6 +79,49 @@ const CROSS_USER: Record<string, Attempt> = {
     const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
     expect(res.data).toEqual({ deleteLogEntry: false });
   },
+  updateFarm: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateFarm(id: $id, input: { name: "Mine" }) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteFarm: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { deleteFarm(id: $id, confirmName: "Ann's farm") }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateField: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateField(id: $id, input: { name: "Mine" }) { id } }`,
+      { id: ann.fieldId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  setFieldArchived: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { setFieldArchived(id: $id, archived: true) { id } }`,
+      { id: ann.otherFieldId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  archiveLivestockGroup: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) {
+        archiveLivestockGroup(id: $id, input: { archivedOn: "2026-06-01", reason: "x" }) { id }
+      }`,
+      { id: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  restoreLivestockGroup: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { restoreLivestockGroup(id: $id) { id } }`, {
+      id: ann.groupId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
   updateTask: async (bob, ann) => {
     const res = await bob(
       `mutation ($id: ID!) { updateTask(id: $id, input: { title: "Mine" }) { id } }`,
@@ -278,6 +321,12 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
   addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
   deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  updateFarm: `mutation { updateFarm(id: "x", input: { name: "X" }) { id } }`,
+  deleteFarm: `mutation { deleteFarm(id: "x", confirmName: "X") }`,
+  updateField: `mutation { updateField(id: "x", input: { name: "X" }) { id } }`,
+  setFieldArchived: `mutation { setFieldArchived(id: "x", archived: true) { id } }`,
+  archiveLivestockGroup: `mutation { archiveLivestockGroup(id: "x", input: { archivedOn: "2026-06-01", reason: "x" }) { id } }`,
+  restoreLivestockGroup: `mutation { restoreLivestockGroup(id: "x") { id } }`,
   updateTask: `mutation { updateTask(id: "x", input: { title: "X" }) { id } }`,
   deleteTask: `mutation { deleteTask(id: "x") }`,
   correctTreatment: `mutation { correctTreatment(id: "x", input: {}, reason: "x") { id } }`,
@@ -319,10 +368,12 @@ const ANNS_DATA = /* GraphQL */ `
       fields {
         id
         name
+        archived
       }
       groups {
         id
         name
+        archivedOn
         headCount
         currentField {
           id

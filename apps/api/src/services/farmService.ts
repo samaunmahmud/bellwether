@@ -10,7 +10,12 @@ import {
   type Species,
 } from '../domain/farm';
 import { appError } from '../errors';
-import type { FarmRepository, GroupPatch, NewGroup } from '../repositories/farmRepository';
+import type {
+  FarmRepository,
+  FieldPatch,
+  GroupPatch,
+  NewGroup,
+} from '../repositories/farmRepository';
 import type { LocationService } from './locationService';
 
 const MAX_NAME_LENGTH = 100;
@@ -24,6 +29,30 @@ export interface FarmInput {
   name: string;
   postcode: string;
 }
+
+/** Omitted fields are unchanged. */
+export interface FarmUpdate {
+  name?: string | null;
+  postcode?: string | null;
+}
+
+/** Omitted fields are unchanged; null clears the postcode or pin. */
+export interface FieldUpdate {
+  name?: string | null;
+  postcode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface ArchiveInput {
+  archivedOn: string;
+  reason: string;
+}
+
+const MAX_ARCHIVE_REASON = 200;
+
+/** Lower case with single spaces, for comparing a typed confirmation. */
+const forComparing = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
 
 export interface FieldInput {
   farmId: string;
@@ -141,6 +170,24 @@ function validateGroup(group: NewGroup, today: string): NewGroup {
   return group;
 }
 
+/** A map pin needs both coordinates, inside the UK (A4). */
+function checkPin(latitude: number | null, longitude: number | null) {
+  if ((latitude === null) !== (longitude === null))
+    throw appError('BAD_INPUT', 'A map pin needs both latitude and longitude');
+  if (
+    latitude !== null &&
+    longitude !== null &&
+    !(
+      latitude >= UK_BOUNDS.minLat &&
+      latitude <= UK_BOUNDS.maxLat &&
+      longitude >= UK_BOUNDS.minLon &&
+      longitude <= UK_BOUNDS.maxLon
+    )
+  )
+    throw appError('BAD_INPUT', 'The map pin must be inside the UK');
+  return { latitude, longitude };
+}
+
 export function createFarmService(deps: FarmServiceDeps) {
   const { repo, locations } = deps;
   const today = () => londonToday((deps.now ?? (() => new Date()))());
@@ -172,6 +219,14 @@ export function createFarmService(deps: FarmServiceDeps) {
     const field = await repo.getField(fieldId);
     if (!field || field.farmId !== farmId)
       throw appError('NOT_FOUND', `Field ${fieldId} not found on this farm`);
+    if (field.archivedOn) throw appError('BAD_INPUT', `${field.name} has been archived`);
+    return field;
+  }
+
+  async function requireField(userId: string, id: string) {
+    const field = await repo.getField(id);
+    if (!field || !(await repo.getRole(field.farmId, userId)))
+      throw appError('NOT_FOUND', `Field ${id} not found`);
     return field;
   }
 
@@ -183,8 +238,15 @@ export function createFarmService(deps: FarmServiceDeps) {
 
     // Children of a record the caller has already been allowed to see (GraphQL nested fields).
     getField: (id: string) => repo.getField(id),
-    listFields: (farmId: string) => repo.listFields(farmId),
-    listGroups: (farmId: string) => repo.listGroups(farmId),
+    /** Active fields and groups; archived ones are listed separately. */
+    listFields: async (farmId: string) =>
+      (await repo.listFields(farmId)).filter((f) => !f.archivedOn),
+    listArchivedFields: async (farmId: string) =>
+      (await repo.listFields(farmId)).filter((f) => f.archivedOn),
+    listGroups: async (farmId: string) =>
+      (await repo.listGroups(farmId)).filter((g) => !g.archivedOn),
+    listArchivedGroups: async (farmId: string) =>
+      (await repo.listGroups(farmId)).filter((g) => g.archivedOn),
     listMovements: (groupId: string) => repo.listMovements(groupId),
 
     /** FR-2.1 */
@@ -198,27 +260,83 @@ export function createFarmService(deps: FarmServiceDeps) {
     async createField(userId: string, input: FieldInput) {
       const name = requireName(input.name, 'Field');
       await requireFarm(userId, input.farmId);
-
-      const latitude = input.latitude ?? null;
-      const longitude = input.longitude ?? null;
-      if ((latitude === null) !== (longitude === null))
-        throw appError('BAD_INPUT', 'A map pin needs both latitude and longitude');
-      if (
-        latitude !== null &&
-        longitude !== null &&
-        !(
-          latitude >= UK_BOUNDS.minLat &&
-          latitude <= UK_BOUNDS.maxLat &&
-          longitude >= UK_BOUNDS.minLon &&
-          longitude <= UK_BOUNDS.maxLon
-        )
-      )
-        throw appError('BAD_INPUT', 'The map pin must be inside the UK');
-
+      const { latitude, longitude } = checkPin(input.latitude ?? null, input.longitude ?? null);
       const postcode = input.postcode
         ? (await locations.findPostcode(input.postcode)).postcode
         : null;
       return repo.createField({ farmId: input.farmId, name, postcode, latitude, longitude });
+    },
+
+    async updateFarm(userId: string, id: string, update: FarmUpdate) {
+      await requireFarm(userId, id);
+      const updated = await repo.updateFarm(id, {
+        name: update.name == null ? undefined : requireName(update.name, 'Farm'),
+        postcode:
+          update.postcode == null
+            ? undefined
+            : (await locations.findPostcode(update.postcode)).postcode,
+      });
+      if (!updated) throw appError('NOT_FOUND', `Farm ${id} not found`);
+      return updated;
+    },
+
+    /** Deletes the farm and everything on it, once its name has been typed to confirm. */
+    async deleteFarm(userId: string, id: string, confirmName: string) {
+      const farm = await requireFarm(userId, id);
+      if (forComparing(confirmName) !== forComparing(farm.name))
+        throw appError('BAD_INPUT', `Type the farm name, ${farm.name}, to confirm`);
+      return repo.deleteFarm(id);
+    },
+
+    async updateField(userId: string, id: string, update: FieldUpdate) {
+      const field = await requireField(userId, id);
+      const patch: FieldPatch = {};
+      if (update.name != null) patch.name = requireName(update.name, 'Field');
+      if (update.postcode !== undefined)
+        patch.postcode = update.postcode
+          ? (await locations.findPostcode(update.postcode)).postcode
+          : null;
+      if (update.latitude !== undefined || update.longitude !== undefined)
+        Object.assign(
+          patch,
+          checkPin(
+            update.latitude === undefined ? field.latitude : update.latitude,
+            update.longitude === undefined ? field.longitude : update.longitude,
+          ),
+        );
+      const updated = await repo.updateField(id, patch);
+      if (!updated) throw appError('NOT_FOUND', `Field ${id} not found`);
+      return updated;
+    },
+
+    /** Archived fields keep their move history but can't take new moves. */
+    async setFieldArchived(userId: string, id: string, archived: boolean) {
+      const field = await requireField(userId, id);
+      if (archived) {
+        const groups = await repo.listGroups(field.farmId);
+        if (groups.some((g) => !g.archivedOn && g.currentFieldId === id))
+          throw appError('BAD_INPUT', 'Move the groups out of this field before archiving it');
+      }
+      const updated = await repo.updateField(id, { archivedOn: archived ? today() : null });
+      if (!updated) throw appError('NOT_FOUND', `Field ${id} not found`);
+      return updated;
+    },
+
+    /** A group that has been sold or finished. Its records stay; briefings skip it. */
+    async archiveGroup(userId: string, id: string, input: ArchiveInput) {
+      await requireGroup(userId, id);
+      if (!isIsoDate(input.archivedOn))
+        throw appError('BAD_INPUT', 'Date must be a date in the form YYYY-MM-DD');
+      if (input.archivedOn > today()) throw appError('BAD_INPUT', 'Date cannot be in the future');
+      const reason = input.reason.trim();
+      if (!reason || reason.length > MAX_ARCHIVE_REASON)
+        throw appError('BAD_INPUT', `Reason must be 1 to ${MAX_ARCHIVE_REASON} characters`);
+      return repo.updateGroup(id, { archivedOn: input.archivedOn, archiveReason: reason });
+    },
+
+    async restoreGroup(userId: string, id: string) {
+      await requireGroup(userId, id);
+      return repo.updateGroup(id, { archivedOn: null, archiveReason: null });
     },
 
     /** FR-2.3, FR-2.5. A starting field is recorded as the group's first movement, dated today. */
@@ -288,6 +406,7 @@ export function createFarmService(deps: FarmServiceDeps) {
       if (input.movedOn > today()) throw appError('BAD_INPUT', 'Move date cannot be in the future');
 
       const group = await requireGroup(userId, input.groupId);
+      if (group.archivedOn) throw appError('BAD_INPUT', `${group.name} has been archived`);
       await requireFieldOnFarm(input.toFieldId, group.farmId);
 
       const history = await repo.listMovements(group.id);

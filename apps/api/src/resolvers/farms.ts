@@ -1,9 +1,12 @@
 import { requireUser, type GraphQLContext } from '../auth/context';
-import type { Farm, GroupMovement, LivestockGroup } from '../domain/farm';
+import type { Farm, Field, GroupMovement, LivestockGroup } from '../domain/farm';
 import { toGroupContext } from '../domain/groupContext';
 import type {
+  ArchiveInput,
   FarmService,
+  FarmUpdate,
   FieldInput,
+  FieldUpdate,
   GroupInput,
   GroupUpdate,
   MoveInput,
@@ -46,11 +49,35 @@ export function createFarmResolvers({ farmService, forecastService }: FarmResolv
       ) => farmService.updateGroup(requireUser(ctx).id, args.id, args.input),
       moveLivestockGroup: (_: unknown, args: { input: MoveInput }, ctx: GraphQLContext) =>
         farmService.moveGroup(requireUser(ctx).id, args.input),
+      updateFarm: (_: unknown, args: { id: string; input: FarmUpdate }, ctx: GraphQLContext) =>
+        farmService.updateFarm(requireUser(ctx).id, args.id, args.input),
+      deleteFarm: (_: unknown, args: { id: string; confirmName: string }, ctx: GraphQLContext) =>
+        farmService.deleteFarm(requireUser(ctx).id, args.id, args.confirmName),
+      updateField: (_: unknown, args: { id: string; input: FieldUpdate }, ctx: GraphQLContext) =>
+        farmService.updateField(requireUser(ctx).id, args.id, args.input),
+      setFieldArchived: (
+        _: unknown,
+        args: { id: string; archived: boolean },
+        ctx: GraphQLContext,
+      ) => farmService.setFieldArchived(requireUser(ctx).id, args.id, args.archived),
+      archiveLivestockGroup: (
+        _: unknown,
+        args: { id: string; input: ArchiveInput },
+        ctx: GraphQLContext,
+      ) => farmService.archiveGroup(requireUser(ctx).id, args.id, args.input),
+      restoreLivestockGroup: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        farmService.restoreGroup(requireUser(ctx).id, args.id),
     },
 
     Farm: {
       fields: (farm: Farm) => farmService.listFields(farm.id),
       groups: (farm: Farm) => farmService.listGroups(farm.id),
+      archivedFields: (farm: Farm) => farmService.listArchivedFields(farm.id),
+      archivedGroups: (farm: Farm) => farmService.listArchivedGroups(farm.id),
+    },
+
+    Field: {
+      archived: (field: Field) => field.archivedOn !== null,
     },
 
     LivestockGroup: {

@@ -20,6 +20,8 @@ export interface Field {
   postcode: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** Archived fields keep their history but can't take new moves. */
+  archivedOn: string | null;
 }
 
 /** FR-2.3 + FR-2.5. Dates are ISO strings (YYYY-MM-DD). */
@@ -41,6 +43,9 @@ export interface LivestockGroup {
   cattleType: CattleType | null;
   calvingStart: string | null;
   calvingEnd: string | null;
+  /** Sold, finished or otherwise gone. Records are kept; it drops out of briefings. */
+  archivedOn: string | null;
+  archiveReason: string | null;
 }
 
 /** FR-2.4: one row per move, so a group's field history is kept. */

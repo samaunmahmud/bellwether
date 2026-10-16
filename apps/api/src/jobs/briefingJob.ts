@@ -61,7 +61,11 @@ export function createBriefingJob(deps: BriefingJobDeps) {
       const groupNames = new Map<string, string>(
         briefing.groups.map((g) => [g.groupId, g.groupName]),
       );
-      for (const g of await farmService.listGroups(farmId)) groupNames.set(g.id, g.name);
+      for (const g of [
+        ...(await farmService.listGroups(farmId)),
+        ...(await farmService.listArchivedGroups(farmId)),
+      ])
+        groupNames.set(g.id, g.name);
       try {
         await deps.email.send({
           to: user.email,

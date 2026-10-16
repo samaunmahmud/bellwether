@@ -107,9 +107,11 @@ model Field {
   farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
   name      String
   postcode  String?
-  latitude  Float?
-  longitude Float?
-  createdAt DateTime @default(now())
+  latitude   Float?
+  longitude  Float?
+  // Archived fields keep their history but take no new moves
+  archivedOn DateTime? @db.Date
+  createdAt  DateTime  @default(now())
 
   currentGroups LivestockGroup[] @relation("CurrentField")
   movesFrom     GroupMovement[]  @relation("FromField")
@@ -140,6 +142,10 @@ model LivestockGroup {
   cattleType   CattleType?
   calvingStart DateTime?   @db.Date
   calvingEnd   DateTime?   @db.Date
+
+  // Sold or finished: records are kept, briefings skip it
+  archivedOn    DateTime? @db.Date
+  archiveReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

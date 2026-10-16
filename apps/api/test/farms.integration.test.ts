@@ -495,3 +495,98 @@ describe('group forecasts use the group’s details (FR-3.0 to FR-3.4)', () => {
     expect(ids(risks)).toEqual(['sheep-blowfly']);
   });
 });
+
+describe('managing a farm', () => {
+  it('edits the farm and a field, and archives and restores a field', async () => {
+    const { gql, farmId } = await setupFarm();
+    const farm = await gql<{ updateFarm: unknown }>(
+      `mutation ($id: ID!) { updateFarm(id: $id, input: { name: "High Farm", postcode: "sw1a 1aa" }) { name postcode } }`,
+      { id: farmId },
+    );
+    expect(farm.data!.updateFarm).toEqual({ name: 'High Farm', postcode: 'SW1A 1AA' });
+
+    const field = await gql<{ createField: { id: string } }>(CREATE_FIELD, {
+      input: { farmId, name: 'Top' },
+    });
+    const id = field.data!.createField.id;
+    const renamed = await gql<{ updateField: unknown }>(
+      `mutation ($id: ID!) { updateField(id: $id, input: { name: "Top meadow", latitude: 54.1, longitude: -2.5 }) { name latitude longitude } }`,
+      { id },
+    );
+    expect(renamed.data!.updateField).toEqual({
+      name: 'Top meadow',
+      latitude: 54.1,
+      longitude: -2.5,
+    });
+
+    await gql(`mutation ($id: ID!) { setFieldArchived(id: $id, archived: true) { id } }`, { id });
+    const lists = await gql<{ farm: { fields: unknown[]; archivedFields: unknown[] } }>(
+      `query ($id: ID!) { farm(id: $id) { fields { id } archivedFields { id archived archivedOn } } }`,
+      { id: farmId },
+    );
+    expect(lists.data!.farm.fields).toEqual([]);
+    expect(lists.data!.farm.archivedFields).toEqual([
+      { id, archived: true, archivedOn: '2026-06-01' },
+    ]);
+  });
+
+  it('archives a sold group out of the farm and its briefing, keeping it reachable', async () => {
+    const { gql, farmId } = await setupFarm();
+    const group = await gql<{ createLivestockGroup: { id: string } }>(CREATE_GROUP, {
+      input: {
+        farmId,
+        name: 'Store lambs',
+        species: 'SHEEP',
+        livestockClass: 'LAMBS',
+        headCount: 40,
+      },
+    });
+    const id = group.data!.createLivestockGroup.id;
+    const archived = await gql<{ archiveLivestockGroup: unknown }>(
+      `mutation ($id: ID!) {
+        archiveLivestockGroup(id: $id, input: { archivedOn: "2026-05-30", reason: "Sold" }) {
+          archivedOn archiveReason
+        }
+      }`,
+      { id },
+    );
+    expect(archived.data!.archiveLivestockGroup).toEqual({
+      archivedOn: '2026-05-30',
+      archiveReason: 'Sold',
+    });
+
+    const farm = await gql<{
+      farm: { groups: unknown[]; archivedGroups: Array<{ id: string }> };
+      briefing: { quietGroups: unknown[]; groups: unknown[] };
+    }>(
+      `query ($id: ID!) {
+        farm(id: $id) { groups { id } archivedGroups { id } }
+        briefing(farmId: $id) { quietGroups { groupId } groups { groupId } }
+      }`,
+      { id: farmId },
+    );
+    expect(farm.data!.farm.groups).toEqual([]);
+    expect(farm.data!.farm.archivedGroups).toEqual([{ id }]);
+    expect(farm.data!.briefing).toEqual({ quietGroups: [], groups: [] });
+
+    const restored = await gql<{ restoreLivestockGroup: { archivedOn: null } }>(
+      `mutation ($id: ID!) { restoreLivestockGroup(id: $id) { archivedOn } }`,
+      { id },
+    );
+    expect(restored.data!.restoreLivestockGroup.archivedOn).toBeNull();
+  });
+
+  it('deletes a farm once its name is typed', async () => {
+    const { gql, farmId } = await setupFarm();
+    const wrong = await gql(`mutation ($id: ID!) { deleteFarm(id: $id, confirmName: "Hill") }`, {
+      id: farmId,
+    });
+    expect(wrong.errors?.[0]?.extensions?.code).toBe('BAD_INPUT');
+    const ok = await gql<{ deleteFarm: boolean }>(
+      `mutation ($id: ID!) { deleteFarm(id: $id, confirmName: "hill farm") }`,
+      { id: farmId },
+    );
+    expect(ok.data!.deleteFarm).toBe(true);
+    expect((await gql<{ farms: unknown[] }>(`query { farms { id } }`)).data!.farms).toEqual([]);
+  });
+});

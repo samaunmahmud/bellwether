@@ -118,6 +118,30 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
     it('returns null for an unknown field', async () => {
       expect(await repo.getField('00000000-0000-0000-0000-000000000000')).toBeNull();
     });
+
+    it('starts active, and updates and archives a field', async () => {
+      const { field } = await farmWithField();
+      expect(field.archivedOn).toBeNull();
+      const updated = await repo.updateField(field.id, {
+        name: 'Top meadow',
+        postcode: 'SW1A 1AA',
+        latitude: null,
+        longitude: null,
+        archivedOn: '2026-06-10',
+      });
+      expect(updated).toEqual({
+        ...field,
+        name: 'Top meadow',
+        postcode: 'SW1A 1AA',
+        latitude: null,
+        longitude: null,
+        archivedOn: '2026-06-10',
+      });
+      expect(await repo.getField(field.id)).toEqual(updated);
+      expect(
+        await repo.updateField('00000000-0000-0000-0000-000000000000', { name: 'x' }),
+      ).toBeNull();
+    });
   });
 
   describe('livestock groups', () => {
@@ -208,6 +232,52 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
     it('returns null for an unknown group', async () => {
       expect(await repo.getGroup('00000000-0000-0000-0000-000000000000')).toBeNull();
     });
+
+    it('archives a group with a date and reason, and restores it', async () => {
+      const { farm } = await farmWithField();
+      const group = await repo.createGroup(sheepGroup(farm.id), null);
+      expect(group).toMatchObject({ archivedOn: null, archiveReason: null });
+      const archived = await repo.updateGroup(group.id, {
+        archivedOn: '2026-06-10',
+        archiveReason: 'Sold at market',
+      });
+      expect(archived).toEqual({
+        ...group,
+        archivedOn: '2026-06-10',
+        archiveReason: 'Sold at market',
+      });
+      expect((await repo.listGroups(farm.id)).map((g) => g.archivedOn)).toEqual(['2026-06-10']);
+      const restored = await repo.updateGroup(group.id, { archivedOn: null, archiveReason: null });
+      expect(restored).toEqual(group);
+    });
+  });
+
+  describe('farm details', () => {
+    it('updates a farm', async () => {
+      const { farm } = await farmWithField();
+      const updated = await repo.updateFarm(farm.id, { name: 'High Farm', postcode: 'SW1A 1AA' });
+      expect(updated).toEqual({ ...farm, name: 'High Farm', postcode: 'SW1A 1AA' });
+      expect(await repo.getFarm(farm.id)).toEqual(updated);
+      expect(
+        await repo.updateFarm('00000000-0000-0000-0000-000000000000', { name: 'x' }),
+      ).toBeNull();
+    });
+
+    it('deletes a farm with everything on it', async () => {
+      const { farm, field } = await farmWithField();
+      const group = await repo.createGroup(
+        sheepGroup(farm.id, { currentFieldId: field.id }),
+        '2026-06-01',
+      );
+      expect(await repo.deleteFarm(farm.id)).toBe(true);
+      expect(await repo.getFarm(farm.id)).toBeNull();
+      expect(await repo.getField(field.id)).toBeNull();
+      expect(await repo.getGroup(group.id)).toBeNull();
+      expect(await repo.listMovements(group.id)).toEqual([]);
+      expect(await repo.getRole(farm.id, owner)).toBeNull();
+      expect(await repo.listFarmsForUser(owner)).toEqual([]);
+      expect(await repo.deleteFarm(farm.id)).toBe(false);
+    });
   });
 
   describe('movements (FR-2.4)', () => {
@@ -282,6 +352,12 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
   });
 
   describe('ids that are not UUIDs (as sent by clients)', () => {
+    it('are treated as not found when updating or deleting', async () => {
+      expect(await repo.updateFarm('x', { name: 'y' })).toBeNull();
+      expect(await repo.deleteFarm('x')).toBe(false);
+      expect(await repo.updateField('x', { name: 'y' })).toBeNull();
+    });
+
     it('are treated as not found, never as errors', async () => {
       expect(await repo.getFarm('x')).toBeNull();
       expect(await repo.getField('x')).toBeNull();

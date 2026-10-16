@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import type { Farm, FarmRole, Field, GroupMovement, LivestockGroup } from '../domain/farm';
 
 export type NewFarm = Omit<Farm, 'id'>;
-export type NewField = Omit<Field, 'id'>;
-export type NewGroup = Omit<LivestockGroup, 'id'>;
+export type NewField = Omit<Field, 'id' | 'archivedOn'>;
+export type NewGroup = Omit<LivestockGroup, 'id' | 'archivedOn' | 'archiveReason'>;
+export type FarmPatch = Partial<NewFarm>;
+export type FieldPatch = Partial<Omit<Field, 'id' | 'farmId'>>;
 export type NewMovement = Omit<GroupMovement, 'id'>;
 /** The current field only changes through recordMovement, so history is never skipped. */
 export type GroupPatch = Partial<
@@ -26,16 +28,21 @@ export interface FarmRepository {
   /** Every farm, for the daily briefing job (FR-4.5). */
   listFarmIds(): Promise<string[]>;
   listMembers(farmId: string): Promise<Array<{ userId: string; role: FarmRole }>>;
+  /** Null if there's no such farm. */
+  updateFarm(id: string, patch: FarmPatch): Promise<Farm | null>;
+  /** Deletes the farm and everything on it. */
+  deleteFarm(id: string): Promise<boolean>;
 
   createField(input: NewField): Promise<Field>;
   getField(id: string): Promise<Field | null>;
-  /** Sorted by name. */
+  /** Sorted by name, archived ones included. */
   listFields(farmId: string): Promise<Field[]>;
+  updateField(id: string, patch: FieldPatch): Promise<Field | null>;
 
   /** When the group starts in a field and `placedOn` is given, also records that first movement. */
   createGroup(input: NewGroup, placedOn: string | null): Promise<LivestockGroup>;
   getGroup(id: string): Promise<LivestockGroup | null>;
-  /** Sorted by name. */
+  /** Sorted by name, archived ones included. */
   listGroups(farmId: string): Promise<LivestockGroup[]>;
   updateGroup(id: string, patch: GroupPatch): Promise<LivestockGroup>;
 
@@ -46,6 +53,10 @@ export interface FarmRepository {
 }
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+
+/** Drops undefined keys, so a patch only touches what was given. */
+const definedOnly = <T extends object>(patch: T): Partial<T> =>
+  Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 export class InMemoryFarmRepository implements FarmRepository {
   private farms = new Map<string, Farm>();
@@ -91,8 +102,25 @@ export class InMemoryFarmRepository implements FarmRepository {
       .map(({ userId, role }) => ({ userId, role }));
   }
 
+  async updateFarm(id: string, patch: FarmPatch) {
+    const farm = this.farms.get(id);
+    if (!farm) return null;
+    const updated = { ...farm, ...definedOnly(patch) };
+    this.farms.set(id, updated);
+    return { ...updated };
+  }
+
+  async deleteFarm(id: string) {
+    if (!this.farms.delete(id)) return false;
+    this.members = this.members.filter((m) => m.farmId !== id);
+    this.movements = this.movements.filter((m) => m.farmId !== id);
+    for (const [key, field] of this.fields) if (field.farmId === id) this.fields.delete(key);
+    for (const [key, group] of this.groups) if (group.farmId === id) this.groups.delete(key);
+    return true;
+  }
+
   async createField(input: NewField) {
-    const field = { ...input, id: this.newId() };
+    const field = { ...input, archivedOn: null, id: this.newId() };
     this.fields.set(field.id, field);
     return { ...field };
   }
@@ -109,8 +137,16 @@ export class InMemoryFarmRepository implements FarmRepository {
       .map((f) => ({ ...f }));
   }
 
+  async updateField(id: string, patch: FieldPatch) {
+    const field = this.fields.get(id);
+    if (!field) return null;
+    const updated = { ...field, ...definedOnly(patch) };
+    this.fields.set(id, updated);
+    return { ...updated };
+  }
+
   async createGroup(input: NewGroup, placedOn: string | null) {
-    const group = { ...input, id: this.newId() };
+    const group = { ...input, archivedOn: null, archiveReason: null, id: this.newId() };
     this.groups.set(group.id, group);
     if (group.currentFieldId && placedOn) {
       this.pushMovement({

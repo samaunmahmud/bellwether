@@ -493,4 +493,162 @@ describe('farmService', () => {
       });
     });
   });
+
+  describe('managing the farm', () => {
+    const field = (name = 'Top field') =>
+      s.service.createField(ANN, { farmId, name, postcode: null });
+
+    describe('updateFarm', () => {
+      it('renames the farm and changes its postcode, normalised', async () => {
+        const updated = await s.service.updateFarm(ANN, farmId, {
+          name: ' High Farm ',
+          postcode: 'sw1a1aa',
+        });
+        expect(updated).toEqual({ id: farmId, name: 'High Farm', postcode: 'SW1A 1AA' });
+      });
+
+      it('rejects a blank name or unknown postcode, and other users', async () => {
+        await expect(s.service.updateFarm(ANN, farmId, { name: ' ' })).rejects.toMatchObject(
+          code('BAD_INPUT'),
+        );
+        await expect(
+          s.service.updateFarm(ANN, farmId, { postcode: 'ZZ1 1ZZ' }),
+        ).rejects.toMatchObject(code('POSTCODE_NOT_FOUND'));
+        await expect(s.service.updateFarm(BOB, farmId, { name: 'Mine' })).rejects.toMatchObject(
+          code('NOT_FOUND'),
+        );
+      });
+    });
+
+    describe('deleteFarm', () => {
+      it('needs the farm name typed to confirm, ignoring case and spaces', async () => {
+        await expect(s.service.deleteFarm(ANN, farmId, 'Hill')).rejects.toMatchObject(
+          code('BAD_INPUT'),
+        );
+        expect(await s.service.deleteFarm(ANN, farmId, ' hill farm ')).toBe(true);
+        expect(await s.service.listFarms(ANN)).toEqual([]);
+      });
+
+      it("treats someone else's farm as not found", async () => {
+        await expect(s.service.deleteFarm(BOB, farmId, 'Hill Farm')).rejects.toMatchObject(
+          code('NOT_FOUND'),
+        );
+      });
+    });
+
+    describe('updateField', () => {
+      it('renames a field and swaps its postcode for a map pin', async () => {
+        const created = await s.service.createField(ANN, {
+          farmId,
+          name: 'Top field',
+          postcode: 'SW1A 1AA',
+        });
+        const updated = await s.service.updateField(ANN, created.id, {
+          name: 'Top meadow',
+          postcode: null,
+          latitude: 54.1,
+          longitude: -2.5,
+        });
+        expect(updated).toMatchObject({
+          name: 'Top meadow',
+          postcode: null,
+          latitude: 54.1,
+          longitude: -2.5,
+        });
+      });
+
+      it('checks the location like a new field', async () => {
+        const created = await field();
+        await expect(
+          s.service.updateField(ANN, created.id, { latitude: 54.1 }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+        await expect(
+          s.service.updateField(ANN, created.id, { latitude: 40, longitude: -2 }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+        await expect(s.service.updateField(BOB, created.id, { name: 'x' })).rejects.toMatchObject(
+          code('NOT_FOUND'),
+        );
+      });
+    });
+
+    describe('archiving fields', () => {
+      it('hides an archived field from the farm and stops moves into it', async () => {
+        const top = await field('Top');
+        const archived = await s.service.setFieldArchived(ANN, top.id, true);
+        expect(archived.archivedOn).toBe('2026-06-01');
+        expect(await s.service.listFields(farmId)).toEqual([]);
+        expect((await s.service.listArchivedFields(farmId)).map((f) => f.id)).toEqual([top.id]);
+
+        const group = await s.service.createGroup(ANN, sheep());
+        await expect(
+          s.service.moveGroup(ANN, { groupId: group.id, toFieldId: top.id, movedOn: '2026-06-01' }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+        await expect(
+          s.service.createGroup(ANN, sheep({ currentFieldId: top.id })),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+
+        const restored = await s.service.setFieldArchived(ANN, top.id, false);
+        expect(restored.archivedOn).toBeNull();
+      });
+
+      it("won't archive a field a group is in", async () => {
+        const top = await field('Top');
+        await s.service.createGroup(ANN, sheep({ currentFieldId: top.id }));
+        await expect(s.service.setFieldArchived(ANN, top.id, true)).rejects.toMatchObject(
+          code('BAD_INPUT'),
+        );
+      });
+    });
+
+    describe('archiving groups', () => {
+      it('archives a sold group with a date and reason, and restores it', async () => {
+        const group = await s.service.createGroup(ANN, sheep());
+        const archived = await s.service.archiveGroup(ANN, group.id, {
+          archivedOn: '2026-05-30',
+          reason: ' Sold at market ',
+        });
+        expect(archived).toMatchObject({
+          archivedOn: '2026-05-30',
+          archiveReason: 'Sold at market',
+        });
+        expect(await s.service.listGroups(farmId)).toEqual([]);
+        expect((await s.service.listArchivedGroups(farmId)).map((g) => g.id)).toEqual([group.id]);
+        // Still reachable, so its records stay readable
+        expect(await s.service.getGroup(ANN, group.id)).toMatchObject({ id: group.id });
+
+        const restored = await s.service.restoreGroup(ANN, group.id);
+        expect(restored).toMatchObject({ archivedOn: null, archiveReason: null });
+        expect(await s.service.listGroups(farmId)).toHaveLength(1);
+      });
+
+      it("doesn't keep its last field from being archived", async () => {
+        const top = await field('Top');
+        const group = await s.service.createGroup(ANN, sheep({ currentFieldId: top.id }));
+        await s.service.archiveGroup(ANN, group.id, { archivedOn: '2026-06-01', reason: 'Sold' });
+        await expect(s.service.setFieldArchived(ANN, top.id, true)).resolves.toBeDefined();
+      });
+
+      it('needs a reason and a date that is not in the future', async () => {
+        const group = await s.service.createGroup(ANN, sheep());
+        await expect(
+          s.service.archiveGroup(ANN, group.id, { archivedOn: '2026-06-01', reason: ' ' }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+        await expect(
+          s.service.archiveGroup(ANN, group.id, { archivedOn: '2026-06-02', reason: 'Sold' }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+        await expect(
+          s.service.archiveGroup(BOB, group.id, { archivedOn: '2026-06-01', reason: 'Sold' }),
+        ).rejects.toMatchObject(code('NOT_FOUND'));
+      });
+
+      it("can't move an archived group", async () => {
+        const top = await field('Top');
+        const group = await s.service.createGroup(ANN, sheep());
+        await s.service.archiveGroup(ANN, group.id, { archivedOn: '2026-06-01', reason: 'Sold' });
+        await expect(
+          s.service.moveGroup(ANN, { groupId: group.id, toFieldId: top.id, movedOn: '2026-06-01' }),
+        ).rejects.toMatchObject(code('BAD_INPUT'));
+      });
+    });
+  });
 });

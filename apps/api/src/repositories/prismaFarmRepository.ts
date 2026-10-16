@@ -2,7 +2,9 @@ import type { PrismaClient } from '../db/prisma';
 import { isUuid } from '../db/ids';
 import type { Field, GroupMovement, LivestockGroup } from '../domain/farm';
 import type {
+  FarmPatch,
   FarmRepository,
+  FieldPatch,
   GroupPatch,
   NewFarm,
   NewField,
@@ -22,6 +24,7 @@ const DATE_KEYS = [
   'lambingEnd',
   'calvingStart',
   'calvingEnd',
+  'archivedOn',
 ] as const;
 
 const farmSelect = { id: true, name: true, postcode: true } as const;
@@ -32,6 +35,7 @@ const fieldSelect = {
   postcode: true,
   latitude: true,
   longitude: true,
+  archivedOn: true,
 } as const;
 const groupSelect = {
   id: true,
@@ -49,6 +53,8 @@ const groupSelect = {
   cattleType: true,
   calvingStart: true,
   calvingEnd: true,
+  archivedOn: true,
+  archiveReason: true,
 } as const;
 const movementSelect = {
   id: true,
@@ -70,8 +76,17 @@ function toGroup(row: DbGroup): LivestockGroup {
     lambingEnd: fromDbOrNull(row.lambingEnd),
     calvingStart: fromDbOrNull(row.calvingStart),
     calvingEnd: fromDbOrNull(row.calvingEnd),
+    archivedOn: fromDbOrNull(row.archivedOn),
   };
 }
+
+const toField = (row: Omit<Field, 'archivedOn'> & { archivedOn: Date | null }): Field => ({
+  ...row,
+  archivedOn: fromDbOrNull(row.archivedOn),
+});
+
+const definedOnly = (patch: object) =>
+  Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
 
 /** Converts any ISO date strings in a group (or patch) to Date objects for Prisma. */
 function groupDatesToDb<T extends Partial<Pick<LivestockGroup, (typeof DATE_KEYS)[number]>>>(
@@ -137,22 +152,46 @@ export class PrismaFarmRepository implements FarmRepository {
     return member?.role ?? null;
   }
 
-  createField(input: NewField): Promise<Field> {
-    return this.db.field.create({ data: input, select: fieldSelect });
+  async updateFarm(id: string, patch: FarmPatch) {
+    if (!isUuid(id)) return null;
+    const { count } = await this.db.farm.updateMany({ where: { id }, data: definedOnly(patch) });
+    return count ? this.getFarm(id) : null;
   }
 
-  getField(id: string) {
-    if (!isUuid(id)) return Promise.resolve(null);
-    return this.db.field.findUnique({ where: { id }, select: fieldSelect });
+  async deleteFarm(id: string) {
+    if (!isUuid(id)) return false;
+    // Everything on the farm goes with it (onDelete: Cascade).
+    const { count } = await this.db.farm.deleteMany({ where: { id } });
+    return count > 0;
   }
 
-  listFields(farmId: string) {
-    if (!isUuid(farmId)) return Promise.resolve([]);
-    return this.db.field.findMany({
+  async createField(input: NewField): Promise<Field> {
+    return toField(await this.db.field.create({ data: input, select: fieldSelect }));
+  }
+
+  async getField(id: string) {
+    if (!isUuid(id)) return null;
+    const row = await this.db.field.findUnique({ where: { id }, select: fieldSelect });
+    return row ? toField(row) : null;
+  }
+
+  async listFields(farmId: string) {
+    if (!isUuid(farmId)) return [];
+    const rows = await this.db.field.findMany({
       where: { farmId },
       orderBy: { name: 'asc' },
       select: fieldSelect,
     });
+    return rows.map(toField);
+  }
+
+  async updateField(id: string, patch: FieldPatch) {
+    if (!isUuid(id)) return null;
+    const { archivedOn, ...rest } = patch;
+    const data: Record<string, unknown> = definedOnly(rest);
+    if (archivedOn !== undefined) data.archivedOn = toDbOrNull(archivedOn);
+    const { count } = await this.db.field.updateMany({ where: { id }, data });
+    return count ? this.getField(id) : null;
   }
 
   async createGroup(input: NewGroup, placedOn: string | null) {
