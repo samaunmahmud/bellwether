@@ -1,6 +1,6 @@
 import type { PrismaClient } from '../db/prisma';
 import { isUuid } from '../db/ids';
-import type { Field, GroupMovement, LivestockGroup } from '../domain/farm';
+import type { FarmInvite, FarmRole, Field, GroupMovement, LivestockGroup } from '../domain/farm';
 import type {
   FarmPatch,
   FarmRepository,
@@ -9,6 +9,7 @@ import type {
   NewFarm,
   NewField,
   NewGroup,
+  NewInvite,
   NewMovement,
 } from './farmRepository';
 
@@ -55,6 +56,13 @@ const groupSelect = {
   calvingEnd: true,
   archivedOn: true,
   archiveReason: true,
+} as const;
+const inviteSelect = {
+  id: true,
+  farmId: true,
+  email: true,
+  role: true,
+  invitedById: true,
 } as const;
 const movementSelect = {
   id: true,
@@ -150,6 +158,62 @@ export class PrismaFarmRepository implements FarmRepository {
       select: { role: true },
     });
     return member?.role ?? null;
+  }
+
+  async addMember(farmId: string, userId: string, role: FarmRole) {
+    await this.db.farmMember.create({ data: { farmId, userId, role } });
+  }
+
+  async setMemberRole(farmId: string, userId: string, role: FarmRole) {
+    if (!isUuid(farmId) || !isUuid(userId)) return false;
+    const { count } = await this.db.farmMember.updateMany({
+      where: { farmId, userId },
+      data: { role },
+    });
+    return count > 0;
+  }
+
+  async removeMember(farmId: string, userId: string) {
+    if (!isUuid(farmId) || !isUuid(userId)) return false;
+    const { count } = await this.db.farmMember.deleteMany({ where: { farmId, userId } });
+    return count > 0;
+  }
+
+  createInvite(input: NewInvite): Promise<FarmInvite> {
+    return this.db.farmInvite.upsert({
+      where: { farmId_email: { farmId: input.farmId, email: input.email } },
+      create: input,
+      update: { role: input.role, invitedById: input.invitedById },
+      select: inviteSelect,
+    });
+  }
+
+  getInvite(id: string) {
+    if (!isUuid(id)) return Promise.resolve(null);
+    return this.db.farmInvite.findUnique({ where: { id }, select: inviteSelect });
+  }
+
+  listInvitesForFarm(farmId: string) {
+    if (!isUuid(farmId)) return Promise.resolve([]);
+    return this.db.farmInvite.findMany({
+      where: { farmId },
+      orderBy: { createdAt: 'asc' },
+      select: inviteSelect,
+    });
+  }
+
+  listInvitesForEmail(email: string) {
+    return this.db.farmInvite.findMany({
+      where: { email },
+      orderBy: { createdAt: 'asc' },
+      select: inviteSelect,
+    });
+  }
+
+  async deleteInvite(id: string) {
+    if (!isUuid(id)) return false;
+    const { count } = await this.db.farmInvite.deleteMany({ where: { id } });
+    return count > 0;
   }
 
   async updateFarm(id: string, patch: FarmPatch) {

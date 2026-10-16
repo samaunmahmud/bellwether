@@ -1,10 +1,18 @@
 import { randomUUID } from 'node:crypto';
-import type { Farm, FarmRole, Field, GroupMovement, LivestockGroup } from '../domain/farm';
+import type {
+  Farm,
+  FarmInvite,
+  FarmRole,
+  Field,
+  GroupMovement,
+  LivestockGroup,
+} from '../domain/farm';
 
 export type NewFarm = Omit<Farm, 'id'>;
 export type NewField = Omit<Field, 'id' | 'archivedOn'>;
 export type NewGroup = Omit<LivestockGroup, 'id' | 'archivedOn' | 'archiveReason'>;
 export type FarmPatch = Partial<NewFarm>;
+export type NewInvite = Omit<FarmInvite, 'id'>;
 export type FieldPatch = Partial<Omit<Field, 'id' | 'farmId'>>;
 export type NewMovement = Omit<GroupMovement, 'id'>;
 /** The current field only changes through recordMovement, so history is never skipped. */
@@ -27,7 +35,19 @@ export interface FarmRepository {
   getRole(farmId: string, userId: string): Promise<FarmRole | null>;
   /** Every farm, for the daily briefing job (FR-4.5). */
   listFarmIds(): Promise<string[]>;
+  /** In the order they joined. */
   listMembers(farmId: string): Promise<Array<{ userId: string; role: FarmRole }>>;
+  addMember(farmId: string, userId: string, role: FarmRole): Promise<void>;
+  /** False if they aren't a member. */
+  setMemberRole(farmId: string, userId: string, role: FarmRole): Promise<boolean>;
+  removeMember(farmId: string, userId: string): Promise<boolean>;
+
+  /** One invite per farm and email: inviting again replaces the role. */
+  createInvite(input: NewInvite): Promise<FarmInvite>;
+  getInvite(id: string): Promise<FarmInvite | null>;
+  listInvitesForFarm(farmId: string): Promise<FarmInvite[]>;
+  listInvitesForEmail(email: string): Promise<FarmInvite[]>;
+  deleteInvite(id: string): Promise<boolean>;
   /** Null if there's no such farm. */
   updateFarm(id: string, patch: FarmPatch): Promise<Farm | null>;
   /** Deletes the farm and everything on it. */
@@ -64,6 +84,7 @@ export class InMemoryFarmRepository implements FarmRepository {
   private fields = new Map<string, Field>();
   private groups = new Map<string, LivestockGroup>();
   private movements: Array<GroupMovement & { seq: number }> = [];
+  private invites: FarmInvite[] = [];
   private seq = 0;
 
   constructor(private newId: () => string = randomUUID) {}
@@ -102,6 +123,52 @@ export class InMemoryFarmRepository implements FarmRepository {
       .map(({ userId, role }) => ({ userId, role }));
   }
 
+  async addMember(farmId: string, userId: string, role: FarmRole) {
+    this.members.push({ farmId, userId, role });
+  }
+
+  async setMemberRole(farmId: string, userId: string, role: FarmRole) {
+    const member = this.members.find((m) => m.farmId === farmId && m.userId === userId);
+    if (member) member.role = role;
+    return Boolean(member);
+  }
+
+  async removeMember(farmId: string, userId: string) {
+    const before = this.members.length;
+    this.members = this.members.filter((m) => !(m.farmId === farmId && m.userId === userId));
+    return this.members.length < before;
+  }
+
+  async createInvite(input: NewInvite) {
+    const existing = this.invites.find((i) => i.farmId === input.farmId && i.email === input.email);
+    if (existing) {
+      Object.assign(existing, input);
+      return { ...existing };
+    }
+    const invite = { ...input, id: this.newId() };
+    this.invites.push(invite);
+    return { ...invite };
+  }
+
+  async getInvite(id: string) {
+    const invite = this.invites.find((i) => i.id === id);
+    return invite ? { ...invite } : null;
+  }
+
+  async listInvitesForFarm(farmId: string) {
+    return this.invites.filter((i) => i.farmId === farmId).map((i) => ({ ...i }));
+  }
+
+  async listInvitesForEmail(email: string) {
+    return this.invites.filter((i) => i.email === email).map((i) => ({ ...i }));
+  }
+
+  async deleteInvite(id: string) {
+    const before = this.invites.length;
+    this.invites = this.invites.filter((i) => i.id !== id);
+    return this.invites.length < before;
+  }
+
   async updateFarm(id: string, patch: FarmPatch) {
     const farm = this.farms.get(id);
     if (!farm) return null;
@@ -113,6 +180,7 @@ export class InMemoryFarmRepository implements FarmRepository {
   async deleteFarm(id: string) {
     if (!this.farms.delete(id)) return false;
     this.members = this.members.filter((m) => m.farmId !== id);
+    this.invites = this.invites.filter((i) => i.farmId !== id);
     this.movements = this.movements.filter((m) => m.farmId !== id);
     for (const [key, field] of this.fields) if (field.farmId === id) this.fields.delete(key);
     for (const [key, group] of this.groups) if (group.farmId === id) this.groups.delete(key);

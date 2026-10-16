@@ -7,6 +7,7 @@ export type AppErrorCode =
   | 'NOT_FOUND'
   | 'BAD_INPUT'
   | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
   | 'BAD_CREDENTIALS';
 
 /**

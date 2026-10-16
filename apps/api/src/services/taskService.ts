@@ -2,7 +2,7 @@ import { addDays } from '@bellwether/risk-engine';
 import { isIsoDate, londonToday } from '../dates';
 import { appError } from '../errors';
 import type { Task, TaskPatch, TaskRepository } from '../repositories/briefingRepository';
-import type { FarmService } from './farmService';
+import { hasAccess, type AccessLevel, type FarmService } from './farmService';
 
 const MAX_TITLE = 200;
 const MAX_NOTE = 1000;
@@ -16,15 +16,18 @@ export interface TaskInput {
   dueDate: string;
   note?: string | null;
   repeatEveryDays?: number | null;
+  /** FR-5.4: a worker or owner on the farm */
+  assigneeId?: string | null;
 }
 
-/** Omitted fields are unchanged; null clears the group (whole farm), note or repeat. */
+/** Omitted fields are unchanged; null clears the group (whole farm), note, repeat or assignee. */
 export interface TaskUpdate {
   title?: string | null;
   dueDate?: string | null;
   note?: string | null;
   groupId?: string | null;
   repeatEveryDays?: number | null;
+  assigneeId?: string | null;
 }
 
 export interface TaskServiceDeps {
@@ -79,20 +82,20 @@ export function createTaskService(deps: TaskServiceDeps) {
   const today = () => londonToday((deps.now ?? (() => new Date()))());
   const isOverdue = (task: Task) => !task.done && task.dueDate < today();
 
-  async function requireFarm(userId: string, farmId: string) {
-    if (!(await farmService.getFarm(userId, farmId)))
-      throw appError('NOT_FOUND', `Farm ${farmId} not found`);
-  }
+  const requireFarm = (userId: string, farmId: string, level: AccessLevel = 'view') =>
+    farmService.requireFarm(userId, farmId, level);
 
-  /** The task if the user's farm owns it. */
+  /** The task if the user is a member of its farm. */
   async function ownTask(userId: string, id: string) {
     const task = await tasks.getTask(id);
     return task && (await farmService.getFarm(userId, task.farmId)) ? task : null;
   }
 
+  /** Changing tasks is day-to-day work: workers and owners (FR-8.2). */
   async function requireTask(userId: string, id: string) {
     const task = await ownTask(userId, id);
     if (!task) throw appError('NOT_FOUND', `Task ${id} not found`);
+    await requireFarm(userId, task.farmId, 'work');
     return task;
   }
 
@@ -102,6 +105,15 @@ export function createTaskService(deps: TaskServiceDeps) {
     if (!group) throw appError('NOT_FOUND', `Livestock group ${groupId} not found`);
     if (group.farmId !== farmId) throw appError('BAD_INPUT', 'That group is on a different farm');
     return group;
+  }
+
+  /** FR-5.4: tasks go to someone who can do them, a worker or owner on the farm. */
+  async function checkAssignee(farmId: string, assigneeId: string | null | undefined) {
+    if (!assigneeId) return null;
+    const role = await farmService.getRole(farmId, assigneeId);
+    if (!role || !hasAccess(role, 'work'))
+      throw appError('BAD_INPUT', 'Tasks can only be assigned to workers and owners on this farm');
+    return assigneeId;
   }
 
   return {
@@ -115,11 +127,10 @@ export function createTaskService(deps: TaskServiceDeps) {
         if (farmId && group.farmId !== farmId)
           throw appError('BAD_INPUT', 'That group is on a different farm');
         farmId = group.farmId;
-      } else if (farmId) {
-        await requireFarm(userId, farmId);
-      } else {
+      } else if (!farmId) {
         throw appError('BAD_INPUT', 'Choose a farm or a group for the task');
       }
+      await requireFarm(userId, farmId, 'work');
 
       return tasks.createTask({
         farmId,
@@ -128,6 +139,7 @@ export function createTaskService(deps: TaskServiceDeps) {
         dueDate: checkDueDate(input.dueDate),
         note: checkNote(input.note),
         repeatEveryDays: checkRepeat(input.repeatEveryDays),
+        assigneeId: await checkAssignee(farmId, input.assigneeId),
       });
     },
 
@@ -144,6 +156,8 @@ export function createTaskService(deps: TaskServiceDeps) {
           ? (await groupOnFarm(userId, input.groupId, task.farmId)).id
           : null;
       }
+      if (input.assigneeId !== undefined)
+        patch.assigneeId = await checkAssignee(task.farmId, input.assigneeId);
       const updated = await tasks.updateTask(id, patch);
       if (!updated) throw appError('NOT_FOUND', `Task ${id} not found`);
       return updated;
@@ -151,7 +165,9 @@ export function createTaskService(deps: TaskServiceDeps) {
 
     /** Tasks are working notes, not audit records, so they can be deleted. False if not yours. */
     async deleteTask(userId: string, id: string) {
-      return (await ownTask(userId, id)) ? tasks.deleteTask(id) : false;
+      if (!(await ownTask(userId, id))) return false;
+      await requireTask(userId, id);
+      return tasks.deleteTask(id);
     },
 
     /** Ticking off a repeating task makes the next one, once (FR-5.3). */
@@ -167,6 +183,7 @@ export function createTaskService(deps: TaskServiceDeps) {
         note: task.note,
         dueDate: nextDueDate(task.dueDate, task.repeatEveryDays, today()),
         repeatEveryDays: task.repeatEveryDays,
+        assigneeId: task.assigneeId,
       });
       return (await tasks.updateTask(taskId, { nextTaskId: next.id })) ?? saved;
     },

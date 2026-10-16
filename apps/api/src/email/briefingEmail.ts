@@ -10,7 +10,7 @@ export interface OverdueTaskLine {
   groupName: string;
 }
 
-const escapeHtml = (text: string) =>
+export const escapeHtml = (text: string) =>
   text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

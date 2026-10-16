@@ -16,6 +16,7 @@ import { createResolvers } from './resolvers';
 import { createAuthResolvers } from './resolvers/auth';
 import { createBriefingResolvers } from './resolvers/briefing';
 import { createFarmResolvers } from './resolvers/farms';
+import { createMemberResolvers } from './resolvers/members';
 import { createRecordsResolvers } from './resolvers/records';
 import { typeDefs } from './schema/typeDefs';
 import { createAuthService } from './services/authService';
@@ -23,6 +24,7 @@ import { createBriefingService } from './services/briefingService';
 import { createFarmService } from './services/farmService';
 import { createForecastService } from './services/forecastService';
 import { createLocationService } from './services/locationService';
+import { createMemberService } from './services/memberService';
 import { createPetService } from './services/petService';
 import { createRecordsService } from './services/recordsService';
 import { createTaskService } from './services/taskService';
@@ -66,6 +68,14 @@ export function createServices(deps: AppDeps) {
     logger: deps.logger,
     now: deps.now,
   });
+  const memberService = createMemberService({
+    farms: deps.farms,
+    users: deps.users,
+    farmService,
+    email: deps.email,
+    logger: deps.logger,
+    appUrl: deps.appUrl,
+  });
   const authService = createAuthService({
     users: deps.users,
     hasher: deps.hasher ?? createScryptHasher(),
@@ -79,6 +89,7 @@ export function createServices(deps: AppDeps) {
     taskService,
     briefingService,
     authService,
+    memberService,
   };
 }
 
@@ -95,6 +106,11 @@ export function createApp(deps: AppDeps, services: AppServices = createServices(
       secureCookies: deps.secureCookies ?? false,
     }),
     createRecordsResolvers({ farmService, recordsService }),
+    createMemberResolvers({
+      farmService,
+      memberService: services.memberService,
+      users: deps.users,
+    }),
     createBriefingResolvers({
       farmService,
       taskService,

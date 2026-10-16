@@ -1,8 +1,21 @@
 export type Species = 'CATTLE' | 'SHEEP';
 export type LivestockClass = 'EWES' | 'LAMBS' | 'RAMS' | 'DAIRY_COWS' | 'BEEF_CATTLE' | 'CALVES';
 export type CattleType = 'DAIRY' | 'BEEF';
-/** Only OWNER is used until FR-8.2 (A13). */
+/**
+ * FR-8.2: OWNER manages everything; WORKER does day-to-day work (records, tasks, moves);
+ * VIEWER can only look.
+ */
 export type FarmRole = 'OWNER' | 'WORKER' | 'VIEWER';
+
+/** FR-8.2: an invitation to join a farm, matched to whoever signs in with that email. */
+export interface FarmInvite {
+  id: string;
+  farmId: string;
+  /** Normalised (trimmed, lower case) */
+  email: string;
+  role: FarmRole;
+  invitedById: string | null;
+}
 
 /** FR-2.1 */
 export interface Farm {

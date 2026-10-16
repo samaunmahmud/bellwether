@@ -46,6 +46,8 @@ model User {
   briefingEmails BriefingEmail[]
   pets           Pet[]
   revisions      RecordRevision[]
+  invitesSent    FarmInvite[]
+  assignedTasks  Task[]
 }
 
 model Session {
@@ -60,7 +62,7 @@ model Session {
   @@index([userId])
 }
 
-// Worker and Viewer permissions arrive with FR-8.2 (A13)
+// FR-8.2: OWNER manages, WORKER does day-to-day work, VIEWER can only look
 enum FarmRole {
   OWNER
   WORKER
@@ -79,6 +81,22 @@ model FarmMember {
   @@index([userId])
 }
 
+// FR-8.2: matched to whoever signs in with this email
+model FarmInvite {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmId      String   @db.Uuid
+  farm        Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  // Trimmed and lower-cased
+  email       String
+  role        FarmRole
+  invitedById String?  @db.Uuid
+  invitedBy   User?    @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@unique([farmId, email])
+  @@index([email])
+}
+
 // --- Farms (FR-2) ---
 
 model Farm {
@@ -89,6 +107,7 @@ model Farm {
   updatedAt DateTime @updatedAt
 
   members        FarmMember[]
+  invites        FarmInvite[]
   fields         Field[]
   groups         LivestockGroup[]
   movements      GroupMovement[]
@@ -102,11 +121,11 @@ model Farm {
 }
 
 model Field {
-  id        String   @id @default(uuid()) @db.Uuid
-  farmId    String   @db.Uuid
-  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  name      String
-  postcode  String?
+  id         String    @id @default(uuid()) @db.Uuid
+  farmId     String    @db.Uuid
+  farm       Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name       String
+  postcode   String?
   latitude   Float?
   longitude  Float?
   // Archived fields keep their history but take no new moves
@@ -264,6 +283,9 @@ model Task {
   repeatEveryDays Int?
   // The follow-up made when a repeating task was done, so it's only made once
   nextTaskId      String?         @db.Uuid
+  // FR-5.4: a farm member
+  assigneeId      String?         @db.Uuid
+  assignee        User?           @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 

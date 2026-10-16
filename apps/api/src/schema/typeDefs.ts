@@ -117,6 +117,41 @@ export const typeDefs = /* GraphQL */ `
     archivedFields: [Field!]!
     "Sold or finished groups; their records are kept"
     archivedGroups: [LivestockGroup!]!
+    "The signed-in user's role here (FR-8.2)"
+    myRole: FarmRole!
+    "In the order they joined"
+    members: [FarmMember!]!
+    "Invitations not yet accepted"
+    invites: [FarmInvite!]!
+  }
+
+  "FR-8.2: OWNER manages everything; WORKER records, moves and does tasks; VIEWER can only look."
+  enum FarmRole {
+    OWNER
+    WORKER
+    VIEWER
+  }
+
+  type FarmMember {
+    userId: ID!
+    email: String!
+    role: FarmRole!
+    isMe: Boolean!
+  }
+
+  type FarmInvite {
+    id: ID!
+    email: String!
+    role: FarmRole!
+  }
+
+  "An invitation for the signed-in user, by their email"
+  type MyInvite {
+    id: ID!
+    farmName: String!
+    role: FarmRole!
+    "Email of whoever sent it"
+    invitedBy: String
   }
 
   type Field {
@@ -320,6 +355,9 @@ export const typeDefs = /* GraphQL */ `
     group: LivestockGroup
     "When done, the next one is made this many days later on the same schedule (FR-5.3)"
     repeatEveryDays: Int
+    "FR-5.4: the farm member it's assigned to"
+    assignee: User
+    assignedToMe: Boolean!
   }
 
   type BriefingPreferences {
@@ -338,15 +376,18 @@ export const typeDefs = /* GraphQL */ `
     dueDate: String!
     note: String
     repeatEveryDays: Int
+    "A worker or owner on the farm"
+    assigneeId: ID
   }
 
-  "Omitted fields are unchanged; null clears the group (whole farm), note or repeat."
+  "Omitted fields are unchanged; null clears the group (whole farm), note, repeat or assignee."
   input UpdateTaskInput {
     title: String
     dueDate: String
     note: String
     groupId: ID
     repeatEveryDays: Int
+    assigneeId: ID
   }
 
   input BriefingPreferencesInput {
@@ -477,6 +518,8 @@ export const typeDefs = /* GraphQL */ `
     "Earliest due first"
     tasks(farmId: ID!): [Task!]!
     briefingPreferences(farmId: ID!): BriefingPreferences!
+    "Farm invitations for the signed-in user's email (FR-8.2)"
+    myInvites: [MyInvite!]!
   }
 
   type Mutation {
@@ -536,5 +579,15 @@ export const typeDefs = /* GraphQL */ `
     "False if the task isn't yours"
     deleteTask(id: ID!): Boolean!
     setBriefingPreferences(farmId: ID!, input: BriefingPreferencesInput!): BriefingPreferences!
+    "Owners only. Inviting the same email again changes the role."
+    inviteMember(farmId: ID!, email: String!, role: FarmRole!): FarmInvite!
+    cancelInvite(id: ID!): Boolean!
+    "Joins the farm; the invite must be for the signed-in user's email"
+    acceptInvite(id: ID!): Farm!
+    declineInvite(id: ID!): Boolean!
+    "Owners only. A farm always keeps at least one owner."
+    setMemberRole(farmId: ID!, userId: ID!, role: FarmRole!): Boolean!
+    "Owners can remove anyone; members can remove themselves to leave"
+    removeMember(farmId: ID!, userId: ID!): Boolean!
   }
 `;

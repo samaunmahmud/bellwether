@@ -26,6 +26,7 @@ const taskSelect = {
   done: true,
   repeatEveryDays: true,
   nextTaskId: true,
+  assigneeId: true,
 } as const;
 
 const toTask = (row: Omit<Task, 'dueDate'> & { dueDate: Date }): Task => ({

@@ -143,11 +143,9 @@ export function createRecordsService(deps: RecordsServiceDeps) {
     if (date > today()) throw appError('BAD_INPUT', `${label} cannot be in the future`);
   }
 
-  async function requireGroup(userId: string, groupId: string) {
-    const group = await farmService.getGroup(userId, groupId);
-    if (!group) throw appError('NOT_FOUND', `Livestock group ${groupId} not found`);
-    return group;
-  }
+  /** Recording and correcting is day-to-day work: workers and owners (FR-8.2). */
+  const requireGroup = (userId: string, groupId: string) =>
+    farmService.requireGroup(userId, groupId, 'work');
 
   /** Validates and cleans a treatment's fields, as typed in by the farmer. */
   function checkedTreatment(group: LivestockGroup, input: TreatmentFields) {
@@ -199,8 +197,9 @@ export function createRecordsService(deps: RecordsServiceDeps) {
     get: (id: string) => Promise<T | null>,
   ) {
     const record = await get(id);
-    const group = record && (await farmService.getGroup(editor.id, record.groupId));
-    if (!record || !group) throw notFound(type, id);
+    if (!record || !(await farmService.getGroup(editor.id, record.groupId)))
+      throw notFound(type, id);
+    const group = await requireGroup(editor.id, record.groupId);
     if (record.voidedAt) throw appError('BAD_INPUT', 'This record has been voided');
     return { record, group };
   }

@@ -10,6 +10,8 @@ import { buildTestApp, type Gql } from './fakes';
 
 // Operations that read no user data, so anyone may call them (A15).
 const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut'];
+// Scoped to the signed-in user's own email rather than a farm; covered in sharing.integration.test.ts
+const OWN_INVITES = ['myInvites', 'acceptInvite', 'declineInvite'];
 
 const TREATMENT_FIELDS = `
   groupId: $groupId, date: "2026-06-01", productName: "X", animalsTreated: 1,
@@ -26,6 +28,8 @@ interface AnnsData {
   logId: string;
   treatmentId: string;
   observationId: string;
+  inviteId: string;
+  userId: string;
 }
 
 interface BobsData {
@@ -78,6 +82,31 @@ const CROSS_USER: Record<string, Attempt> = {
   deleteLogEntry: async (bob, ann) => {
     const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
     expect(res.data).toEqual({ deleteLogEntry: false });
+  },
+  inviteMember: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { inviteMember(farmId: $id, email: "bob2@example.com", role: OWNER) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  cancelInvite: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { cancelInvite(id: $id) }`, { id: ann.inviteId });
+    expect(res.data).toEqual({ cancelInvite: false });
+  },
+  setMemberRole: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($farmId: ID!, $userId: ID!) { setMemberRole(farmId: $farmId, userId: $userId, role: VIEWER) }`,
+      { farmId: ann.farmId, userId: ann.userId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  removeMember: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($farmId: ID!, $userId: ID!) { removeMember(farmId: $farmId, userId: $userId) }`,
+      { farmId: ann.farmId, userId: ann.userId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
   },
   updateFarm: async (bob, ann) => {
     const res = await bob(
@@ -321,6 +350,10 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
   addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
   deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  inviteMember: `mutation { inviteMember(farmId: "x", email: "a@b.co", role: VIEWER) { id } }`,
+  cancelInvite: `mutation { cancelInvite(id: "x") }`,
+  setMemberRole: `mutation { setMemberRole(farmId: "x", userId: "y", role: VIEWER) }`,
+  removeMember: `mutation { removeMember(farmId: "x", userId: "y") }`,
   updateFarm: `mutation { updateFarm(id: "x", input: { name: "X" }) { id } }`,
   deleteFarm: `mutation { deleteFarm(id: "x", confirmName: "X") }`,
   updateField: `mutation { updateField(id: "x", input: { name: "X" }) { id } }`,
@@ -365,6 +398,14 @@ const ANNS_DATA = /* GraphQL */ `
       id
       name
       postcode
+      members {
+        email
+        role
+      }
+      invites {
+        email
+        role
+      }
       fields {
         id
         name
@@ -445,6 +486,11 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     }`,
     { groupId },
   );
+  const invite = await ann<{ inviteMember: Id }>(
+    `mutation ($farmId: ID!) { inviteMember(farmId: $farmId, email: "carl@example.com", role: WORKER) { id } }`,
+    { farmId },
+  );
+  const me = await ann<{ me: Id }>(`query { me { id } }`);
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -463,6 +509,8 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     logId: log.data!.addLogEntry.id,
     treatmentId: treatment.data!.recordTreatment.id,
     observationId: observation.data!.recordObservation.id,
+    inviteId: invite.data!.inviteMember.id,
+    userId: me.data!.me.id,
   };
 }
 
@@ -505,7 +553,7 @@ describe('farm and owner scoping (FR-8.4)', () => {
 
   it('covers every query and mutation in the schema', () => {
     // A new operation must be added to CROSS_USER (or PUBLIC) before this passes.
-    const covered = new Set([...PUBLIC, ...Object.keys(CROSS_USER)]);
+    const covered = new Set([...PUBLIC, ...OWN_INVITES, ...Object.keys(CROSS_USER)]);
     expect(operationNames().filter((name) => !covered.has(name))).toEqual([]);
     expect(Object.keys(ANONYMOUS_CALLS).sort()).toEqual(Object.keys(CROSS_USER).sort());
   });

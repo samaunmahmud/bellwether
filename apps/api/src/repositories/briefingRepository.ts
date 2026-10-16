@@ -15,10 +15,16 @@ export interface Task {
   repeatEveryDays: number | null;
   /** The follow-up already made for a repeating task, so it's only made once */
   nextTaskId: string | null;
+  /** FR-5.4: the farm member it's assigned to */
+  assigneeId: string | null;
 }
 
-export type NewTask = Omit<Task, 'id' | 'done' | 'repeatEveryDays' | 'nextTaskId'> & {
+export type NewTask = Omit<
+  Task,
+  'id' | 'done' | 'repeatEveryDays' | 'nextTaskId' | 'assigneeId'
+> & {
   repeatEveryDays?: number | null;
+  assigneeId?: string | null;
 };
 
 export type TaskPatch = Partial<Omit<Task, 'id' | 'farmId' | 'done'>>;
@@ -73,6 +79,7 @@ export class InMemoryTaskRepository implements TaskRepository {
     const task: Task = {
       ...input,
       repeatEveryDays: input.repeatEveryDays ?? null,
+      assigneeId: input.assigneeId ?? null,
       id: this.newId(),
       done: false,
       nextTaskId: null,

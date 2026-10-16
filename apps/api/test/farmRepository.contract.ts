@@ -252,6 +252,68 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
     });
   });
 
+  describe('members and invites (FR-8.2)', () => {
+    it('adds a member, changes their role and removes them', async () => {
+      const { farm } = await farmWithField();
+      const worker = await newUserId();
+      await repo.addMember(farm.id, worker, 'WORKER');
+      expect(await repo.getRole(farm.id, worker)).toBe('WORKER');
+      expect((await repo.listFarmsForUser(worker)).map((f) => f.id)).toEqual([farm.id]);
+      expect(await repo.listMembers(farm.id)).toEqual([
+        { userId: owner, role: 'OWNER' },
+        { userId: worker, role: 'WORKER' },
+      ]);
+
+      expect(await repo.setMemberRole(farm.id, worker, 'VIEWER')).toBe(true);
+      expect(await repo.getRole(farm.id, worker)).toBe('VIEWER');
+      expect(await repo.removeMember(farm.id, worker)).toBe(true);
+      expect(await repo.getRole(farm.id, worker)).toBeNull();
+      expect(await repo.removeMember(farm.id, worker)).toBe(false);
+      expect(await repo.setMemberRole(farm.id, worker, 'OWNER')).toBe(false);
+    });
+
+    it('stores one invite per farm and email, replacing the role on a second invite', async () => {
+      const { farm } = await farmWithField();
+      const invite = await repo.createInvite({
+        farmId: farm.id,
+        email: 'bob@example.com',
+        role: 'WORKER',
+        invitedById: owner,
+      });
+      expect(invite).toEqual({
+        id: expect.any(String),
+        farmId: farm.id,
+        email: 'bob@example.com',
+        role: 'WORKER',
+        invitedById: owner,
+      });
+      const again = await repo.createInvite({
+        farmId: farm.id,
+        email: 'bob@example.com',
+        role: 'VIEWER',
+        invitedById: owner,
+      });
+      expect(again).toEqual({ ...invite, role: 'VIEWER' });
+      expect(await repo.listInvitesForFarm(farm.id)).toEqual([again]);
+      expect(await repo.listInvitesForEmail('bob@example.com')).toEqual([again]);
+      expect(await repo.getInvite(invite.id)).toEqual(again);
+    });
+
+    it('deletes an invite', async () => {
+      const { farm } = await farmWithField();
+      const invite = await repo.createInvite({
+        farmId: farm.id,
+        email: 'bob@example.com',
+        role: 'VIEWER',
+        invitedById: owner,
+      });
+      expect(await repo.deleteInvite(invite.id)).toBe(true);
+      expect(await repo.listInvitesForEmail('bob@example.com')).toEqual([]);
+      expect(await repo.deleteInvite(invite.id)).toBe(false);
+      expect(await repo.getInvite('x')).toBeNull();
+    });
+  });
+
   describe('farm details', () => {
     it('updates a farm', async () => {
       const { farm } = await farmWithField();

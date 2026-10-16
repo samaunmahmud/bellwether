@@ -4,6 +4,7 @@ import {
   resolveLocationRef,
   UK_BOUNDS,
   type CattleType,
+  type FarmRole,
   type LivestockClass,
   type LivestockGroup,
   type LocationSource,
@@ -50,6 +51,22 @@ export interface ArchiveInput {
 }
 
 const MAX_ARCHIVE_REASON = 200;
+
+/**
+ * FR-8.2: what a member can do. Viewing needs any role; day-to-day work (records, tasks,
+ * moves, group details) needs WORKER or OWNER; managing the farm itself needs OWNER.
+ */
+export type AccessLevel = 'view' | 'work' | 'manage';
+
+const RANK: Record<FarmRole, number> = { VIEWER: 0, WORKER: 1, OWNER: 2 };
+const NEEDS: Record<AccessLevel, number> = { view: 0, work: 1, manage: 2 };
+const REFUSAL: Record<AccessLevel, string> = {
+  view: '',
+  work: 'Viewers can look but not make changes on this farm',
+  manage: 'Only a farm owner can do that',
+};
+
+export const hasAccess = (role: FarmRole, level: AccessLevel) => RANK[role] >= NEEDS[level];
 
 /** Lower case with single spaces, for comparing a typed confirmation. */
 const forComparing = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -198,9 +215,15 @@ export function createFarmService(deps: FarmServiceDeps) {
     return role ? repo.getFarm(id) : null;
   }
 
-  async function requireFarm(userId: string, id: string) {
-    const farm = await findFarm(userId, id);
-    if (!farm) throw appError('NOT_FOUND', `Farm ${id} not found`);
+  /**
+   * The farm, if the user may act on it at this level. Non-members get NOT_FOUND (A14);
+   * members without enough rights get FORBIDDEN (FR-8.2).
+   */
+  async function requireFarm(userId: string, id: string, level: AccessLevel = 'view') {
+    const role = await repo.getRole(id, userId);
+    const farm = role && (await repo.getFarm(id));
+    if (!role || !farm) throw appError('NOT_FOUND', `Farm ${id} not found`);
+    if (!hasAccess(role, level)) throw appError('FORBIDDEN', REFUSAL[level]);
     return farm;
   }
 
@@ -209,9 +232,11 @@ export function createFarmService(deps: FarmServiceDeps) {
     return group && (await repo.getRole(group.farmId, userId)) ? group : null;
   }
 
-  async function requireGroup(userId: string, id: string) {
-    const group = await findGroup(userId, id);
-    if (!group) throw appError('NOT_FOUND', `Livestock group ${id} not found`);
+  async function requireGroup(userId: string, id: string, level: AccessLevel = 'view') {
+    const group = await repo.getGroup(id);
+    const role = group && (await repo.getRole(group.farmId, userId));
+    if (!group || !role) throw appError('NOT_FOUND', `Livestock group ${id} not found`);
+    if (!hasAccess(role, level)) throw appError('FORBIDDEN', REFUSAL[level]);
     return group;
   }
 
@@ -223,10 +248,11 @@ export function createFarmService(deps: FarmServiceDeps) {
     return field;
   }
 
-  async function requireField(userId: string, id: string) {
+  async function requireField(userId: string, id: string, level: AccessLevel) {
     const field = await repo.getField(id);
-    if (!field || !(await repo.getRole(field.farmId, userId)))
-      throw appError('NOT_FOUND', `Field ${id} not found`);
+    const role = field && (await repo.getRole(field.farmId, userId));
+    if (!field || !role) throw appError('NOT_FOUND', `Field ${id} not found`);
+    if (!hasAccess(role, level)) throw appError('FORBIDDEN', REFUSAL[level]);
     return field;
   }
 
@@ -235,6 +261,10 @@ export function createFarmService(deps: FarmServiceDeps) {
     listFarms: (userId: string) => repo.listFarmsForUser(userId),
     getFarm: findFarm,
     getGroup: findGroup,
+    /** For other services: the farm or group, checked for this access level (FR-8.2). */
+    requireFarm,
+    requireGroup,
+    getRole: (farmId: string, userId: string) => repo.getRole(farmId, userId),
 
     // Children of a record the caller has already been allowed to see (GraphQL nested fields).
     getField: (id: string) => repo.getField(id),
@@ -259,7 +289,7 @@ export function createFarmService(deps: FarmServiceDeps) {
     /** FR-2.2 */
     async createField(userId: string, input: FieldInput) {
       const name = requireName(input.name, 'Field');
-      await requireFarm(userId, input.farmId);
+      await requireFarm(userId, input.farmId, 'manage');
       const { latitude, longitude } = checkPin(input.latitude ?? null, input.longitude ?? null);
       const postcode = input.postcode
         ? (await locations.findPostcode(input.postcode)).postcode
@@ -268,7 +298,7 @@ export function createFarmService(deps: FarmServiceDeps) {
     },
 
     async updateFarm(userId: string, id: string, update: FarmUpdate) {
-      await requireFarm(userId, id);
+      await requireFarm(userId, id, 'manage');
       const updated = await repo.updateFarm(id, {
         name: update.name == null ? undefined : requireName(update.name, 'Farm'),
         postcode:
@@ -282,14 +312,14 @@ export function createFarmService(deps: FarmServiceDeps) {
 
     /** Deletes the farm and everything on it, once its name has been typed to confirm. */
     async deleteFarm(userId: string, id: string, confirmName: string) {
-      const farm = await requireFarm(userId, id);
+      const farm = await requireFarm(userId, id, 'manage');
       if (forComparing(confirmName) !== forComparing(farm.name))
         throw appError('BAD_INPUT', `Type the farm name, ${farm.name}, to confirm`);
       return repo.deleteFarm(id);
     },
 
     async updateField(userId: string, id: string, update: FieldUpdate) {
-      const field = await requireField(userId, id);
+      const field = await requireField(userId, id, 'manage');
       const patch: FieldPatch = {};
       if (update.name != null) patch.name = requireName(update.name, 'Field');
       if (update.postcode !== undefined)
@@ -311,7 +341,7 @@ export function createFarmService(deps: FarmServiceDeps) {
 
     /** Archived fields keep their move history but can't take new moves. */
     async setFieldArchived(userId: string, id: string, archived: boolean) {
-      const field = await requireField(userId, id);
+      const field = await requireField(userId, id, 'manage');
       if (archived) {
         const groups = await repo.listGroups(field.farmId);
         if (groups.some((g) => !g.archivedOn && g.currentFieldId === id))
@@ -324,7 +354,7 @@ export function createFarmService(deps: FarmServiceDeps) {
 
     /** A group that has been sold or finished. Its records stay; briefings skip it. */
     async archiveGroup(userId: string, id: string, input: ArchiveInput) {
-      await requireGroup(userId, id);
+      await requireGroup(userId, id, 'manage');
       if (!isIsoDate(input.archivedOn))
         throw appError('BAD_INPUT', 'Date must be a date in the form YYYY-MM-DD');
       if (input.archivedOn > today()) throw appError('BAD_INPUT', 'Date cannot be in the future');
@@ -335,13 +365,13 @@ export function createFarmService(deps: FarmServiceDeps) {
     },
 
     async restoreGroup(userId: string, id: string) {
-      await requireGroup(userId, id);
+      await requireGroup(userId, id, 'manage');
       return repo.updateGroup(id, { archivedOn: null, archiveReason: null });
     },
 
     /** FR-2.3, FR-2.5. A starting field is recorded as the group's first movement, dated today. */
     async createGroup(userId: string, input: GroupInput) {
-      await requireFarm(userId, input.farmId);
+      await requireFarm(userId, input.farmId, 'manage');
       const currentFieldId = input.currentFieldId ?? null;
       if (currentFieldId) await requireFieldOnFarm(currentFieldId, input.farmId);
 
@@ -368,7 +398,7 @@ export function createFarmService(deps: FarmServiceDeps) {
     },
 
     async updateGroup(userId: string, id: string, update: GroupUpdate) {
-      const existing = await requireGroup(userId, id);
+      const existing = await requireGroup(userId, id, 'work');
 
       const patch: GroupPatch = {};
       if (update.name != null) patch.name = requireName(update.name, 'Group');
@@ -405,7 +435,7 @@ export function createFarmService(deps: FarmServiceDeps) {
         throw appError('BAD_INPUT', 'Move date must be a date in the form YYYY-MM-DD');
       if (input.movedOn > today()) throw appError('BAD_INPUT', 'Move date cannot be in the future');
 
-      const group = await requireGroup(userId, input.groupId);
+      const group = await requireGroup(userId, input.groupId, 'work');
       if (group.archivedOn) throw appError('BAD_INPUT', `${group.name} has been archived`);
       await requireFieldOnFarm(input.toFieldId, group.farmId);
 

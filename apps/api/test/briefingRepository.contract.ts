@@ -45,6 +45,7 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
         done: false,
         repeatEveryDays: null,
         nextTaskId: null,
+        assigneeId: null,
       });
       expect(await f.tasks.getTask(task.id)).toEqual(task);
 
@@ -95,7 +96,7 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
     });
 
     it('updates only the given fields, and null clears optional ones', async () => {
-      const { farmId, groupId } = await f.newFarm();
+      const { farmId, groupId, userId } = await f.newFarm();
       const task = await f.tasks.createTask({
         farmId,
         groupId,
@@ -117,6 +118,7 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
         note: null,
         repeatEveryDays: null,
         nextTaskId: next.id,
+        assigneeId: userId,
       });
       expect(updated).toEqual({
         ...task,
@@ -125,6 +127,7 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
         note: null,
         repeatEveryDays: null,
         nextTaskId: next.id,
+        assigneeId: userId,
       });
       expect(await f.tasks.getTask(task.id)).toEqual(updated);
     });
