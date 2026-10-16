@@ -29,7 +29,7 @@ if (!prisma) logger.warn('DATABASE_URL not set, users and farm data are kept in 
 
 const app = createApp({
   postcodes: createPostcodesIoClient(config.postcodesApiBase),
-  weather: createOpenMeteoClient(config.weatherApiBase),
+  weather: createOpenMeteoClient(config.weatherApiBase, fetch, config.weatherArchiveApiBase),
   cache,
   animals: new InMemoryAnimalRepository(),
   farms,

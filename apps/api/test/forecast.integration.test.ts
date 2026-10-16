@@ -108,6 +108,7 @@ describe('forecast query', () => {
         getDailyForecast: async () => {
           throw new Error('Open-Meteo responded 503');
         },
+        getHistory: async () => [],
       };
       const { gql } = buildTestApp({ weather: failing });
       const res = await gql(FORECAST, { postcode: 'UB8 3PH', category: 'PET' });

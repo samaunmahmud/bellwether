@@ -116,6 +116,97 @@ describe('Open-Meteo client', () => {
     expect(url.searchParams.get('latitude')).toBe('51.53');
   });
 
+  it('adds hourly weather, daily wind and soil means, and ET0 when present (FR-3.0)', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      jsonResponse({
+        daily: {
+          time: ['2026-06-01'],
+          temperature_2m_mean: [12],
+          temperature_2m_max: [16],
+          temperature_2m_min: [8],
+          relative_humidity_2m_mean: [80],
+          precipitation_sum: [0],
+          et0_fao_evapotranspiration: [3.1],
+        },
+        hourly: {
+          time: ['2026-06-01T00:00', '2026-06-01T01:00', '2026-06-02T00:00'],
+          temperature_2m: [9, 8.5, 10],
+          relative_humidity_2m: [90, 92, 85],
+          wind_speed_10m: [2, 4, 6],
+          precipitation: [0, 0.2, 0],
+          soil_temperature_6cm: [11, 13, null],
+        },
+      }),
+    );
+    const [first] = await createOpenMeteoClient('https://wx.test', fetchFn).getDailyForecast(
+      51.53,
+      -0.47,
+    );
+
+    expect(first).toMatchObject({ et0Mm: 3.1, windSpeedMeanMs: 3, soilTempMeanC: 12 });
+    expect(first!.hours).toEqual([
+      { time: '2026-06-01T00:00', tempC: 9, humidityPct: 90, windSpeedMs: 2, precipitationMm: 0 },
+      {
+        time: '2026-06-01T01:00',
+        tempC: 8.5,
+        humidityPct: 92,
+        windSpeedMs: 4,
+        precipitationMm: 0.2,
+      },
+    ]);
+
+    const url = new URL(fetchFn.mock.calls[0]![0] as string);
+    expect(url.searchParams.get('hourly')).toBe(
+      'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,soil_temperature_6cm',
+    );
+    expect(url.searchParams.get('wind_speed_unit')).toBe('ms');
+    expect(url.searchParams.get('timezone')).toBe('Europe/London');
+  });
+
+  it('fetches past weather from the archive API for a date range (FR-3.0)', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      jsonResponse({
+        daily: {
+          time: ['2026-05-01'],
+          temperature_2m_mean: [11],
+          temperature_2m_max: [15],
+          temperature_2m_min: [6],
+          relative_humidity_2m_mean: [78],
+          precipitation_sum: [4.2],
+          et0_fao_evapotranspiration: [2.5],
+        },
+      }),
+    );
+    const client = createOpenMeteoClient('https://wx.test', fetchFn, 'https://archive.test');
+    const days = await client.getHistory(51.53, -0.47, { start: '2026-05-01', end: '2026-05-31' });
+
+    expect(days).toEqual([
+      {
+        date: '2026-05-01',
+        tempMeanC: 11,
+        tempMaxC: 15,
+        tempMinC: 6,
+        humidityMeanPct: 78,
+        precipitationMm: 4.2,
+        et0Mm: 2.5,
+      },
+    ]);
+    const url = new URL(fetchFn.mock.calls[0]![0] as string);
+    expect(url.origin + url.pathname).toBe('https://archive.test/v1/archive');
+    expect(url.searchParams.get('start_date')).toBe('2026-05-01');
+    expect(url.searchParams.get('end_date')).toBe('2026-05-31');
+  });
+
+  it('throws when the archive API fails', async () => {
+    const failed = vi.fn().mockResolvedValue(jsonResponse({}, 500));
+    await expect(
+      createOpenMeteoClient('https://wx.test', failed, 'https://archive.test').getHistory(1, 2, {
+        start: '2026-05-01',
+        end: '2026-05-02',
+      }),
+    ).rejects.toThrow('500');
+  });
+
   it('throws on a failed response or missing daily data', async () => {
     const failed = vi.fn().mockResolvedValue(jsonResponse({}, 503));
     await expect(

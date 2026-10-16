@@ -39,15 +39,20 @@ export function fakePostcodes(known: Location[] = [UXBRIDGE]) {
   return { client, calls };
 }
 
-export function fakeWeather(days: DailyWeather[] = fakeDays()) {
+export function fakeWeather(days: DailyWeather[] = fakeDays(), history: DailyWeather[] = []) {
   const calls: Array<[number, number]> = [];
+  const historyCalls: Array<{ lat: number; lon: number; start: string; end: string }> = [];
   const client: WeatherClient = {
     async getDailyForecast(lat, lon) {
       calls.push([lat, lon]);
       return days;
     },
+    async getHistory(lat, lon, range) {
+      historyCalls.push({ lat, lon, ...range });
+      return history.filter((d) => d.date >= range.start && d.date <= range.end);
+    },
   };
-  return { client, calls };
+  return { client, calls, historyCalls };
 }
 
 export const brokenCache: Cache = {
