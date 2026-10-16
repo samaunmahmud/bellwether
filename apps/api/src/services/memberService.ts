@@ -3,6 +3,7 @@ import { escapeHtml } from '../email/briefingEmail';
 import type { EmailSender } from '../email/emailSender';
 import { appError } from '../errors';
 import type { Logger } from '../logger';
+import type { TaskRepository } from '../repositories/briefingRepository';
 import type { FarmRepository } from '../repositories/farmRepository';
 import type { User, UserRepository } from '../repositories/userRepository';
 import type { FarmService } from './farmService';
@@ -14,6 +15,7 @@ const normaliseEmail = (email: string) => email.trim().toLowerCase();
 export interface MemberServiceDeps {
   farms: FarmRepository;
   users: UserRepository;
+  tasks: TaskRepository;
   farmService: FarmService;
   email: EmailSender;
   logger: Logger;
@@ -48,6 +50,17 @@ export function createMemberService(deps: MemberServiceDeps) {
         'BAD_INPUT',
         'A farm needs at least one owner. Make someone else an owner first.',
       );
+  }
+
+  /**
+   * FR-5.4: tasks only go to people who can do them. Someone made a viewer loses their open
+   * tasks; someone who leaves loses all of them, so their email isn't shown on the farm.
+   */
+  async function unassign(farmId: string, userId: string, openOnly: boolean) {
+    const theirs = (await deps.tasks.listTasks(farmId)).filter(
+      (t) => t.assigneeId === userId && !(openOnly && t.done),
+    );
+    await Promise.all(theirs.map((t) => deps.tasks.updateTask(t.id, { assigneeId: null })));
   }
 
   async function sendInviteEmail(to: string, farmName: string, role: FarmRole, from: User) {
@@ -132,7 +145,9 @@ export function createMemberService(deps: MemberServiceDeps) {
       if (!(await farms.getRole(farmId, memberId)))
         throw appError('NOT_FOUND', 'That person is not a member of this farm');
       await keepAnOwner(farmId, memberId, role);
-      return farms.setMemberRole(farmId, memberId, role);
+      const changed = await farms.setMemberRole(farmId, memberId, role);
+      if (role === 'VIEWER') await unassign(farmId, memberId, true);
+      return changed;
     },
 
     /** Owners can remove anyone; any member can remove themselves (leave). */
@@ -140,7 +155,9 @@ export function createMemberService(deps: MemberServiceDeps) {
       await farmService.requireFarm(userId, farmId, memberId === userId ? 'view' : 'manage');
       if (!(await farms.getRole(farmId, memberId))) return false;
       await keepAnOwner(farmId, memberId, null);
-      return farms.removeMember(farmId, memberId);
+      const removed = await farms.removeMember(farmId, memberId);
+      await unassign(farmId, memberId, false);
+      return removed;
     },
   };
 }

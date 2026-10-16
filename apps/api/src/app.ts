@@ -71,6 +71,7 @@ export function createServices(deps: AppDeps) {
   const memberService = createMemberService({
     farms: deps.farms,
     users: deps.users,
+    tasks: deps.tasks,
     farmService,
     email: deps.email,
     logger: deps.logger,

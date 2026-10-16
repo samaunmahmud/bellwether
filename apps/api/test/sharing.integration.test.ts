@@ -334,6 +334,49 @@ describe('farm sharing (FR-8.2)', () => {
       expect(mine.data!.tasks).toEqual([{ assignedToMe: true }]);
     });
 
+    it('unassigns open tasks when someone is made a viewer, and all when removed', async () => {
+      const app = buildTestApp();
+      const ann = await app.signedIn('ann@example.com');
+      const ids = await annsFarm(ann);
+      const bob = await join(app, ann, ids.farmId, 'WORKER');
+      const bobId = (await bob<{ me: Id }>(`query { me { id } }`)).data!.me.id;
+      const assign = `mutation ($id: ID!, $userId: ID) { updateTask(id: $id, input: { assigneeId: $userId }) { id } }`;
+      await ann(assign, { id: ids.taskId, userId: bobId });
+      const assignees = async () =>
+        (
+          await ann<{ tasks: Array<{ assignee: { email: string } | null }> }>(
+            `query ($farmId: ID!) { tasks(farmId: $farmId) { assignee { email } } }`,
+            { farmId: ids.farmId },
+          )
+        ).data!.tasks.map((t) => t.assignee);
+
+      await ann(
+        `mutation ($farmId: ID!, $userId: ID!) { setMemberRole(farmId: $farmId, userId: $userId, role: VIEWER) }`,
+        { farmId: ids.farmId, userId: bobId },
+      );
+      expect(await assignees()).toEqual([null]);
+
+      // Done tasks keep their assignee while the person is on the farm, but not after they leave
+      await ann(
+        `mutation ($farmId: ID!, $userId: ID!) { setMemberRole(farmId: $farmId, userId: $userId, role: WORKER) }`,
+        { farmId: ids.farmId, userId: bobId },
+      );
+      await ann(assign, { id: ids.taskId, userId: bobId });
+      await ann(`mutation ($id: ID!) { setTaskDone(id: $id, done: true) { id } }`, {
+        id: ids.taskId,
+      });
+      await ann(
+        `mutation ($farmId: ID!, $userId: ID!) { setMemberRole(farmId: $farmId, userId: $userId, role: VIEWER) }`,
+        { farmId: ids.farmId, userId: bobId },
+      );
+      expect(await assignees()).toEqual([{ email: 'worker@example.com' }]);
+      await ann(
+        `mutation ($farmId: ID!, $userId: ID!) { removeMember(farmId: $farmId, userId: $userId) }`,
+        { farmId: ids.farmId, userId: bobId },
+      );
+      expect(await assignees()).toEqual([null]);
+    });
+
     it("won't assign to a viewer or someone who isn't a member", async () => {
       const app = buildTestApp();
       const ann = await app.signedIn('ann@example.com');
