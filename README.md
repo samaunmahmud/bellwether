@@ -17,16 +17,20 @@ You can also keep a simple treatment and check log per animal or herd, with "nex
 
 > This is an awareness tool, not veterinary advice.
 
+### Where it fits
+
+Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether does not replace them, or a vet. Its value is having everything in one place: risks per livestock group and per field, with the farm's records attached.
+
 ## Status
 
-| Phase                                                | State                                                                                        |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| 0 Scaffold (monorepo, lint, format, CI)              | Done                                                                                         |
-| 1 Risk engine (TDD, 4 modules)                       | Done                                                                                         |
-| 2 GraphQL API (clients, cache, errors)               | Done, except Postgres: logs use an in-memory store for now (`prisma/schema.prisma` is ready) |
-| 3 Frontend (home, pet/farm forecasts, animals & log) | Done                                                                                         |
-| 4 CI/CD                                              | Workflow written; passes once pushed to GitHub                                               |
-| 5 Azure deploy + README polish                       | To do                                                                                        |
+| Phase                                                | State                                                                                               |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 0 Scaffold (monorepo, lint, format, CI)              | Done                                                                                                |
+| 1 Risk engine (TDD, 4 modules)                       | Done                                                                                                |
+| 2 GraphQL API (clients, cache, errors)               | Done. Farms, fields and livestock groups are stored in Postgres; the old pet log is still in memory |
+| 3 Frontend (home, pet/farm forecasts, animals & log) | Done                                                                                                |
+| 4 CI/CD                                              | Workflow written; passes once pushed to GitHub                                                      |
+| 5 Azure deploy + README polish                       | To do                                                                                               |
 
 ## Architecture
 
@@ -43,6 +47,20 @@ Node API (GraphQL Yoga) ── Redis cache (falls back to direct calls if Redis 
 ```
 
 The risk engine is **pluggable**: every risk implements one `RiskModule` interface (weather in → level, score and reason out). Adding a new risk means one new file, one line in `registry.ts`, and its tests. Nothing else changes.
+
+## Farm data model
+
+```
+Farm (name, postcode)
+ ├── Field (name, postcode and/or map pin)
+ ├── LivestockGroup (species, class, head count, housed?, current field,
+ │                   shearing / lambing dates for sheep, dairy-or-beef / calving dates for cattle)
+ └── GroupMovement (group, from field → to field, date)   one row per move, so history is kept
+```
+
+Every record carries a `farmId`, ready for per-farm access control.
+
+A group's forecast uses the most precise location available: its field's **map pin**, then the field's **postcode**, then the **farm postcode**.
 
 ## How the risk engine works (and its limits)
 
@@ -67,9 +85,10 @@ Known limitations:
 Requirements: Node 20+, and optionally Docker for Redis/Postgres.
 
 ```bash
-npm install
-cp .env.example .env          # optional; works without Redis too (uses an in-memory cache)
-docker compose up -d redis    # optional
+npm install                   # also generates the Prisma client
+cp .env.example .env          # optional; without it, Redis and Postgres fall back to in-memory stores
+docker compose up -d          # Postgres (dev + test databases) and Redis
+npm run db:migrate            # apply database migrations
 npm run dev:api               # http://localhost:4000/graphql
 npm run dev:web               # http://localhost:5173 (proxies /graphql to the API)
 ```
@@ -83,10 +102,13 @@ npm run dev:web               # http://localhost:5173 (proxies /graphql to the A
 | `npm run lint` / `npm run format:check` | ESLint / Prettier                           |
 | `npm run typecheck`                     | TypeScript strict mode, every workspace     |
 | `npm run build`                         | Production builds                           |
+| `npm run db:migrate`                    | Create/apply Prisma migrations (dev DB)     |
+| `npm run db:test:prepare`               | Apply migrations to the test DB             |
 
 ## Testing approach
 
 - **Risk engine:** boundary tests (just below, on, and just above every threshold), hand-worked THI values, and a contract test that runs every module over a grid of weather and checks every result has a valid level, score and reason.
+- **Repositories:** one shared contract suite runs against the in-memory fake and against real Postgres (when `TEST_DATABASE_URL` is set: run `npm run db:test:prepare` first). CI runs both, using a Postgres service container.
 - **API:** external clients tested with mocked `fetch`. The GraphQL layer is tested end-to-end through Yoga with fake clients, including invalid postcodes, unknown postcodes, weather API down, postcode API down, and Redis down. No test ever calls a real external API.
 - **Frontend:** React Testing Library tests for risk cards, the chart, the log form, the disclaimer, and the forecast page's loading and error states.
 
