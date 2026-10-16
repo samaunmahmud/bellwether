@@ -77,6 +77,24 @@ const CROSS_USER: Record<string, Attempt> = {
     const res = await bob(`mutation ($id: ID!) { deleteLogEntry(id: $id) }`, { id: ann.logId });
     expect(res.data).toEqual({ deleteLogEntry: false });
   },
+  updateLogEntry: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateLogEntry(id: $id, input: { type: "Mine" }) { id } }`,
+      { id: ann.logId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateAnimal: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateAnimal(id: $id, input: { name: "Mine" }) { id } }`,
+      { id: ann.animalId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteAnimal: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteAnimal(id: $id) }`, { id: ann.animalId });
+    expect(res.data).toEqual({ deleteAnimal: false });
+  },
   createField: async (bob, ann) => {
     const res = await bob(
       `mutation ($farmId: ID!) { createField(input: { farmId: $farmId, name: "Sneaky" }) { id } }`,
@@ -210,6 +228,9 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   createFarm: `mutation { createFarm(input: { name: "X", postcode: "UB8 3PH" }) { id } }`,
   addLogEntry: `mutation { addLogEntry(animalId: "x", date: "2026-06-01", type: "Check") { id } }`,
   deleteLogEntry: `mutation { deleteLogEntry(id: "x") }`,
+  updateLogEntry: `mutation { updateLogEntry(id: "x", input: { type: "X" }) { id } }`,
+  updateAnimal: `mutation { updateAnimal(id: "x", input: { name: "X" }) { id } }`,
+  deleteAnimal: `mutation { deleteAnimal(id: "x") }`,
   createField: `mutation { createField(input: { farmId: "x", name: "X" }) { id } }`,
   createLivestockGroup: `mutation { createLivestockGroup(input: {
     farmId: "x", name: "X", species: SHEEP, livestockClass: EWES, headCount: 1 }) { id } }`,

@@ -45,7 +45,29 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     species: String!
     category: AnimalCategory!
+    "Where the pet lives, for its own forecast (FR-2.6)"
+    postcode: String
+    "Walks in long grass or woodland: raises tick risk"
+    highExposureHabitat: Boolean!
+    "Newest first"
     logs: [LogEntry!]!
+    "Risks for this species at its postcode; null without a postcode"
+    forecast: Forecast
+  }
+
+  "Omitted fields are unchanged; a null postcode clears it."
+  input UpdateAnimalInput {
+    name: String
+    postcode: String
+    highExposureHabitat: Boolean
+  }
+
+  "Omitted fields are unchanged; null clears the note or next due date."
+  input UpdateLogEntryInput {
+    date: String
+    type: String
+    note: String
+    nextDueDate: String
   }
 
   type LogEntry {
@@ -360,7 +382,16 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    createAnimal(name: String!, species: String!, category: AnimalCategory!): Animal!
+    createAnimal(
+      name: String!
+      species: String!
+      category: AnimalCategory!
+      postcode: String
+      highExposureHabitat: Boolean
+    ): Animal!
+    updateAnimal(id: ID!, input: UpdateAnimalInput!): Animal!
+    "Deletes the animal and its log. False if it isn't yours."
+    deleteAnimal(id: ID!): Boolean!
     addLogEntry(
       animalId: ID!
       date: String!
@@ -368,6 +399,7 @@ export const typeDefs = /* GraphQL */ `
       note: String
       nextDueDate: String
     ): LogEntry!
+    updateLogEntry(id: ID!, input: UpdateLogEntryInput!): LogEntry!
     deleteLogEntry(id: ID!): Boolean!
     createFarm(input: CreateFarmInput!): Farm!
     createField(input: CreateFieldInput!): Field!

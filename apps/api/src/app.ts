@@ -23,6 +23,7 @@ import { createBriefingService } from './services/briefingService';
 import { createFarmService } from './services/farmService';
 import { createForecastService } from './services/forecastService';
 import { createLocationService } from './services/locationService';
+import { createPetService } from './services/petService';
 import { createRecordsService } from './services/recordsService';
 import { createTaskService } from './services/taskService';
 
@@ -50,6 +51,7 @@ export interface AppDeps {
 export function createServices(deps: AppDeps) {
   const locations = createLocationService(deps);
   const forecastService = createForecastService({ ...deps, locations });
+  const petService = createPetService({ animals: deps.animals, locations, forecastService });
   const farmService = createFarmService({ repo: deps.farms, locations, now: deps.now });
   const recordsService = createRecordsService({
     records: deps.records,
@@ -71,6 +73,7 @@ export function createServices(deps: AppDeps) {
   });
   return {
     forecastService,
+    petService,
     farmService,
     recordsService,
     taskService,
@@ -85,7 +88,7 @@ export type AppServices = ReturnType<typeof createServices>;
 export function createApp(deps: AppDeps, services: AppServices = createServices(deps)) {
   const { forecastService, farmService, recordsService, taskService, briefingService } = services;
   const resolvers = [
-    createResolvers({ forecastService, animals: deps.animals }),
+    createResolvers({ forecastService, petService: services.petService }),
     createFarmResolvers({ farmService, forecastService }),
     createAuthResolvers({
       authService: services.authService,

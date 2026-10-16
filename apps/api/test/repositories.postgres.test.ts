@@ -1,5 +1,6 @@
 import { afterAll, describe } from 'vitest';
 import { createPrismaClient } from '../src/db/prisma';
+import { PrismaAnimalRepository } from '../src/repositories/prismaAnimalRepository';
 import {
   PrismaBriefingRepository,
   PrismaTaskRepository,
@@ -7,6 +8,7 @@ import {
 import { PrismaFarmRepository } from '../src/repositories/prismaFarmRepository';
 import { PrismaRecordsRepository } from '../src/repositories/prismaRecordsRepository';
 import { PrismaUserRepository } from '../src/repositories/prismaUserRepository';
+import { animalRepositoryContract } from './animalRepository.contract';
 import { farmRepositoryContract } from './farmRepository.contract';
 import { sheepGroup } from './farmRepository.contract';
 import { recordsRepositoryContract } from './recordsRepository.contract';
@@ -62,6 +64,22 @@ describe.skipIf(!testDatabaseUrl)('Postgres repositories', () => {
           const group = await farms.createGroup(sheepGroup(farm.id), null);
           return { farmId: farm.id, groupId: group.id };
         },
+      };
+    });
+  });
+
+  describe('PrismaAnimalRepository', () => {
+    animalRepositoryContract(async () => {
+      await reset();
+      let n = 0;
+      return {
+        repo: new PrismaAnimalRepository(prisma),
+        newOwnerId: async () =>
+          (
+            await prisma.user.create({
+              data: { email: `pets${++n}@example.com`, passwordHash: 'x' },
+            })
+          ).id,
       };
     });
   });

@@ -1,5 +1,5 @@
 // Farm data model (FR-2). Every record carries farmId (FR-2.7) so access can be scoped per farm.
-// The old pet Animal/LogEntry model stays in memory until FR-2.6 / FR-6.6 replace it.
+// Pets and their logs belong to a user (FR-2.6).
 
 generator client {
   provider     = "prisma-client"
@@ -44,6 +44,7 @@ model User {
   memberships    FarmMember[]
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
+  pets           Pet[]
 }
 
 model Session {
@@ -266,4 +267,40 @@ model BriefingEmail {
   createdAt DateTime @default(now())
 
   @@id([farmId, userId, date])
+}
+
+// --- Pets (FR-2.6) ---
+
+model Pet {
+  id                  String   @id @default(uuid()) @db.Uuid
+  seq                 Int      @default(autoincrement())
+  ownerId             String   @db.Uuid
+  owner               User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name                String
+  species             String
+  // 'pet' or 'farm', as in the risk engine
+  category            String   @default("pet")
+  // Normalised UK postcode for the pet's own forecast
+  postcode            String?
+  highExposureHabitat Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  logs PetLogEntry[]
+
+  @@index([ownerId])
+}
+
+model PetLogEntry {
+  id          String    @id @default(uuid()) @db.Uuid
+  seq         Int       @default(autoincrement())
+  petId       String    @db.Uuid
+  pet         Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  date        DateTime  @db.Date
+  type        String
+  note        String?
+  nextDueDate DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+
+  @@index([petId, date])
 }

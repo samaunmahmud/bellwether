@@ -1,8 +1,8 @@
 import type { AnimalCategory } from '@bellwether/risk-engine';
 import { requireUser, type GraphQLContext } from '../auth/context';
-import { appError } from '../errors';
-import type { Animal, AnimalRepository } from '../repositories/animalRepository';
+import type { Animal } from '../repositories/animalRepository';
 import type { ForecastService } from '../services/forecastService';
+import type { LogInput, PetPatchInput, PetService } from '../services/petService';
 
 type GqlCategory = 'PET' | 'FARM';
 
@@ -11,17 +11,10 @@ const toGql = (c: AnimalCategory): GqlCategory => (c === 'pet' ? 'PET' : 'FARM')
 
 export interface ResolverDeps {
   forecastService: ForecastService;
-  animals: AnimalRepository;
+  petService: PetService;
 }
 
-export function createResolvers({ forecastService, animals }: ResolverDeps) {
-  /** The animal, if it belongs to the signed-in user (A15). */
-  async function ownAnimal(ctx: GraphQLContext, id: string) {
-    const user = requireUser(ctx);
-    const animal = await animals.getAnimal(id);
-    return animal?.ownerId === user.id ? animal : null;
-  }
-
+export function createResolvers({ forecastService, petService }: ResolverDeps) {
   return {
     Query: {
       // Public: reads no user data (A15).
@@ -33,47 +26,36 @@ export function createResolvers({ forecastService, animals }: ResolverDeps) {
           highExposureHabitat: args.highExposureHabitat ?? false,
         }),
       animals: (_: unknown, __: unknown, ctx: GraphQLContext) =>
-        animals.listAnimals(requireUser(ctx).id),
-      animal: (_: unknown, args: { id: string }, ctx: GraphQLContext) => ownAnimal(ctx, args.id),
+        petService.list(requireUser(ctx).id),
+      animal: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        petService.get(requireUser(ctx).id, args.id),
     },
 
     Mutation: {
       createAnimal: (
         _: unknown,
-        args: { name: string; species: string; category: GqlCategory },
-        ctx: GraphQLContext,
-      ) => {
-        const user = requireUser(ctx);
-        const name = args.name.trim();
-        if (!name) throw appError('BAD_INPUT', 'Name is required');
-        return animals.createAnimal({
-          ownerId: user.id,
-          name,
-          species: args.species.trim(),
-          category: toEngine(args.category),
-        });
-      },
-      addLogEntry: async (
-        _: unknown,
         args: {
-          animalId: string;
-          date: string;
-          type: string;
-          note?: string | null;
-          nextDueDate?: string | null;
+          name: string;
+          species: string;
+          category: GqlCategory;
+          postcode?: string | null;
+          highExposureHabitat?: boolean | null;
         },
         ctx: GraphQLContext,
-      ) => {
-        const animal = await ownAnimal(ctx, args.animalId);
-        if (!animal) throw appError('NOT_FOUND', `Animal ${args.animalId} not found`);
-        return animals.addLog(args);
-      },
-      deleteLogEntry: async (_: unknown, args: { id: string }, ctx: GraphQLContext) => {
-        requireUser(ctx);
-        const log = await animals.getLog(args.id);
-        if (!log || !(await ownAnimal(ctx, log.animalId))) return false;
-        return animals.deleteLog(args.id);
-      },
+      ) => petService.create(requireUser(ctx).id, { ...args, category: toEngine(args.category) }),
+      updateAnimal: (_: unknown, args: { id: string; input: PetPatchInput }, ctx: GraphQLContext) =>
+        petService.update(requireUser(ctx).id, args.id, args.input),
+      deleteAnimal: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        petService.remove(requireUser(ctx).id, args.id),
+      addLogEntry: (
+        _: unknown,
+        { animalId, ...input }: LogInput & { animalId: string; date: string; type: string },
+        ctx: GraphQLContext,
+      ) => petService.addLog(requireUser(ctx).id, animalId, input),
+      updateLogEntry: (_: unknown, args: { id: string; input: LogInput }, ctx: GraphQLContext) =>
+        petService.updateLog(requireUser(ctx).id, args.id, args.input),
+      deleteLogEntry: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        petService.removeLog(requireUser(ctx).id, args.id),
     },
 
     RiskForecast: {
@@ -82,7 +64,8 @@ export function createResolvers({ forecastService, animals }: ResolverDeps) {
 
     Animal: {
       category: (parent: Animal) => toGql(parent.category),
-      logs: (parent: Animal) => animals.listLogs(parent.id),
+      logs: (parent: Animal) => petService.logs(parent.id),
+      forecast: (parent: Animal) => petService.forecast(parent),
     },
   };
 }

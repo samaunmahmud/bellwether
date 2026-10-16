@@ -10,6 +10,7 @@ import { createLoggingSender, createSmtpSender } from './email/emailSender';
 import { createBriefingJob } from './jobs/briefingJob';
 import { createLogger } from './logger';
 import { InMemoryAnimalRepository } from './repositories/animalRepository';
+import { PrismaAnimalRepository } from './repositories/prismaAnimalRepository';
 import {
   InMemoryBriefingRepository,
   InMemoryTaskRepository,
@@ -42,7 +43,7 @@ const deps: AppDeps = {
   postcodes: createPostcodesIoClient(config.postcodesApiBase),
   weather: createOpenMeteoClient(config.weatherApiBase, fetch, config.weatherArchiveApiBase),
   cache,
-  animals: new InMemoryAnimalRepository(),
+  animals: prisma ? new PrismaAnimalRepository(prisma) : new InMemoryAnimalRepository(),
   farms: prisma ? new PrismaFarmRepository(prisma) : new InMemoryFarmRepository(),
   users: prisma ? new PrismaUserRepository(prisma) : new InMemoryUserRepository(),
   records: prisma ? new PrismaRecordsRepository(prisma) : new InMemoryRecordsRepository(),
