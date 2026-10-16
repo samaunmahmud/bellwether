@@ -23,14 +23,16 @@ Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether doe
 
 ## Status
 
-| Phase                                                | State                                                                                               |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 0 Scaffold (monorepo, lint, format, CI)              | Done                                                                                                |
-| 1 Risk engine (TDD, 4 modules)                       | Done                                                                                                |
-| 2 GraphQL API (clients, cache, errors)               | Done. Farms, fields and livestock groups are stored in Postgres; the old pet log is still in memory |
-| 3 Frontend (home, pet/farm forecasts, animals & log) | Done                                                                                                |
-| 4 CI/CD                                              | Workflow written; passes once pushed to GitHub                                                      |
-| 5 Azure deploy + README polish                       | To do                                                                                               |
+| Step | Scope                                                                                           | State                                                                                                                      |
+| ---- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Rename to Bellwether, CI updates                                                                | Done                                                                                                                       |
+| 1    | Farms, fields, livestock groups and moves in Postgres (FR-2.1–2.5, 2.7)                         | Done                                                                                                                       |
+| 2    | Sign-up, login and per-farm access control (FR-8.1, 8.4)                                        | Done                                                                                                                       |
+| 3    | Engine upgrades: hourly heat stress, fleece-aware blowfly, lamb chill, liver fluke (FR-3.0–3.4) | Done                                                                                                                       |
+| 4    | Treatment records, withdrawal periods, checks, CSV and print export (FR-6.1–6.4, 6.6)           | Done                                                                                                                       |
+| 5    | Morning briefing page and daily email, suggested checks, tasks (FR-4.1–4.5, 5.1, 5.2, 5.5)      | Done                                                                                                                       |
+| 6    | Mobile-first briefing, tasks and treatment form (FR-10.1)                                       | Done                                                                                                                       |
+| 7    | Deploy                                                                                          | Containers, production compose and Azure guide ready ([docs/deploy.md](docs/deploy.md)); waiting for an Azure subscription |
 
 ## Architecture
 
