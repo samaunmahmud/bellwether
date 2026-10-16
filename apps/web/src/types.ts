@@ -80,6 +80,7 @@ export interface LivestockGroup {
   lambingStart: string | null;
   lambingEnd: string | null;
   lambsAtGrassThisSpring: boolean;
+  withdrawal: WithdrawalStatus;
   cattleType: CattleType | null;
   calvingStart: string | null;
   calvingEnd: string | null;
@@ -89,4 +90,47 @@ export interface LivestockGroup {
 export interface Farm extends FarmSummary {
   fields: Field[];
   groups: LivestockGroup[];
+}
+
+// --- Records (FR-6) ---
+
+export interface TreatmentRow {
+  id: string;
+  date: string;
+  productName: string;
+  batchNumber: string | null;
+  quantityUsed: string | null;
+  animalsTreated: number;
+  administeredBy: string;
+  reason: string | null;
+  meatWithdrawalDays: number;
+  milkWithdrawalDays: number | null;
+  meatWithdrawalEnds: string;
+  milkWithdrawalEnds: string | null;
+  group: { id: string; name: string };
+}
+
+export interface ObservationRow {
+  id: string;
+  date: string;
+  type: string;
+  note: string | null;
+}
+
+export interface WithdrawalStatus {
+  inWithdrawal: boolean;
+  meatEnds: string | null;
+  milkEnds: string | null;
+}
+
+export interface GroupRecords {
+  id: string;
+  name: string;
+  species: Species;
+  livestockClass: LivestockClass;
+  headCount: number;
+  farm: { id: string; name: string };
+  withdrawal: WithdrawalStatus;
+  treatments: TreatmentRow[];
+  observations: ObservationRow[];
 }

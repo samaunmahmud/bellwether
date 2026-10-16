@@ -40,6 +40,12 @@ const farm = {
       lambingStart: '2026-03-01',
       lambingEnd: '2026-04-15',
       lambsAtGrassThisSpring: true,
+      withdrawal: {
+        __typename: 'WithdrawalStatus',
+        inWithdrawal: true,
+        meatEnds: '2026-06-29',
+        milkEnds: null,
+      },
       cattleType: null,
       calvingStart: null,
       calvingEnd: null,
@@ -73,6 +79,12 @@ const farm = {
       lambingStart: null,
       lambingEnd: null,
       lambsAtGrassThisSpring: false,
+      withdrawal: {
+        __typename: 'WithdrawalStatus',
+        inWithdrawal: false,
+        meatEnds: null,
+        milkEnds: null,
+      },
       cattleType: 'DAIRY',
       calvingStart: null,
       calvingEnd: null,
@@ -115,6 +127,26 @@ describe('FarmPage', () => {
 
     const herd = screen.getByRole('article', { name: 'Dairy herd' });
     expect(within(herd).getByText('80 dairy cows · housed')).toBeInTheDocument();
+  });
+
+  it('flags groups in withdrawal in words and links to their records (FR-6.2)', async () => {
+    renderWith([farmMock(farm)]);
+    const flock = await screen.findByRole('article', { name: 'North flock' });
+    expect(within(flock).getByText('In withdrawal until Mon 29 Jun')).toBeInTheDocument();
+    expect(within(flock).getByRole('link', { name: 'Records for North flock' })).toHaveAttribute(
+      'href',
+      '/groups/g1',
+    );
+    const herd = screen.getByRole('article', { name: 'Dairy herd' });
+    expect(within(herd).queryByText(/In withdrawal/)).not.toBeInTheDocument();
+  });
+
+  it('links to the farm’s treatment records for audits (FR-6.4)', async () => {
+    renderWith([farmMock(farm)]);
+    expect(await screen.findByRole('link', { name: 'Treatment records' })).toHaveAttribute(
+      'href',
+      '/farms/farm1/records',
+    );
   });
 
   it('shows a group’s move history, newest first (FR-2.4)', async () => {

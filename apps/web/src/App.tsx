@@ -6,6 +6,8 @@ import { AnimalsPage } from './pages/AnimalsPage';
 import { AuthPage } from './pages/AuthPage';
 import { FarmPage } from './pages/FarmPage';
 import { FarmsPage } from './pages/FarmsPage';
+import { GroupPage } from './pages/GroupPage';
+import { RecordsPage } from './pages/RecordsPage';
 import { ForecastPage } from './pages/ForecastPage';
 import { HomePage } from './pages/HomePage';
 
@@ -25,6 +27,8 @@ export function App() {
 
           <Route path="/farms" element={signedIn(<FarmsPage />)} />
           <Route path="/farms/:id" element={signedIn(<FarmPage />)} />
+          <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
+          <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
         </Routes>
       </main>

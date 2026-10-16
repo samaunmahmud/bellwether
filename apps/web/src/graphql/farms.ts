@@ -38,6 +38,11 @@ export const FARM_QUERY = gql`
         lambingStart
         lambingEnd
         lambsAtGrassThisSpring
+        withdrawal {
+          inWithdrawal
+          meatEnds
+          milkEnds
+        }
         cattleType
         calvingStart
         calvingEnd

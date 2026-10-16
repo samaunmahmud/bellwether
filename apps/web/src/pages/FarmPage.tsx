@@ -1,11 +1,18 @@
 import { useMutation, useQuery } from '@apollo/client';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { FieldForm, type FieldFormValues } from '../components/FieldForm';
 import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/GroupForm';
 import { MoveGroupForm } from '../components/MoveGroupForm';
-import { dayMonth } from '../dates';
+import { dayMonth, shortDay } from '../dates';
 import { CREATE_FIELD, CREATE_GROUP, FARM_QUERY, MOVE_GROUP } from '../graphql/farms';
 import type { Farm, Field, LivestockGroup } from '../types';
+
+/** The later of the meat and milk withdrawal end dates. */
+const latestEnd = (w: { meatEnds: string | null; milkEnds: string | null }) =>
+  [w.meatEnds, w.milkEnds]
+    .filter((d): d is string => d !== null)
+    .sort()
+    .at(-1)!;
 
 /** Where a field's weather comes from (FR-2.2). */
 function fieldLocation(field: Field): string {
@@ -68,6 +75,9 @@ export function FarmPage() {
     <section>
       <h1>{farm.name}</h1>
       <p className="muted">{farm.postcode}</p>
+      <p>
+        <Link to={`/farms/${farm.id}/records`}>Treatment records</Link>
+      </p>
 
       <h2>Fields</h2>
       {farm.fields.length === 0 ? (
@@ -94,6 +104,16 @@ export function FarmPage() {
           <article key={group.id} className="card" aria-labelledby={`group-${group.id}`}>
             <h3 id={`group-${group.id}`}>{group.name}</h3>
             <p>{groupSummary(group)}</p>
+            {group.withdrawal.inWithdrawal && (
+              <p className="withdrawal withdrawal--active">
+                {`In withdrawal until ${shortDay(latestEnd(group.withdrawal))}`}
+              </p>
+            )}
+            <p>
+              <Link to={`/groups/${group.id}`} aria-label={`Records for ${group.name}`}>
+                Treatments and checks
+              </Link>
+            </p>
             {groupDetails(group) && <p className="muted">{groupDetails(group)}</p>}
 
             <MoveGroupForm
