@@ -11,6 +11,7 @@ import { GroupPage } from './pages/GroupPage';
 import { RecordsPage } from './pages/RecordsPage';
 import { ForecastPage } from './pages/ForecastPage';
 import { HomePage } from './pages/HomePage';
+import { PetPage } from './pages/PetPage';
 
 const signedIn = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>;
 
@@ -32,6 +33,7 @@ export function App() {
           <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
           <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
+          <Route path="/pets/:id" element={signedIn(<PetPage />)} />
         </Routes>
       </main>
     </div>

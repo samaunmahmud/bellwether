@@ -29,7 +29,7 @@ describe('NavBar', () => {
     renderWith([{ request: { query: ME_QUERY }, result: { data: { me: user } } }]);
     expect(await screen.findByText('ann@example.com')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'My farms' })).toHaveAttribute('href', '/farms');
-    expect(screen.getByRole('link', { name: 'My animals' })).toHaveAttribute('href', '/animals');
+    expect(screen.getByRole('link', { name: 'My pets' })).toHaveAttribute('href', '/animals');
   });
 
   it('logs out and goes back to signed-out links', async () => {

@@ -24,6 +24,16 @@ export const FORECAST_QUERY = gql`
   }
 `;
 
+const LOG_FIELDS = gql`
+  fragment LogFields on LogEntry {
+    id
+    date
+    type
+    note
+    nextDueDate
+  }
+`;
+
 export const ANIMALS_QUERY = gql`
   query Animals {
     animals {
@@ -31,22 +41,86 @@ export const ANIMALS_QUERY = gql`
       name
       species
       category
+      postcode
+      highExposureHabitat
       logs {
-        id
-        date
-        type
-        note
-        nextDueDate
+        ...LogFields
       }
+    }
+  }
+  ${LOG_FIELDS}
+`;
+
+export const PET_QUERY = gql`
+  query Pet($id: ID!) {
+    animal(id: $id) {
+      id
+      name
+      species
+      category
+      postcode
+      highExposureHabitat
+      logs {
+        ...LogFields
+      }
+      forecast {
+        location {
+          postcode
+          region
+        }
+        generatedAt
+        risks {
+          riskId
+          name
+          category
+          animals
+          days {
+            date
+            level
+            score
+            reason
+          }
+        }
+      }
+    }
+  }
+  ${LOG_FIELDS}
+`;
+
+export const CREATE_ANIMAL = gql`
+  mutation CreateAnimal(
+    $name: String!
+    $species: String!
+    $category: AnimalCategory!
+    $postcode: String
+    $highExposureHabitat: Boolean
+  ) {
+    createAnimal(
+      name: $name
+      species: $species
+      category: $category
+      postcode: $postcode
+      highExposureHabitat: $highExposureHabitat
+    ) {
+      id
     }
   }
 `;
 
-export const CREATE_ANIMAL = gql`
-  mutation CreateAnimal($name: String!, $species: String!, $category: AnimalCategory!) {
-    createAnimal(name: $name, species: $species, category: $category) {
+export const UPDATE_ANIMAL = gql`
+  mutation UpdateAnimal($id: ID!, $input: UpdateAnimalInput!) {
+    updateAnimal(id: $id, input: $input) {
       id
+      name
+      postcode
+      highExposureHabitat
     }
+  }
+`;
+
+export const DELETE_ANIMAL = gql`
+  mutation DeleteAnimal($id: ID!) {
+    deleteAnimal(id: $id)
   }
 `;
 
@@ -68,6 +142,15 @@ export const ADD_LOG_ENTRY = gql`
       id
     }
   }
+`;
+
+export const UPDATE_LOG_ENTRY = gql`
+  mutation UpdateLogEntry($id: ID!, $input: UpdateLogEntryInput!) {
+    updateLogEntry(id: $id, input: $input) {
+      ...LogFields
+    }
+  }
+  ${LOG_FIELDS}
 `;
 
 export const DELETE_LOG_ENTRY = gql`

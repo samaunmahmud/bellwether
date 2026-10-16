@@ -1,71 +1,36 @@
 import { useMutation, useQuery } from '@apollo/client';
-import { useState, type FormEvent } from 'react';
-import { LogForm, type LogFormValues } from '../components/LogForm';
+import { Link } from 'react-router-dom';
+import { PetForm, type PetFormValues } from '../components/PetForm';
 import { isOverdue, shortDay } from '../dates';
-import { ADD_LOG_ENTRY, ANIMALS_QUERY, CREATE_ANIMAL, DELETE_LOG_ENTRY } from '../graphql/queries';
-import type { Animal, AnimalCategory } from '../types';
+import { ANIMALS_QUERY, CREATE_ANIMAL } from '../graphql/queries';
+import type { Animal } from '../types';
 
-const SPECIES: Record<AnimalCategory, string[]> = {
-  PET: ['dog', 'cat'],
-  FARM: ['cattle', 'sheep'],
-};
+/** The next due date still to come or most overdue, across the pet's log. */
+function nextDue(animal: Animal): string | null {
+  const dates = animal.logs.map((l) => l.nextDueDate).filter((d): d is string => d !== null);
+  return dates.sort()[0] ?? null;
+}
 
 export function AnimalsPage() {
   const { data, loading, error } = useQuery<{ animals: Animal[] }>(ANIMALS_QUERY);
-  const refetch = { refetchQueries: [{ query: ANIMALS_QUERY }] };
-  const [createAnimal] = useMutation(CREATE_ANIMAL, refetch);
-  const [addLog] = useMutation(ADD_LOG_ENTRY, refetch);
-  const [deleteLog] = useMutation(DELETE_LOG_ENTRY, refetch);
+  const [createAnimal] = useMutation(CREATE_ANIMAL, {
+    refetchQueries: [{ query: ANIMALS_QUERY }],
+  });
 
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<AnimalCategory>('PET');
-  const [species, setSpecies] = useState('dog');
-
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    await createAnimal({ variables: { name, species, category } });
-    setName('');
+  async function handleCreate(values: PetFormValues) {
+    await createAnimal({ variables: { ...values, category: 'PET' } });
   }
 
   return (
     <section>
-      <h1>My animals and log</h1>
+      <h1>My pets</h1>
+      <p className="muted">
+        Add a pet with its home postcode to get its own tick and heat forecast, and keep a log of
+        checks and treatments with &ldquo;next due&rdquo; reminders. Livestock lives under{' '}
+        <Link to="/farms">My farms</Link>.
+      </p>
 
-      <form className="form form--inline" onSubmit={handleCreate} aria-label="Add animal">
-        <label>
-          Name
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Bella or North field flock"
-            required
-          />
-        </label>
-        <label>
-          Type
-          <select
-            value={category}
-            onChange={(e) => {
-              const next = e.target.value as AnimalCategory;
-              setCategory(next);
-              setSpecies(SPECIES[next][0]!);
-            }}
-          >
-            <option value="PET">Pet</option>
-            <option value="FARM">Farm animal / herd</option>
-          </select>
-        </label>
-        <label>
-          Species
-          <select value={species} onChange={(e) => setSpecies(e.target.value)}>
-            {SPECIES[category].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <button type="submit">Add animal</button>
-      </form>
+      <PetForm onSubmit={handleCreate} />
 
       {loading && <p aria-live="polite">Loading…</p>}
       {error && (
@@ -74,61 +39,38 @@ export function AnimalsPage() {
         </p>
       )}
       {data && data.animals.length === 0 && (
-        <p className="muted">No animals yet. Add one above to start a log.</p>
+        <p className="muted">No pets yet. Add one above to start a log.</p>
       )}
 
       <div className="grid">
-        {data?.animals.map((animal) => (
-          <article key={animal.id} className="card">
-            <header className="card__header">
-              <div>
-                <h3>{animal.name}</h3>
-                <p className="muted">
-                  {animal.species} · {animal.category === 'PET' ? 'pet' : 'farm'}
+        {data?.animals.map((animal) => {
+          const due = nextDue(animal);
+          const overdueCount = animal.logs.filter((l) => isOverdue(l.nextDueDate)).length;
+          return (
+            <article key={animal.id} className="card">
+              <h3>
+                <Link to={`/pets/${animal.id}`}>{animal.name}</Link>
+              </h3>
+              <p className="muted">
+                {animal.species}
+                {animal.category === 'FARM' ? ' · farm' : ''}
+                {animal.postcode ? ` · ${animal.postcode}` : ' · no postcode yet'}
+              </p>
+              {overdueCount > 0 ? (
+                <p className="pill pill--overdue">
+                  Overdue: {overdueCount} {overdueCount === 1 ? 'entry' : 'entries'}
                 </p>
-              </div>
-            </header>
-
-            <LogForm
-              onSubmit={(values: LogFormValues) =>
-                addLog({ variables: { animalId: animal.id, ...values } })
-              }
-            />
-
-            {animal.logs.length > 0 && (
-              <ul className="log">
-                {animal.logs.map((log) => {
-                  const overdue = isOverdue(log.nextDueDate);
-                  return (
-                    <li
-                      key={log.id}
-                      className={overdue ? 'log__row log__row--overdue' : 'log__row'}
-                    >
-                      <span>
-                        <strong>{log.type}</strong> · {shortDay(log.date)}
-                        {log.note ? ` · ${log.note}` : ''}
-                      </span>
-                      {log.nextDueDate && (
-                        <span className="log__due">
-                          {overdue ? 'Overdue: ' : 'Next due: '}
-                          {shortDay(log.nextDueDate)}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="link-button"
-                        aria-label={`Delete ${log.type} entry`}
-                        onClick={() => deleteLog({ variables: { id: log.id } })}
-                      >
-                        Delete
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </article>
-        ))}
+              ) : due ? (
+                <p>Next due: {shortDay(due)}</p>
+              ) : (
+                <p className="muted">Nothing due</p>
+              )}
+              <p className="muted">
+                {animal.logs.length} log {animal.logs.length === 1 ? 'entry' : 'entries'}
+              </p>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

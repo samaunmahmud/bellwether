@@ -35,7 +35,13 @@ export interface Animal {
   name: string;
   species: string;
   category: AnimalCategory;
+  postcode: string | null;
+  highExposureHabitat: boolean;
   logs: LogEntry[];
+}
+
+export interface Pet extends Animal {
+  forecast: Forecast | null;
 }
 
 // --- Farms (FR-2) ---

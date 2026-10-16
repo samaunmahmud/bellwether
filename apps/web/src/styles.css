@@ -380,6 +380,15 @@ select:focus-visible {
   grid-template-columns: 1fr auto auto;
 }
 
+.log__row > .form {
+  grid-column: 1 / -1;
+}
+
+.log__actions {
+  display: flex;
+  gap: 4px;
+}
+
 .log__row--overdue .log__due {
   color: var(--high);
   font-weight: 700;
@@ -463,6 +472,40 @@ h2 {
 }
 
 .withdrawal--active {
+  border: 2px solid var(--high);
+  background: var(--high-bg);
+  color: var(--high);
+  font-weight: 700;
+}
+
+button.danger {
+  background: var(--surface);
+  color: var(--high);
+  border: 2px solid var(--high);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.page-header .actions {
+  margin: 0;
+}
+
+/* Status shown in words with a border, never by colour alone (A44) */
+.pill {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.pill--overdue {
   border: 2px solid var(--high);
   background: var(--high-bg);
   color: var(--high);

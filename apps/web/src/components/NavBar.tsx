@@ -28,7 +28,7 @@ export function NavBar() {
         {me ? (
           <>
             <NavLink to="/farms">My farms</NavLink>
-            <NavLink to="/animals">My animals</NavLink>
+            <NavLink to="/animals">My pets</NavLink>
             <span className="muted topbar__user">{me.email}</span>
             <button type="button" className="link-button" onClick={handleLogOut}>
               Log out
