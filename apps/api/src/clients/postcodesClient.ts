@@ -21,7 +21,7 @@ interface PostcodesIoResponse {
   };
 }
 
-/** Client for postcodes.io. TODO(verify): re-check the response shape against current docs. */
+/** Client for postcodes.io. Response shape checked against a live response on 16 October 2026. */
 export function createPostcodesIoClient(
   baseUrl: string,
   fetchFn: typeof fetch = fetch,

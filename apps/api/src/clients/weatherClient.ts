@@ -9,8 +9,8 @@ export interface WeatherClient {
 
 export const FORECAST_DAYS = 14;
 
-// Field names checked against the Open-Meteo docs (open-meteo.com/en/docs) in October 2026.
-// TODO(verify): `relative_humidity_2m_mean` and `temperature_2m_mean` are not listed by name there.
+// Field names checked against the Open-Meteo docs and a live response on 16 October 2026
+// (all daily and hourly fields below came back populated).
 const DAILY_FIELDS = [
   'temperature_2m_mean',
   'temperature_2m_max',
