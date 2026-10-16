@@ -75,19 +75,48 @@ Choices like these are listed, with the reason for each, in [docs/decisions.md](
 
 All scoring is **deterministic and rule-based**. There is no machine learning and no training, so every result can be explained. The thresholds are **starting heuristics**, kept as named constants at the top of each module. They are marked `TODO(verify source)` until checked against UK veterinary and farming guidance.
 
-| Module             | Rule summary                                                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tick               | Mean < 5°C → Low · max ≥ 28°C and humidity < 60% → Low · mean ≥ 7°C and humidity ≥ 80% → High · else Medium · long grass/woodland raises one step |
-| Dog heatstroke     | Max < 20°C → Low · 20–25°C → Medium · > 25°C → High                                                                                               |
-| Cattle heat stress | THI = (1.8T + 32) − (0.55 − 0.0055RH)(1.8T − 26) using daily max temp and mean humidity · < 68 Low · 68–72 Medium · ≥ 72 High                     |
-| Sheep blowfly      | Mean < 9°C → Low · mean ≥ 15°C and humidity ≥ 70% → High · else Medium · ≥ 2mm rain the previous day raises one step                              |
+| Module             | Who                                       | Rule summary                                                                                                                                                                                                                             |
+| ------------------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tick               | Dogs, cats                                | Mean < 5°C → Low · max ≥ 28°C and humidity < 60% → Low · mean ≥ 7°C and humidity ≥ 80% → High · else Medium · long grass/woodland raises one step                                                                                        |
+| Dog heatstroke     | Dogs                                      | Max < 20°C → Low · 20–25°C → Medium · > 25°C → High                                                                                                                                                                                      |
+| Cattle heat stress | Cattle                                    | THI = (1.8T + 32) − (0.55 − 0.0055RH)(1.8T − 26). With hourly data: peak hourly THI and hours ≥ 72; otherwise daily max temp and mean humidity · < 68 Low · 68–72 Medium · ≥ 72 High · housed groups get a note                          |
+| Sheep blowfly      | Sheep                                     | Mean < 9°C → Low · mean ≥ 15°C and humidity ≥ 70% → High · else Medium · ≥ 2mm rain the previous day raises one step · not shorn, or shorn more than 42 days before the day, raises one step                                             |
+| Newborn lamb chill | Sheep whose lambing overlaps the forecast | Chill index C = (11.7 + 3.1√v)(40 − T) + 481 + 418(1 − e^(−0.04R)) kJ/m²/h from mean temp, wind and rain · < 1000 Low · 1000–1100 Medium · ≥ 1100 High · lambing dates + 3 days only                                                     |
+| Liver fluke season | Sheep, cattle                             | Ollerenshaw index: each May–Oct month Mt = n(R − P + 5) (rain days, rain and evapotranspiration in inches), capped at 100 (50 in May and Oct), summed · < 300 Low · 300–400 Medium · > 400 High · one value per season, refreshed weekly |
+
+Each livestock group only gets the modules for its species, and lamb chill and fluke only when they apply (during lambing; when a season's past weather is available). Past weather comes from the Open-Meteo archive, which runs about five days behind.
 
 Known limitations:
 
-- Daily averages hide hourly peaks.
+- Without hourly data, daily averages hide hourly peaks. Heat stress uses hourly data; the other modules use daily values.
 - Forecast accuracy falls off after about a week.
-- Rules don't account for local habitat, animal breed, age or housing.
+- Rules don't account for local habitat, breed or age. Housing is only noted, not modelled: shed conditions can differ a lot from outdoor weather.
+- The chill index was developed with wind measured near the ground; Bellwether uses 10 m wind, which will tend to overstate chill.
+- The Ollerenshaw index is a season-level indicator. A 2023 evaluation (Howell et al., Veterinary Record) found it not sensitive enough to rely on as a standalone early warning, so treat it as one signal among several.
 - Flea risk is deliberately not modelled: central heating keeps fleas active indoors all year, so weather is a poor predictor.
+
+### Thresholds to verify
+
+Every number below is a named constant in `packages/risk-engine/src/risks/` marked `heuristic TODO(verify source)`. None should be treated as validated until checked against UK veterinary and farming guidance.
+
+| Module             | Constant                                            | Value                         | Notes                                                                                        |
+| ------------------ | --------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| Tick               | `TICK_COLD_MEAN_C`                                  | 5 °C                          | Below this mean, Low                                                                         |
+| Tick               | `TICK_ACTIVE_MEAN_C` / `TICK_HUMID_PCT`             | 7 °C / 80 %                   | At or above both, High                                                                       |
+| Tick               | `TICK_HOT_MAX_C` / `TICK_DRY_PCT`                   | 28 °C / 60 %                  | Hot and dry, Low                                                                             |
+| Dog heatstroke     | `HEATSTROKE_MEDIUM_MAX_C` / `HEATSTROKE_HIGH_MAX_C` | 20 °C / 25 °C                 | Daily max                                                                                    |
+| Cattle heat stress | `THI_MEDIUM` / `THI_HIGH`                           | 68 / 72                       | Dairy cattle are often given lower bands                                                     |
+| Sheep blowfly      | `BLOWFLY_COLD_MEAN_C`                               | 9 °C                          | Below this mean, Low                                                                         |
+| Sheep blowfly      | `BLOWFLY_WARM_MEAN_C` / `BLOWFLY_HUMID_PCT`         | 15 °C / 70 %                  | At or above both, High                                                                       |
+| Sheep blowfly      | `BLOWFLY_RAIN_MM`                                   | 2 mm                          | Previous day's rain raises one step                                                          |
+| Sheep blowfly      | `BLOWFLY_FLEECE_DAYS`                               | 42 days                       | Fleece regrowth after shearing (~6 weeks)                                                    |
+| Lamb chill         | Formula coefficients                                | 11.7, 3.1, 40, 481, 418, 0.04 | Formula form from secondary sources (Nixon-Smith 1972; Donnelly 1984); originals not checked |
+| Lamb chill         | `CHILL_MEDIUM` / `CHILL_HIGH`                       | 1000 / 1100 kJ/m²/h           | Band edges                                                                                   |
+| Lamb chill         | `NEWBORN_DAYS`                                      | 3 days                        | How long after the last lambing date lambs count as newborn                                  |
+| Liver fluke        | Formula `n(R − P + 5)` in inches                    | —                             | Read from secondary sources, not the 1959 paper (Ollerenshaw & Rowlands)                     |
+| Liver fluke        | `FLUKE_RAIN_DAY_MM`                                 | 0.2 mm                        | Rain-day threshold (Met Éireann's; others use 1 mm)                                          |
+| Liver fluke        | `FLUKE_MONTH_CAP` / `FLUKE_SHOULDER_MONTH_CAP`      | 100 / 50                      | Monthly cap; May and October halved                                                          |
+| Liver fluke        | `FLUKE_MEDIUM` / `FLUKE_HIGH`                       | 300 / 400                     | Season-total bands                                                                           |
 
 ## Running locally
 
