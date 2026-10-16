@@ -152,6 +152,17 @@ export interface GroupRecords {
   species: Species;
   livestockClass: LivestockClass;
   headCount: number;
+  housed: boolean;
+  currentField: FieldOption | null;
+  lastShearingDate: string | null;
+  lambingStart: string | null;
+  lambingEnd: string | null;
+  lambsAtGrassThisSpring: boolean;
+  cattleType: CattleType | null;
+  calvingStart: string | null;
+  calvingEnd: string | null;
+  archivedOn: string | null;
+  archiveReason: string | null;
   farm: { id: string; name: string };
   withdrawal: WithdrawalStatus;
   treatments: TreatmentRow[];

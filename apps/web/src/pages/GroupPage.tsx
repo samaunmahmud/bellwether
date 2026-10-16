@@ -1,12 +1,14 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CLASS_LABELS } from '../components/GroupForm';
+import { ArchiveGroupForm } from '../components/ArchiveGroupForm';
+import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/GroupForm';
 import { ObservationForm, type ObservationFormValues } from '../components/ObservationForm';
 import { RecordHistory } from '../components/RecordHistory';
 import { TreatmentForm, type TreatmentFormValues } from '../components/TreatmentForm';
 import { VoidForm } from '../components/VoidForm';
-import { shortDay } from '../dates';
+import { dayMonth, shortDay } from '../dates';
+import { ARCHIVE_GROUP, RESTORE_GROUP, UPDATE_GROUP } from '../graphql/farms';
 import {
   CORRECT_OBSERVATION,
   CORRECT_TREATMENT,
@@ -17,6 +19,33 @@ import {
   VOID_TREATMENT,
 } from '../graphql/records';
 import type { Correctable, GroupRecords, WithdrawalStatus } from '../types';
+
+/** The group's details as edit-form values. */
+function formValues(group: GroupRecords): GroupFormValues {
+  const base = {
+    name: group.name,
+    livestockClass: group.livestockClass,
+    headCount: group.headCount,
+    currentFieldId: group.currentField?.id ?? null,
+    housed: group.housed,
+  };
+  return group.species === 'SHEEP'
+    ? {
+        ...base,
+        species: 'SHEEP',
+        lastShearingDate: group.lastShearingDate,
+        lambingStart: group.lambingStart,
+        lambingEnd: group.lambingEnd,
+        lambsAtGrassThisSpring: group.lambsAtGrassThisSpring,
+      }
+    : {
+        ...base,
+        species: 'CATTLE',
+        cattleType: group.cattleType,
+        calvingStart: group.calvingStart,
+        calvingEnd: group.calvingEnd,
+      };
+}
 
 /** Which record, if any, is open for correcting or voiding (FR-6.5). */
 type Editing = { id: string; mode: 'correct' | 'void' } | null;
@@ -84,6 +113,10 @@ export function GroupPage() {
   const [voidTreatment] = useMutation(VOID_TREATMENT, refetch);
   const [correctObservation] = useMutation(CORRECT_OBSERVATION, refetch);
   const [voidObservation] = useMutation(VOID_OBSERVATION, refetch);
+  const [updateGroup] = useMutation(UPDATE_GROUP, refetch);
+  const [archiveGroup] = useMutation(ARCHIVE_GROUP, refetch);
+  const [restoreGroup] = useMutation(RESTORE_GROUP, refetch);
+  const [groupMode, setGroupMode] = useState<'edit' | 'archive' | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
   const close = () => setEditing(null);
   const isOpen = (id: string, mode: 'correct' | 'void') =>
@@ -104,10 +137,61 @@ export function GroupPage() {
       <p className="muted">
         <Link to={`/farms/${group.farm.id}`}>{group.farm.name}</Link>
       </p>
-      <h1>{group.name}</h1>
-      <p className="muted">
-        {group.headCount} {CLASS_LABELS[group.livestockClass].toLowerCase()}
-      </p>
+      <header className="page-header">
+        <div>
+          <h1>{group.name}</h1>
+          <p className="muted">
+            {group.headCount} {CLASS_LABELS[group.livestockClass].toLowerCase()}
+          </p>
+        </div>
+        {group.archivedOn ? (
+          <div className="actions">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => restoreGroup({ variables: { id: group.id } })}
+            >
+              Restore group
+            </button>
+          </div>
+        ) : (
+          groupMode === null && (
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => setGroupMode('edit')}>
+                Edit details
+              </button>
+              <button type="button" className="secondary" onClick={() => setGroupMode('archive')}>
+                Archive group
+              </button>
+            </div>
+          )
+        )}
+      </header>
+      {group.archivedOn && (
+        <p className="pill" role="status">
+          Archived {dayMonth(group.archivedOn)} · {group.archiveReason}
+        </p>
+      )}
+      {groupMode === 'edit' && (
+        <GroupForm
+          fields={[]}
+          initial={formValues(group)}
+          onCancel={() => setGroupMode(null)}
+          onSubmit={async ({ species: _species, currentFieldId: _field, ...input }) => {
+            await updateGroup({ variables: { id: group.id, input } });
+            setGroupMode(null);
+          }}
+        />
+      )}
+      {groupMode === 'archive' && (
+        <ArchiveGroupForm
+          onCancel={() => setGroupMode(null)}
+          onSubmit={async (input) => {
+            await archiveGroup({ variables: { id: group.id, input } });
+            setGroupMode(null);
+          }}
+        />
+      )}
       <Withdrawal status={group.withdrawal} />
 
       <h2>Treatments</h2>

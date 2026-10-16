@@ -6,6 +6,7 @@ import { AnimalsPage } from './pages/AnimalsPage';
 import { AuthPage } from './pages/AuthPage';
 import { BriefingPage } from './pages/BriefingPage';
 import { FarmPage } from './pages/FarmPage';
+import { FarmSettingsPage } from './pages/FarmSettingsPage';
 import { FarmsPage } from './pages/FarmsPage';
 import { GroupPage } from './pages/GroupPage';
 import { RecordsPage } from './pages/RecordsPage';
@@ -33,6 +34,7 @@ export function App() {
           <Route path="/farms/:id/briefing" element={signedIn(<BriefingPage />)} />
           <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
           <Route path="/farms/:id/tasks" element={signedIn(<TasksPage />)} />
+          <Route path="/farms/:id/settings" element={signedIn(<FarmSettingsPage />)} />
           <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
           <Route path="/pets/:id" element={signedIn(<PetPage />)} />

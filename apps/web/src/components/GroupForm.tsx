@@ -49,29 +49,40 @@ function periodError(start: string, end: string, label: string): string | null {
   return end < start ? `${label} must end on or after the day it starts` : null;
 }
 
-/** FR-2.3, FR-2.5: add a livestock group with the details that matter for its species. */
+/**
+ * FR-2.3, FR-2.5: add a livestock group with the details that matter for its species.
+ * With `initial`, edits a group: species can't change, and moves are recorded separately (FR-2.4).
+ */
 export function GroupForm({
   fields,
   onSubmit,
+  initial,
+  onCancel,
 }: {
   fields: FieldOption[];
   onSubmit: (values: GroupFormValues) => Promise<unknown>;
+  initial?: GroupFormValues;
+  onCancel?: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [species, setSpecies] = useState<Species>('SHEEP');
-  const [livestockClass, setLivestockClass] = useState<LivestockClass>('EWES');
-  const [headCount, setHeadCount] = useState('');
-  const [currentFieldId, setCurrentFieldId] = useState('');
-  const [housed, setHoused] = useState(false);
+  const sheep = initial?.species === 'SHEEP' ? initial : null;
+  const cattle = initial?.species === 'CATTLE' ? initial : null;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [species, setSpecies] = useState<Species>(initial?.species ?? 'SHEEP');
+  const [livestockClass, setLivestockClass] = useState<LivestockClass>(
+    initial?.livestockClass ?? 'EWES',
+  );
+  const [headCount, setHeadCount] = useState(initial ? String(initial.headCount) : '');
+  const [currentFieldId, setCurrentFieldId] = useState(initial?.currentFieldId ?? '');
+  const [housed, setHoused] = useState(initial?.housed ?? false);
   // Sheep
-  const [lastShearingDate, setLastShearingDate] = useState('');
-  const [lambingStart, setLambingStart] = useState('');
-  const [lambingEnd, setLambingEnd] = useState('');
-  const [lambsAtGrass, setLambsAtGrass] = useState(false);
+  const [lastShearingDate, setLastShearingDate] = useState(sheep?.lastShearingDate ?? '');
+  const [lambingStart, setLambingStart] = useState(sheep?.lambingStart ?? '');
+  const [lambingEnd, setLambingEnd] = useState(sheep?.lambingEnd ?? '');
+  const [lambsAtGrass, setLambsAtGrass] = useState(sheep?.lambsAtGrassThisSpring ?? false);
   // Cattle
-  const [cattleType, setCattleType] = useState<CattleType | ''>('');
-  const [calvingStart, setCalvingStart] = useState('');
-  const [calvingEnd, setCalvingEnd] = useState('');
+  const [cattleType, setCattleType] = useState<CattleType | ''>(cattle?.cattleType ?? '');
+  const [calvingStart, setCalvingStart] = useState(cattle?.calvingStart ?? '');
+  const [calvingEnd, setCalvingEnd] = useState(cattle?.calvingEnd ?? '');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -114,6 +125,7 @@ export function GroupForm({
 
     try {
       await onSubmit(values);
+      if (initial) return;
       setName('');
       setHeadCount('');
     } catch (err) {
@@ -122,7 +134,11 @@ export function GroupForm({
   }
 
   return (
-    <form className="form" onSubmit={handleSubmit} aria-label="Add livestock group">
+    <form
+      className="form"
+      onSubmit={handleSubmit}
+      aria-label={initial ? 'Edit livestock group' : 'Add livestock group'}
+    >
       <label>
         Group name
         <input
@@ -133,20 +149,22 @@ export function GroupForm({
         />
       </label>
       <div className="form--inline">
-        <label>
-          Species
-          <select
-            value={species}
-            onChange={(e) => {
-              const next = e.target.value as Species;
-              setSpecies(next);
-              setLivestockClass(CLASSES[next][0]!);
-            }}
-          >
-            <option value="SHEEP">Sheep</option>
-            <option value="CATTLE">Cattle</option>
-          </select>
-        </label>
+        {!initial && (
+          <label>
+            Species
+            <select
+              value={species}
+              onChange={(e) => {
+                const next = e.target.value as Species;
+                setSpecies(next);
+                setLivestockClass(CLASSES[next][0]!);
+              }}
+            >
+              <option value="SHEEP">Sheep</option>
+              <option value="CATTLE">Cattle</option>
+            </select>
+          </label>
+        )}
         <label>
           Class
           <select
@@ -174,17 +192,19 @@ export function GroupForm({
         </label>
       </div>
       <div className="form--inline">
-        <label>
-          Field
-          <select value={currentFieldId} onChange={(e) => setCurrentFieldId(e.target.value)}>
-            <option value="">No field yet</option>
-            {fields.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!initial && (
+          <label>
+            Field
+            <select value={currentFieldId} onChange={(e) => setCurrentFieldId(e.target.value)}>
+              <option value="">No field yet</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="toggle">
           <input type="checkbox" checked={housed} onChange={(e) => setHoused(e.target.checked)} />
           Housed
@@ -257,7 +277,14 @@ export function GroupForm({
           {error}
         </p>
       )}
-      <button type="submit">Add group</button>
+      <div className="actions">
+        <button type="submit">{initial ? 'Save group' : 'Add group'}</button>
+        {onCancel && (
+          <button type="button" className="secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

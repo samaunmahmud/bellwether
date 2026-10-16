@@ -83,6 +83,7 @@ export function FarmPage() {
           Tasks
         </Link>
         <Link to={`/farms/${farm.id}/records`}>Treatment records</Link>
+        <Link to={`/farms/${farm.id}/settings`}>Farm settings</Link>
       </p>
 
       <h2>Fields</h2>

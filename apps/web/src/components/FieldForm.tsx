@@ -10,17 +10,27 @@ export interface FieldFormValues {
 
 type LocationKind = 'farm' | 'postcode' | 'pin';
 
-/** FR-2.2: a field is located by its own postcode, a map pin, or (by default) the farm postcode. */
+const kindOf = (field: FieldFormValues): LocationKind =>
+  field.latitude !== null ? 'pin' : field.postcode ? 'postcode' : 'farm';
+
+/**
+ * FR-2.2: a field is located by its own postcode, a map pin, or (by default) the farm postcode.
+ * With `initial`, edits an existing field.
+ */
 export function FieldForm({
   onSubmit,
+  initial,
+  onCancel,
 }: {
   onSubmit: (values: FieldFormValues) => Promise<unknown>;
+  initial?: FieldFormValues;
+  onCancel?: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [kind, setKind] = useState<LocationKind>('farm');
-  const [postcode, setPostcode] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [kind, setKind] = useState<LocationKind>(initial ? kindOf(initial) : 'farm');
+  const [postcode, setPostcode] = useState(initial?.postcode ?? '');
+  const [latitude, setLatitude] = useState(String(initial?.latitude ?? ''));
+  const [longitude, setLongitude] = useState(String(initial?.longitude ?? ''));
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -37,6 +47,7 @@ export function FieldForm({
         latitude: kind === 'pin' ? Number(latitude) : null,
         longitude: kind === 'pin' ? Number(longitude) : null,
       });
+      if (initial) return;
       setName('');
       setPostcode('');
       setLatitude('');
@@ -50,7 +61,7 @@ export function FieldForm({
     <label className={kind === value ? 'is-active' : undefined}>
       <input
         type="radio"
-        name="field-location"
+        name={initial ? `field-location-${initial.name}` : 'field-location'}
         value={value}
         checked={kind === value}
         onChange={() => setKind(value)}
@@ -60,7 +71,11 @@ export function FieldForm({
   );
 
   return (
-    <form className="form" onSubmit={handleSubmit} aria-label="Add field">
+    <form
+      className="form"
+      onSubmit={handleSubmit}
+      aria-label={initial ? 'Edit field' : 'Add field'}
+    >
       <label>
         Field name
         <input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -108,7 +123,14 @@ export function FieldForm({
           {error}
         </p>
       )}
-      <button type="submit">Add field</button>
+      <div className="actions">
+        <button type="submit">{initial ? 'Save field' : 'Add field'}</button>
+        {onCancel && (
+          <button type="button" className="secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

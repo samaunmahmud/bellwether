@@ -102,4 +102,37 @@ describe('GroupForm (FR-2.3, FR-2.5)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('on or after');
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  describe('editing a group', () => {
+    const initial = {
+      name: 'North flock',
+      species: 'SHEEP' as const,
+      livestockClass: 'EWES' as const,
+      headCount: 120,
+      currentFieldId: 'f1',
+      housed: false,
+      lastShearingDate: '2026-05-20',
+      lambingStart: null,
+      lambingEnd: null,
+      lambsAtGrassThisSpring: false,
+    };
+
+    it("starts from the group's details, without species or field (moves are separate)", () => {
+      render(<GroupForm fields={fields} initial={initial} onSubmit={vi.fn()} />);
+      expect(screen.getByLabelText('Group name')).toHaveValue('North flock');
+      expect(screen.getByLabelText('Head count')).toHaveValue(120);
+      expect(screen.getByLabelText('Last shearing')).toHaveValue('2026-05-20');
+      expect(screen.queryByLabelText('Species')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Field')).not.toBeInTheDocument();
+    });
+
+    it('saves the changed details', async () => {
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(<GroupForm fields={fields} initial={initial} onSubmit={onSubmit} />);
+      fireEvent.change(screen.getByLabelText('Head count'), { target: { value: '118' } });
+      await userEvent.click(screen.getByLabelText('Housed'));
+      await userEvent.click(screen.getByRole('button', { name: 'Save group' }));
+      expect(onSubmit).toHaveBeenCalledWith({ ...initial, headCount: 118, housed: true });
+    });
+  });
 });

@@ -516,6 +516,20 @@ h2 {
   font-weight: 700;
 }
 
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.danger-zone {
+  border: 2px solid var(--high);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
 button.danger {
   background: var(--surface);
   color: var(--high);

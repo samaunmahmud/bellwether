@@ -51,6 +51,20 @@ export const GROUP_QUERY = gql`
       species
       livestockClass
       headCount
+      housed
+      currentField {
+        id
+        name
+      }
+      lastShearingDate
+      lambingStart
+      lambingEnd
+      lambsAtGrassThisSpring
+      cattleType
+      calvingStart
+      calvingEnd
+      archivedOn
+      archiveReason
       farm {
         id
         name

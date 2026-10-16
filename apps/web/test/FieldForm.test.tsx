@@ -65,4 +65,24 @@ describe('FieldForm (FR-2.2)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('both latitude and longitude');
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('edits a field, starting from its location', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <FieldForm
+        initial={{ name: 'Fell', postcode: null, latitude: 54.1, longitude: -2.5 }}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Latitude')).toHaveValue(54.1);
+    await userEvent.click(screen.getByLabelText('The farm postcode'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save field' }));
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Fell',
+      postcode: null,
+      latitude: null,
+      longitude: null,
+    });
+  });
 });

@@ -2,6 +2,7 @@ import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { ARCHIVE_GROUP, RESTORE_GROUP } from '../src/graphql/farms';
 import { GROUP_QUERY, RECORD_TREATMENT, VOID_TREATMENT } from '../src/graphql/records';
 import { GroupPage } from '../src/pages/GroupPage';
 import { routerFuture } from '../src/routerFuture';
@@ -40,6 +41,17 @@ const group = (
   species: 'CATTLE',
   livestockClass: 'DAIRY_COWS',
   headCount: 80,
+  housed: true,
+  currentField: null,
+  lastShearingDate: null,
+  lambingStart: null,
+  lambingEnd: null,
+  lambsAtGrassThisSpring: false,
+  cattleType: 'DAIRY',
+  calvingStart: null,
+  calvingEnd: null,
+  archivedOn: null,
+  archiveReason: null,
   farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm' },
   withdrawal: { __typename: 'WithdrawalStatus', ...withdrawal },
   treatments: [treatment],
@@ -198,6 +210,64 @@ describe('GroupPage', () => {
       await userEvent.click(within(list).getByRole('button', { name: /^Correct/ }));
       const form = screen.getByRole('form', { name: 'Correct treatment' });
       expect(within(form).getByLabelText('Batch number')).toHaveValue('B123');
+    });
+  });
+
+  describe('editing and archiving the group', () => {
+    const clear = { inWithdrawal: false, meatEnds: null, milkEnds: null };
+
+    it("opens the group's details for editing", async () => {
+      renderWith([groupMock(group(clear))]);
+      await userEvent.click(await screen.findByRole('button', { name: 'Edit details' }));
+      const form = screen.getByRole('form', { name: 'Edit livestock group' });
+      expect(within(form).getByLabelText('Head count')).toHaveValue(80);
+    });
+
+    it('archives the group with a date and reason', async () => {
+      const archived = vi.fn(() => ({
+        data: {
+          archiveLivestockGroup: {
+            __typename: 'LivestockGroup',
+            id: 'g1',
+            archivedOn: '2026-06-01',
+          },
+        },
+      }));
+      renderWith([
+        groupMock(group(clear)),
+        {
+          request: {
+            query: ARCHIVE_GROUP,
+            variables: { id: 'g1', input: { archivedOn: '2026-06-01', reason: 'Sold' } },
+          },
+          result: archived,
+        },
+        groupMock(group(clear)),
+      ]);
+      await userEvent.click(await screen.findByRole('button', { name: 'Archive group' }));
+      const form = screen.getByRole('form', { name: 'Archive group' });
+      fireEvent.change(within(form).getByLabelText('Date'), { target: { value: '2026-06-01' } });
+      await userEvent.type(within(form).getByLabelText('Reason'), 'Sold');
+      await userEvent.click(within(form).getByRole('button', { name: 'Archive' }));
+      await vi.waitFor(() => expect(archived).toHaveBeenCalled());
+    });
+
+    it('shows an archived group as archived, in words, with restore', async () => {
+      const restored = vi.fn(() => ({
+        data: {
+          restoreLivestockGroup: { __typename: 'LivestockGroup', id: 'g1', archivedOn: null },
+        },
+      }));
+      const archivedGroup = group(clear, { archivedOn: '2026-05-30', archiveReason: 'Sold' });
+      renderWith([
+        groupMock(archivedGroup),
+        { request: { query: RESTORE_GROUP, variables: { id: 'g1' } }, result: restored },
+        groupMock(archivedGroup),
+      ]);
+      expect(await screen.findByText(/Archived 30 May · Sold/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Archive group' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Restore group' }));
+      await vi.waitFor(() => expect(restored).toHaveBeenCalled());
     });
   });
 });
