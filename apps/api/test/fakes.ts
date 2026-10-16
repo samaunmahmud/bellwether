@@ -5,6 +5,7 @@ import type { WeatherClient } from '../src/clients/weatherClient';
 import { createApp } from '../src/app';
 import { silentLogger } from '../src/logger';
 import { InMemoryAnimalRepository } from '../src/repositories/animalRepository';
+import { InMemoryFarmRepository } from '../src/repositories/farmRepository';
 
 export const UXBRIDGE: Location = {
   postcode: 'UB8 3PH',
@@ -64,6 +65,7 @@ export function buildTestApp(overrides: Partial<Parameters<typeof createApp>[0]>
     weather: weather.client,
     cache: new MemoryCache(),
     animals: new InMemoryAnimalRepository(),
+    farms: new InMemoryFarmRepository(),
     logger: silentLogger,
     now: () => new Date('2026-06-01T09:00:00Z'),
     ...overrides,
