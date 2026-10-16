@@ -16,26 +16,34 @@ export interface TreatmentFormValues {
 
 const orNull = (value: string) => value.trim() || null;
 
+const text = (value: string | number | null | undefined) => (value == null ? '' : String(value));
+
 /**
  * FR-6.1: record a treatment. Every field is typed in by the farmer; Bellwether never
  * suggests products, doses or withdrawal periods (FR-6.3).
+ * With `initial`, it corrects an existing record and asks why (FR-6.5).
  */
 export function TreatmentForm({
   headCount,
   onSubmit,
+  initial,
+  onCancel,
 }: {
   headCount: number;
-  onSubmit: (values: TreatmentFormValues) => Promise<unknown>;
+  onSubmit: (values: TreatmentFormValues, changeReason?: string) => Promise<unknown>;
+  initial?: TreatmentFormValues;
+  onCancel?: () => void;
 }) {
-  const [date, setDate] = useState(todayIso());
-  const [productName, setProductName] = useState('');
-  const [batchNumber, setBatchNumber] = useState('');
-  const [quantityUsed, setQuantityUsed] = useState('');
-  const [animalsTreated, setAnimalsTreated] = useState('');
-  const [administeredBy, setAdministeredBy] = useState('');
-  const [reason, setReason] = useState('');
-  const [meatDays, setMeatDays] = useState('');
-  const [milkDays, setMilkDays] = useState('');
+  const [date, setDate] = useState(initial?.date ?? todayIso());
+  const [productName, setProductName] = useState(text(initial?.productName));
+  const [batchNumber, setBatchNumber] = useState(text(initial?.batchNumber));
+  const [quantityUsed, setQuantityUsed] = useState(text(initial?.quantityUsed));
+  const [animalsTreated, setAnimalsTreated] = useState(text(initial?.animalsTreated));
+  const [administeredBy, setAdministeredBy] = useState(text(initial?.administeredBy));
+  const [reason, setReason] = useState(text(initial?.reason));
+  const [meatDays, setMeatDays] = useState(text(initial?.meatWithdrawalDays));
+  const [milkDays, setMilkDays] = useState(text(initial?.milkWithdrawalDays));
+  const [changeReason, setChangeReason] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -47,7 +55,7 @@ export function TreatmentForm({
     }
     setError(null);
     try {
-      await onSubmit({
+      const values = {
         date,
         productName: productName.trim(),
         batchNumber: orNull(batchNumber),
@@ -57,7 +65,12 @@ export function TreatmentForm({
         reason: orNull(reason),
         meatWithdrawalDays: Number(meatDays),
         milkWithdrawalDays: milkDays === '' ? null : Number(milkDays),
-      });
+      };
+      if (initial) {
+        await onSubmit(values, changeReason.trim());
+        return;
+      }
+      await onSubmit(values);
       setProductName('');
       setBatchNumber('');
       setQuantityUsed('');
@@ -71,7 +84,11 @@ export function TreatmentForm({
   }
 
   return (
-    <form className="form" onSubmit={handleSubmit} aria-label="Record treatment">
+    <form
+      className="form"
+      onSubmit={handleSubmit}
+      aria-label={initial ? 'Correct treatment' : 'Record treatment'}
+    >
       <p className="notice" role="note">
         Withdrawal periods must come from the product label or your vet.
       </p>
@@ -153,12 +170,30 @@ export function TreatmentForm({
           />
         </label>
       </div>
+      {initial && (
+        <label>
+          Why are you correcting this?
+          <input
+            value={changeReason}
+            onChange={(e) => setChangeReason(e.target.value)}
+            placeholder="Kept in the record's history"
+            required
+          />
+        </label>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <button type="submit">Record treatment</button>
+      <div className="actions">
+        <button type="submit">{initial ? 'Save correction' : 'Record treatment'}</button>
+        {onCancel && (
+          <button type="button" className="secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

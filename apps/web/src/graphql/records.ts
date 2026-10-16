@@ -1,6 +1,22 @@
 import { gql } from '@apollo/client';
 
+const HISTORY_FIELDS = gql`
+  fragment HistoryFields on RecordRevision {
+    id
+    action
+    at
+    by
+    reason
+    changes {
+      field
+      from
+      to
+    }
+  }
+`;
+
 const TREATMENT_FIELDS = gql`
+  ${HISTORY_FIELDS}
   fragment TreatmentFields on Treatment {
     id
     date
@@ -17,6 +33,11 @@ const TREATMENT_FIELDS = gql`
     group {
       id
       name
+    }
+    voided
+    voidReason
+    history {
+      ...HistoryFields
     }
   }
 `;
@@ -47,6 +68,11 @@ export const GROUP_QUERY = gql`
         date
         type
         note
+        voided
+        voidReason
+        history {
+          ...HistoryFields
+        }
       }
     }
   }
@@ -73,6 +99,40 @@ export const TREATMENTS_QUERY = gql`
   query Treatments($farmId: ID!, $from: String!, $to: String!) {
     treatments(farmId: $farmId, from: $from, to: $to) {
       ...TreatmentFields
+    }
+  }
+`;
+
+// FR-6.5: corrections and voids. The page refetches the group, so only ids come back.
+
+export const CORRECT_TREATMENT = gql`
+  mutation CorrectTreatment($id: ID!, $input: CorrectTreatmentInput!, $reason: String!) {
+    correctTreatment(id: $id, input: $input, reason: $reason) {
+      id
+    }
+  }
+`;
+
+export const VOID_TREATMENT = gql`
+  mutation VoidTreatment($id: ID!, $reason: String!) {
+    voidTreatment(id: $id, reason: $reason) {
+      id
+    }
+  }
+`;
+
+export const CORRECT_OBSERVATION = gql`
+  mutation CorrectObservation($id: ID!, $input: CorrectObservationInput!, $reason: String!) {
+    correctObservation(id: $id, input: $input, reason: $reason) {
+      id
+    }
+  }
+`;
+
+export const VOID_OBSERVATION = gql`
+  mutation VoidObservation($id: ID!, $reason: String!) {
+    voidObservation(id: $id, reason: $reason) {
+      id
     }
   }
 `;

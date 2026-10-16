@@ -2,7 +2,7 @@ import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { GROUP_QUERY, RECORD_TREATMENT } from '../src/graphql/records';
+import { GROUP_QUERY, RECORD_TREATMENT, VOID_TREATMENT } from '../src/graphql/records';
 import { GroupPage } from '../src/pages/GroupPage';
 import { routerFuture } from '../src/routerFuture';
 
@@ -21,13 +21,19 @@ const treatment = {
   meatWithdrawalEnds: '2026-06-29',
   milkWithdrawalEnds: '2026-06-04',
   group: { __typename: 'LivestockGroup', id: 'g1', name: 'Dairy herd' },
+  voided: false,
+  voidReason: null,
+  history: [] as unknown[],
 };
 
-const group = (withdrawal: {
-  inWithdrawal: boolean;
-  meatEnds: string | null;
-  milkEnds: string | null;
-}) => ({
+const group = (
+  withdrawal: {
+    inWithdrawal: boolean;
+    meatEnds: string | null;
+    milkEnds: string | null;
+  },
+  extra: Record<string, unknown> = {},
+) => ({
   __typename: 'LivestockGroup',
   id: 'g1',
   name: 'Dairy herd',
@@ -44,8 +50,12 @@ const group = (withdrawal: {
       date: '2026-06-10',
       type: 'Herd check',
       note: '2 lame cows',
+      voided: false,
+      voidReason: null,
+      history: [],
     },
   ],
+  ...extra,
 });
 
 const groupMock = (data: unknown): MockedResponse => ({
@@ -125,5 +135,69 @@ describe('GroupPage', () => {
   it('says when the group doesn’t exist or isn’t yours', async () => {
     renderWith([groupMock(null)]);
     expect(await screen.findByText('Group not found')).toBeInTheDocument();
+  });
+
+  describe('corrections and voids (FR-6.5)', () => {
+    const clear = { inWithdrawal: false, meatEnds: null, milkEnds: null };
+    const revision = {
+      __typename: 'RecordRevision',
+      id: 'r1',
+      action: 'EDITED',
+      at: '2026-06-02T10:00:00.000Z',
+      by: 'ann@example.com',
+      reason: 'Typo in batch',
+      changes: [{ __typename: 'FieldChange', field: 'Batch number', from: 'B12', to: 'B123' }],
+    };
+
+    it('shows a voided treatment struck through, labelled in words, with no actions', async () => {
+      renderWith([
+        groupMock(
+          group(clear, {
+            treatments: [{ ...treatment, voided: true, voidReason: 'Entered twice' }],
+          }),
+        ),
+      ]);
+      const list = await screen.findByRole('list', { name: 'Treatments' });
+      expect(within(list).getByText('Voided: Entered twice')).toBeInTheDocument();
+      expect(within(list).queryByRole('button', { name: /Correct/ })).not.toBeInTheDocument();
+    });
+
+    it("shows a record's history: who, when, why and what changed", async () => {
+      renderWith([
+        groupMock(group(clear, { treatments: [{ ...treatment, history: [revision] }] })),
+      ]);
+      const list = await screen.findByRole('list', { name: 'Treatments' });
+      await userEvent.click(within(list).getByText('History (1)'));
+      expect(within(list).getByText(/Corrected by ann@example.com/)).toBeInTheDocument();
+      expect(within(list).getByText(/Typo in batch/)).toBeInTheDocument();
+      expect(within(list).getByText('Batch number: B12 → B123')).toBeInTheDocument();
+    });
+
+    it('voids a treatment with a reason', async () => {
+      const voided = vi.fn(() => ({
+        data: { voidTreatment: { __typename: 'Treatment', id: 't1' } },
+      }));
+      renderWith([
+        groupMock(group(clear)),
+        {
+          request: { query: VOID_TREATMENT, variables: { id: 't1', reason: 'Entered twice' } },
+          result: voided,
+        },
+        groupMock(group(clear)),
+      ]);
+      const list = await screen.findByRole('list', { name: 'Treatments' });
+      await userEvent.click(within(list).getByRole('button', { name: /^Void/ }));
+      await userEvent.type(within(list).getByLabelText('Why void this record?'), 'Entered twice');
+      await userEvent.click(within(list).getByRole('button', { name: 'Void record' }));
+      await vi.waitFor(() => expect(voided).toHaveBeenCalled());
+    });
+
+    it('opens a correction form filled in from the record', async () => {
+      renderWith([groupMock(group(clear))]);
+      const list = await screen.findByRole('list', { name: 'Treatments' });
+      await userEvent.click(within(list).getByRole('button', { name: /^Correct/ }));
+      const form = screen.getByRole('form', { name: 'Correct treatment' });
+      expect(within(form).getByLabelText('Batch number')).toHaveValue('B123');
+    });
   });
 });

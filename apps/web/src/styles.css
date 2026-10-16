@@ -389,6 +389,44 @@ select:focus-visible {
   gap: 4px;
 }
 
+.log__row > .history {
+  grid-column: 1 / -1;
+}
+
+/* FR-6.5: voided records stay visible, struck through and labelled in words */
+.log__row--voided .log__text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.records__voided td {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.records__voided td:last-child {
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.history summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.history__list {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.history__list p {
+  margin: 4px 0;
+}
+
 .log__row--overdue .log__due {
   color: var(--high);
   font-weight: 700;

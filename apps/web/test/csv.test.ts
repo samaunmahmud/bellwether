@@ -41,16 +41,26 @@ describe('treatmentsCsv (FR-6.4)', () => {
     meatWithdrawalEnds: '2026-06-29',
     milkWithdrawalEnds: null,
     group: { id: 'g1', name: 'Dairy herd' },
+    voided: false,
+    voidReason: null,
+    history: [],
   };
 
   it('has an audit-friendly header and one row per treatment', () => {
     const lines = treatmentsCsv([row]).split('\r\n');
     expect(lines[0]).toBe(
       'Date,Group,Product,Batch,Quantity used,Animals treated,Administered by,Reason,' +
-        'Meat withdrawal (days),Meat withdrawal ends,Milk withdrawal (days),Milk withdrawal ends',
+        'Meat withdrawal (days),Meat withdrawal ends,Milk withdrawal (days),Milk withdrawal ends,Status',
     );
     expect(lines[1]).toBe(
-      '2026-06-01,Dairy herd,"Product, from label",B123,400 ml,12,Ann,,28,2026-06-29,,',
+      '2026-06-01,Dairy herd,"Product, from label",B123,400 ml,12,Ann,,28,2026-06-29,,,',
     );
+  });
+
+  it('keeps voided treatments, marked with the reason (FR-6.5)', () => {
+    const lines = treatmentsCsv([{ ...row, voided: true, voidReason: 'Entered twice' }]).split(
+      '\r\n',
+    );
+    expect(lines[1]!.endsWith(',Voided: Entered twice')).toBe(true);
   });
 });

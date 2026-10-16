@@ -100,7 +100,24 @@ export interface Farm extends FarmSummary {
 
 // --- Records (FR-6) ---
 
-export interface TreatmentRow {
+/** One correction or void (FR-6.5) */
+export interface RecordRevision {
+  id: string;
+  action: 'EDITED' | 'VOIDED';
+  at: string;
+  by: string;
+  reason: string;
+  changes: Array<{ field: string; from: string | null; to: string | null }>;
+}
+
+/** Void status and history shared by treatments and checks (FR-6.5) */
+export interface Correctable {
+  voided: boolean;
+  voidReason: string | null;
+  history: RecordRevision[];
+}
+
+export interface TreatmentRow extends Correctable {
   id: string;
   date: string;
   productName: string;
@@ -116,7 +133,7 @@ export interface TreatmentRow {
   group: { id: string; name: string };
 }
 
-export interface ObservationRow {
+export interface ObservationRow extends Correctable {
   id: string;
   date: string;
   type: string;

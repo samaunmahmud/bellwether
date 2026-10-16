@@ -17,7 +17,7 @@ export function toCsv(rows: Cell[][]): string {
   return rows.map((row) => row.map(cell).join(',') + '\r\n').join('');
 }
 
-/** FR-6.4: treatment records for an audit, one row per treatment. */
+/** FR-6.4: treatment records for an audit, one row per treatment. Voided ones stay, marked (FR-6.5). */
 export function treatmentsCsv(treatments: TreatmentRow[]): string {
   return toCsv([
     [
@@ -33,6 +33,7 @@ export function treatmentsCsv(treatments: TreatmentRow[]): string {
       'Meat withdrawal ends',
       'Milk withdrawal (days)',
       'Milk withdrawal ends',
+      'Status',
     ],
     ...treatments.map((t) => [
       t.date,
@@ -47,6 +48,7 @@ export function treatmentsCsv(treatments: TreatmentRow[]): string {
       t.meatWithdrawalEnds,
       t.milkWithdrawalDays,
       t.milkWithdrawalEnds,
+      t.voided ? `Voided: ${t.voidReason ?? ''}` : null,
     ]),
   ]);
 }

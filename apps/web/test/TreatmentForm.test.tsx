@@ -61,4 +61,34 @@ describe('TreatmentForm (FR-6.1, FR-6.3)', () => {
     expect(screen.getByLabelText('Meat withdrawal (days)')).toHaveValue(null);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
+
+  describe('correcting a treatment (FR-6.5)', () => {
+    const initial = {
+      date: '2026-06-01',
+      productName: 'Product from label',
+      batchNumber: 'B123',
+      quantityUsed: null,
+      animalsTreated: 12,
+      administeredBy: 'Ann',
+      reason: null,
+      meatWithdrawalDays: 28,
+      milkWithdrawalDays: null,
+    };
+
+    it('starts from the record and sends the change with a reason', async () => {
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(<TreatmentForm headCount={80} initial={initial} onSubmit={onSubmit} />);
+      expect(screen.getByLabelText('Product name')).toHaveValue('Product from label');
+      await userEvent.clear(screen.getByLabelText('Batch number'));
+      await userEvent.type(screen.getByLabelText('Batch number'), 'B124');
+      await userEvent.type(screen.getByLabelText('Why are you correcting this?'), 'Typo');
+      await userEvent.click(screen.getByRole('button', { name: 'Save correction' }));
+      expect(onSubmit).toHaveBeenCalledWith({ ...initial, batchNumber: 'B124' }, 'Typo');
+    });
+
+    it('needs a reason for the correction', () => {
+      render(<TreatmentForm headCount={80} initial={initial} onSubmit={vi.fn()} />);
+      expect(screen.getByLabelText('Why are you correcting this?')).toBeRequired();
+    });
+  });
 });

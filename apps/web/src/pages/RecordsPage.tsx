@@ -75,11 +75,12 @@ export function RecordsPage() {
                   <th>Reason</th>
                   <th>Meat withdrawal ends</th>
                   <th>Milk withdrawal ends</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((t) => (
-                  <tr key={t.id}>
+                  <tr key={t.id} className={t.voided ? 'records__voided' : undefined}>
                     <td>{t.date}</td>
                     <td>{t.group.name}</td>
                     <td>{t.productName}</td>
@@ -96,6 +97,7 @@ export function RecordsPage() {
                         ? `${t.milkWithdrawalEnds} (${t.milkWithdrawalDays} d)`
                         : ''}
                     </td>
+                    <td>{t.voided ? `Voided: ${t.voidReason ?? ''}` : ''}</td>
                   </tr>
                 ))}
               </tbody>

@@ -22,24 +22,38 @@ const CHECKS: Record<Species, string[]> = {
   CATTLE: ['Herd inspected', 'Feet checked', 'Shade and water checked', 'Calves checked', 'Other'],
 };
 
-/** FR-6.6: record a check or observation against a group. */
+/**
+ * FR-6.6: record a check or observation against a group.
+ * With `initial`, it corrects an existing check and asks why (FR-6.5).
+ */
 export function ObservationForm({
   species,
   onSubmit,
+  initial,
+  onCancel,
 }: {
   species: Species;
-  onSubmit: (values: ObservationFormValues) => Promise<unknown>;
+  onSubmit: (values: ObservationFormValues, changeReason?: string) => Promise<unknown>;
+  initial?: ObservationFormValues;
+  onCancel?: () => void;
 }) {
-  const [date, setDate] = useState(todayIso());
-  const [type, setType] = useState(CHECKS[species][0]!);
-  const [note, setNote] = useState('');
+  const [date, setDate] = useState(initial?.date ?? todayIso());
+  const [type, setType] = useState(initial?.type ?? CHECKS[species][0]!);
+  const [note, setNote] = useState(initial?.note ?? '');
+  const [changeReason, setChangeReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const checks = CHECKS[species].includes(type) ? CHECKS[species] : [type, ...CHECKS[species]];
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      await onSubmit({ date, type, note: note.trim() || null });
+      const values = { date, type, note: note.trim() || null };
+      if (initial) {
+        await onSubmit(values, changeReason.trim());
+        return;
+      }
+      await onSubmit(values);
       setNote('');
     } catch (err) {
       setError(errorMessage(err));
@@ -47,7 +61,11 @@ export function ObservationForm({
   }
 
   return (
-    <form className="form" onSubmit={handleSubmit} aria-label="Record check">
+    <form
+      className="form"
+      onSubmit={handleSubmit}
+      aria-label={initial ? 'Correct check' : 'Record check'}
+    >
       <div className="form--inline">
         <label>
           Date
@@ -62,7 +80,7 @@ export function ObservationForm({
         <label>
           Check
           <select value={type} onChange={(e) => setType(e.target.value)}>
-            {CHECKS[species].map((c) => (
+            {checks.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
@@ -76,12 +94,30 @@ export function ObservationForm({
           placeholder="e.g. 2 struck ewes found"
         />
       </label>
+      {initial && (
+        <label>
+          Why are you correcting this?
+          <input
+            value={changeReason}
+            onChange={(e) => setChangeReason(e.target.value)}
+            placeholder="Kept in the record's history"
+            required
+          />
+        </label>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <button type="submit">Record check</button>
+      <div className="actions">
+        <button type="submit">{initial ? 'Save correction' : 'Record check'}</button>
+        {onCancel && (
+          <button type="button" className="secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }
