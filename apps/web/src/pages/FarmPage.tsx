@@ -75,7 +75,10 @@ export function FarmPage() {
     <section>
       <h1>{farm.name}</h1>
       <p className="muted">{farm.postcode}</p>
-      <p>
+      <p className="actions">
+        <Link to={`/farms/${farm.id}/briefing`} className="button">
+          Morning briefing
+        </Link>
         <Link to={`/farms/${farm.id}/records`}>Treatment records</Link>
       </p>
 

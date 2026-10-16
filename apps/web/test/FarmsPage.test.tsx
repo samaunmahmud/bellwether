@@ -29,9 +29,19 @@ describe('FarmsPage (FR-2.1)', () => {
       { request: { query: FARMS_QUERY }, result: { data: { farms: [farm('a', 'Hill Farm')] } } },
     ]);
     expect(screen.getByText('Loading farms…')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: /Hill Farm/ })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /^Hill Farm/ })).toHaveAttribute(
       'href',
       '/farms/a',
+    );
+  });
+
+  it('links straight to each farm’s morning briefing', async () => {
+    renderWith([
+      { request: { query: FARMS_QUERY }, result: { data: { farms: [farm('a', 'Hill Farm')] } } },
+    ]);
+    expect(await screen.findByRole('link', { name: 'Briefing for Hill Farm' })).toHaveAttribute(
+      'href',
+      '/farms/a/briefing',
     );
   });
 
@@ -58,7 +68,7 @@ describe('FarmsPage (FR-2.1)', () => {
     await userEvent.type(screen.getByLabelText('Main postcode'), 'ub8 3ph');
     await userEvent.click(screen.getByRole('button', { name: 'Add farm' }));
 
-    expect(await screen.findByRole('link', { name: /Hill Farm/ })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /^Hill Farm/ })).toBeInTheDocument();
   });
 
   it('shows a clear error, e.g. for an unknown postcode', async () => {

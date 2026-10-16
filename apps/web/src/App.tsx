@@ -4,6 +4,7 @@ import { NavBar } from './components/NavBar';
 import { RequireAuth } from './components/RequireAuth';
 import { AnimalsPage } from './pages/AnimalsPage';
 import { AuthPage } from './pages/AuthPage';
+import { BriefingPage } from './pages/BriefingPage';
 import { FarmPage } from './pages/FarmPage';
 import { FarmsPage } from './pages/FarmsPage';
 import { GroupPage } from './pages/GroupPage';
@@ -27,6 +28,7 @@ export function App() {
 
           <Route path="/farms" element={signedIn(<FarmsPage />)} />
           <Route path="/farms/:id" element={signedIn(<FarmPage />)} />
+          <Route path="/farms/:id/briefing" element={signedIn(<BriefingPage />)} />
           <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
           <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />

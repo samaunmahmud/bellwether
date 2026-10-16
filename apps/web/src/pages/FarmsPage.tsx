@@ -46,6 +46,13 @@ export function FarmsPage() {
               <Link to={`/farms/${farm.id}`} className="list__link">
                 <strong>{farm.name}</strong> <span className="muted">{farm.postcode}</span>
               </Link>
+              <Link
+                to={`/farms/${farm.id}/briefing`}
+                className="button"
+                aria-label={`Briefing for ${farm.name}`}
+              >
+                Briefing
+              </Link>
             </li>
           ))}
         </ul>

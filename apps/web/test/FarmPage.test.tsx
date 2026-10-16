@@ -141,6 +141,14 @@ describe('FarmPage', () => {
     expect(within(herd).queryByText(/In withdrawal/)).not.toBeInTheDocument();
   });
 
+  it('links to the morning briefing', async () => {
+    renderWith([farmMock(farm)]);
+    expect(await screen.findByRole('link', { name: 'Morning briefing' })).toHaveAttribute(
+      'href',
+      '/farms/farm1/briefing',
+    );
+  });
+
   it('links to the farm’s treatment records for audits (FR-6.4)', async () => {
     renderWith([farmMock(farm)]);
     expect(await screen.findByRole('link', { name: 'Treatment records' })).toHaveAttribute(

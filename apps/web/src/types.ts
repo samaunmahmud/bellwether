@@ -134,3 +134,36 @@ export interface GroupRecords {
   treatments: TreatmentRow[];
   observations: ObservationRow[];
 }
+
+// --- Briefing (FR-4, FR-5) ---
+
+export interface BriefingItem {
+  riskId: string;
+  riskName: string;
+  level: RiskLevel;
+  daysAffected: Array<{ date: string; level: RiskLevel }>;
+  reason: string;
+  checks: string[];
+  isNew: boolean;
+}
+
+export interface Briefing {
+  date: string;
+  generatedAt: string;
+  isStale: boolean;
+  flaggedCount: number;
+  farm: { id: string; name: string };
+  overdueTasks: Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    group: { id: string; name: string };
+  }>;
+  groups: Array<{
+    groupId: string;
+    groupName: string;
+    fieldName: string | null;
+    items: BriefingItem[];
+  }>;
+  quietGroups: Array<{ groupId: string; groupName: string }>;
+}
