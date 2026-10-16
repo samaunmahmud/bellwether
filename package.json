@@ -16,6 +16,8 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=@bellwether/api",
+    "db:test:prepare": "npm run db:test:prepare --workspace=@bellwether/api",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -31,5 +33,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.10.1": true,
+    "prisma@7.10.1": true
   }
 }

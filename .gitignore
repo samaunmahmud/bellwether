@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+# Prisma client, generated on npm install
+apps/api/src/generated/
 .env
 .env.local
 *.log

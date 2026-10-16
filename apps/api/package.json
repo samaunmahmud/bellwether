@@ -10,10 +10,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:test:prepare": "DATABASE_URL=$TEST_DATABASE_URL prisma migrate deploy"
   },
   "dependencies": {
     "@bellwether/risk-engine": "*",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "graphql": "^16.10.0",
     "graphql-yoga": "^5.10.6",
     "ioredis": "^5.4.2"
@@ -21,6 +28,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@vitest/coverage-v8": "^2.1.8",
+    "prisma": "7.10.1",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "vitest": "^2.1.8"
