@@ -1,15 +1,32 @@
+import { daysBetween } from '../dates';
 import { LEVEL_SCORE, raiseLevel } from '../levels';
-import type { DailyRisk, DailyWeather, RiskLevel, RiskModule } from '../types';
+import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from '../types';
 
 // Heuristic thresholds. Blowfly strike risk rises in warm, humid weather,
 // especially after rain.
-// TODO(verify source): check against UK sheep health / flystrike guidance.
+// heuristic TODO(verify source): check against UK sheep health / flystrike guidance.
 export const BLOWFLY_COLD_MEAN_C = 9;
 export const BLOWFLY_WARM_MEAN_C = 15;
 export const BLOWFLY_HUMID_PCT = 70;
 export const BLOWFLY_RAIN_MM = 2;
+// FR-3.4: fleece regrowth after which shorn sheep are treated as unshorn again (~6 weeks).
+// heuristic TODO(verify source)
+export const BLOWFLY_FLEECE_DAYS = 42;
 
-function assessDay(day: DailyWeather, previous: DailyWeather | undefined): DailyRisk {
+/** Why a flock's fleece raises the risk on this day, or null if it doesn't (FR-3.4). */
+function fleeceNote(date: string, ctx: RiskContext): string | null {
+  if (ctx.group?.species !== 'sheep') return null;
+  const shorn = ctx.group.lastShearingDate;
+  if (!shorn) return 'no shearing date is recorded';
+  const days = daysBetween(shorn, date);
+  return days > BLOWFLY_FLEECE_DAYS ? `the flock was shorn ${days} days ago` : null;
+}
+
+function assessDay(
+  day: DailyWeather,
+  previous: DailyWeather | undefined,
+  ctx: RiskContext,
+): DailyRisk {
   let level: RiskLevel;
   let reason: string;
 
@@ -35,6 +52,12 @@ function assessDay(day: DailyWeather, previous: DailyWeather | undefined): Daily
     reason += '; raised because of rain the day before';
   }
 
+  const fleece = fleeceNote(day.date, ctx);
+  if (fleece && level !== 'HIGH') {
+    level = raiseLevel(level);
+    reason += `; raised because ${fleece}`;
+  }
+
   return { date: day.date, level, score: LEVEL_SCORE[level], reason };
 }
 
@@ -43,7 +66,7 @@ export const sheepBlowflyRisk: RiskModule = {
   name: 'Sheep blowfly strike',
   category: 'farm',
   animals: ['sheep'],
-  assess(days) {
-    return days.map((day, i) => assessDay(day, i > 0 ? days[i - 1] : undefined));
+  assess(days, ctx = {}) {
+    return days.map((day, i) => assessDay(day, i > 0 ? days[i - 1] : undefined, ctx));
   },
 };
