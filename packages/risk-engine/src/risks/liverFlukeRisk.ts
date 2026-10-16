@@ -1,6 +1,13 @@
 import { addDays } from '../dates';
 import { clampScore } from '../levels';
-import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from '../types';
+import type {
+  DailyRisk,
+  DailyWeather,
+  RiskContext,
+  RiskLevel,
+  RiskModule,
+  SuggestedChecks,
+} from '../types';
 
 /*
  * FR-3.3: liver fluke season risk, using the Ollerenshaw index.
@@ -151,7 +158,21 @@ function describe(season: SeasonIndex, year: number): { level: RiskLevel; reason
   return { level, reason };
 }
 
+/** FR-5.1: general husbandry checks only. Never products, doses or withdrawal periods. */
+const CHECKS: SuggestedChecks = {
+  MEDIUM: [
+    'Discuss fluke testing with your vet or adviser',
+    'Keep stock off wet, boggy ground where possible',
+  ],
+  HIGH: [
+    'Speak to your vet about fluke testing and a control plan this season',
+    'Fence off or avoid wet, snail-friendly ground where possible',
+    'Watch for weight loss or poor condition',
+  ],
+};
+
 export const liverFlukeRisk: RiskModule = {
+  checks: CHECKS,
   id: 'liver-fluke',
   name: 'Liver fluke season',
   category: 'farm',

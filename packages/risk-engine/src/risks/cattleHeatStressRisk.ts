@@ -6,6 +6,7 @@ import type {
   RiskContext,
   RiskLevel,
   RiskModule,
+  SuggestedChecks,
 } from '../types';
 
 // Band thresholds vary in the literature (dairy cattle are often given lower ones).
@@ -85,7 +86,18 @@ function assessDay(day: DailyWeather, ctx: RiskContext): DailyRisk {
   return result;
 }
 
+/** FR-5.1: general husbandry checks only. Never products, doses or withdrawal periods. */
+const CHECKS: SuggestedChecks = {
+  MEDIUM: ['Check shade and water supply', 'Watch for heavy breathing or cattle bunching together'],
+  HIGH: [
+    'Check shade and water supply at least twice a day',
+    'Avoid handling or moving cattle in the hottest hours',
+    'Contact your vet if animals show open-mouth breathing or distress',
+  ],
+};
+
 export const cattleHeatStressRisk: RiskModule = {
+  checks: CHECKS,
   id: 'cattle-heat-stress',
   name: 'Cattle heat stress',
   category: 'farm',

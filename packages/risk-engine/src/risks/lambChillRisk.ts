@@ -1,6 +1,13 @@
 import { addDays } from '../dates';
 import { clampScore, LEVEL_SCORE } from '../levels';
-import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from '../types';
+import type {
+  DailyRisk,
+  DailyWeather,
+  RiskContext,
+  RiskLevel,
+  RiskModule,
+  SuggestedChecks,
+} from '../types';
 
 /*
  * FR-3.2: newborn lamb chill, using the chill index (potential heat loss, kJ/m²/h):
@@ -90,7 +97,21 @@ function assessDay(day: DailyWeather, ctx: RiskContext): DailyRisk {
   return { date: day.date, level, score, reason };
 }
 
+/** FR-5.1: general husbandry checks only. Never products, doses or withdrawal periods. */
+const CHECKS: SuggestedChecks = {
+  MEDIUM: [
+    'Check newborn lambs often for signs of chilling',
+    'Make sure shelter is available in lambing fields',
+  ],
+  HIGH: [
+    'Check newborn lambs frequently, especially in their first days',
+    'Move ewes with newborn lambs to shelter where possible',
+    'Check that ewes are feeding their lambs',
+  ],
+};
+
 export const lambChillRisk: RiskModule = {
+  checks: CHECKS,
   id: 'lamb-chill',
   name: 'Newborn lamb chill',
   category: 'farm',

@@ -68,6 +68,8 @@ export interface RiskModule {
   category: AnimalCategory;
   animals: string[];
   assess(days: DailyWeather[], ctx?: RiskContext): DailyRisk[];
+  /** FR-5.1: general husbandry checks to suggest at MEDIUM and HIGH. Never products or doses. */
+  checks?: SuggestedChecks;
   /** FR-3.0: false when the module doesn't apply to this group or period (default: applies). */
   appliesTo?(ctx: RiskContext, days: DailyWeather[]): boolean;
   /** FR-3.0: the past weather this module needs, given the first forecast day (default: none). */
@@ -78,4 +80,10 @@ export interface DateRange {
   /** Inclusive ISO dates */
   start: string;
   end: string;
+}
+
+/** FR-5.1: suggested checks per level, kept with the module so they can be reviewed in one place. */
+export interface SuggestedChecks {
+  MEDIUM: readonly string[];
+  HIGH: readonly string[];
 }

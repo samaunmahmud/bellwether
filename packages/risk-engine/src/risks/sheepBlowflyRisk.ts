@@ -1,6 +1,13 @@
 import { daysBetween } from '../dates';
 import { LEVEL_SCORE, raiseLevel } from '../levels';
-import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from '../types';
+import type {
+  DailyRisk,
+  DailyWeather,
+  RiskContext,
+  RiskLevel,
+  RiskModule,
+  SuggestedChecks,
+} from '../types';
 
 // Heuristic thresholds. Blowfly strike risk rises in warm, humid weather,
 // especially after rain.
@@ -61,7 +68,20 @@ function assessDay(
   return { date: day.date, level, score: LEVEL_SCORE[level], reason };
 }
 
+/** FR-5.1: general husbandry checks only. Never products, doses or withdrawal periods. */
+const CHECKS: SuggestedChecks = {
+  MEDIUM: [
+    'Check the flock for signs of strike, such as damp or discoloured wool',
+    'Keep tails and breech areas clean',
+  ],
+  HIGH: [
+    'Check the flock daily for signs of strike',
+    'Speak to your vet or adviser about flystrike prevention',
+  ],
+};
+
 export const sheepBlowflyRisk: RiskModule = {
+  checks: CHECKS,
   id: 'sheep-blowfly',
   name: 'Sheep blowfly strike',
   category: 'farm',

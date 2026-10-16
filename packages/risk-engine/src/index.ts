@@ -8,3 +8,4 @@ export { sheepBlowflyRisk } from './risks/sheepBlowflyRisk';
 export { lambChillRisk, calculateChillIndex } from './risks/lambChillRisk';
 export { liverFlukeRisk } from './risks/liverFlukeRisk';
 export { addDays, daysBetween } from './dates';
+export { suggestedChecks } from './checks';

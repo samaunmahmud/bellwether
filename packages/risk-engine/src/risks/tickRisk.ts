@@ -1,5 +1,12 @@
 import { LEVEL_SCORE, raiseLevel } from '../levels';
-import type { DailyRisk, DailyWeather, RiskContext, RiskLevel, RiskModule } from '../types';
+import type {
+  DailyRisk,
+  DailyWeather,
+  RiskContext,
+  RiskLevel,
+  RiskModule,
+  SuggestedChecks,
+} from '../types';
 
 // Heuristic thresholds. Ticks are most active in mild, humid conditions and
 // quieter when cold, or when hot and dry.
@@ -36,7 +43,17 @@ function assessDay(day: DailyWeather, ctx: RiskContext): DailyRisk {
   return { date: day.date, level, score: LEVEL_SCORE[level], reason };
 }
 
+/** FR-5.1: general husbandry checks only. Never products, doses or withdrawal periods. */
+const CHECKS: SuggestedChecks = {
+  MEDIUM: ["Check your pet's coat and skin for ticks after walks"],
+  HIGH: [
+    'Check your pet for ticks after every walk, especially ears, armpits and between toes',
+    'Speak to your vet about tick protection',
+  ],
+};
+
 export const tickRisk: RiskModule = {
+  checks: CHECKS,
   id: 'tick',
   name: 'Tick activity',
   category: 'pet',
