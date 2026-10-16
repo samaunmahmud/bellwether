@@ -48,6 +48,19 @@ Node API (GraphQL Yoga) ── Redis cache (falls back to direct calls if Redis 
 
 The risk engine is **pluggable**: every risk implements one `RiskModule` interface (weather in → level, score and reason out). Adding a new risk means one new file, one line in `registry.ts`, and its tests. Nothing else changes.
 
+## Farm morning briefing
+
+One page, and one email a day, per farm. It answers: which animals, in which fields, need attention today and this week, and what should I check?
+
+- **Overdue tasks** come first.
+- Then, for each livestock group, every risk that is **Medium or High in the next 7 days**, most severe first: the level in words, the days affected, the reason (naming the weather behind it) and suggested **general husbandry checks**. A check becomes a task with one tap.
+- A risk that turned **High since yesterday** is marked **New**.
+- Groups with nothing to flag fold into "No concerns this week".
+- A scheduled job builds and stores each farm's briefing every day, so the page loads instantly and days can be compared. If the weather service is down, the last briefing is shown with its date and time.
+- The daily email goes out at each member's chosen time (default 06:00 UK) and is skipped on quiet days unless "always send" is on. In development, emails land in Mailpit at http://localhost:8125.
+
+Suggested checks are general husbandry only. A test fails if any of them mentions doses, mg or ml/kg.
+
 ## Farm data model
 
 ```
