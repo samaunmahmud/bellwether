@@ -18,3 +18,25 @@ const londonDate = new Intl.DateTimeFormat('en-CA', {
 export function londonToday(now: Date): string {
   return londonDate.format(now);
 }
+
+const londonClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** UK wall-clock time as HH:MM. */
+export function londonTime(now: Date): string {
+  return londonClock.format(now);
+}
+
+/** "2026-06-01" → "Mon 1 Jun" */
+export function shortDay(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}

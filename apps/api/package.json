@@ -23,10 +23,12 @@
     "@prisma/client": "7.10.1",
     "graphql": "^16.10.0",
     "graphql-yoga": "^5.10.6",
-    "ioredis": "^5.4.2"
+    "ioredis": "^5.4.2",
+    "nodemailer": "10.0.13"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "8.0.2",
     "@vitest/coverage-v8": "^2.1.8",
     "prisma": "7.10.1",
     "tsup": "^8.3.5",

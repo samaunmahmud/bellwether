@@ -22,6 +22,8 @@ export const typeDefs = /* GraphQL */ `
     level: RiskLevel!
     score: Int!
     reason: String!
+    "General husbandry checks for this level (FR-5.1). Empty at LOW."
+    checks: [String!]!
   }
 
   type RiskForecast {
@@ -176,6 +178,83 @@ export const typeDefs = /* GraphQL */ `
     milkWithdrawalDays: Int
   }
 
+  # --- Briefing and tasks (FR-4, FR-5) ---
+
+  type Briefing {
+    farm: Farm!
+    "UK date this briefing is for"
+    date: String!
+    generatedAt: String!
+    "True when today's briefing couldn't be made and an earlier one is shown"
+    isStale: Boolean!
+    "FR-5.5: shown at the top"
+    overdueTasks: [Task!]!
+    "Groups with Medium or High risks in the next 7 days, most severe first"
+    groups: [BriefingGroup!]!
+    "Groups with nothing to flag: 'No concerns this week'"
+    quietGroups: [QuietGroup!]!
+    flaggedCount: Int!
+  }
+
+  type BriefingGroup {
+    groupId: ID!
+    groupName: String!
+    fieldName: String
+    items: [BriefingItem!]!
+  }
+
+  type QuietGroup {
+    groupId: ID!
+    groupName: String!
+  }
+
+  type BriefingItem {
+    riskId: ID!
+    riskName: String!
+    level: RiskLevel!
+    daysAffected: [AffectedDay!]!
+    reason: String!
+    checks: [String!]!
+    "High today but not High in yesterday's briefing (FR-4.4)"
+    isNew: Boolean!
+  }
+
+  type AffectedDay {
+    date: String!
+    level: RiskLevel!
+  }
+
+  type Task {
+    id: ID!
+    title: String!
+    dueDate: String!
+    note: String
+    done: Boolean!
+    overdue: Boolean!
+    group: LivestockGroup!
+  }
+
+  type BriefingPreferences {
+    emailEnabled: Boolean!
+    "HH:MM, UK time"
+    sendAt: String!
+    "Send even when nothing is flagged"
+    alwaysSend: Boolean!
+  }
+
+  input CreateTaskInput {
+    groupId: ID!
+    title: String!
+    dueDate: String!
+    note: String
+  }
+
+  input BriefingPreferencesInput {
+    emailEnabled: Boolean!
+    sendAt: String!
+    alwaysSend: Boolean!
+  }
+
   input RecordObservationInput {
     groupId: ID!
     date: String!
@@ -273,6 +352,11 @@ export const typeDefs = /* GraphQL */ `
     livestockGroup(id: ID!): LivestockGroup
     "A farm's treatments from 'from' to 'to' inclusive, oldest first (FR-6.4)"
     treatments(farmId: ID!, from: String!, to: String!): [Treatment!]!
+    "Today's stored briefing (FR-4.1, FR-4.5); null if the farm isn't yours"
+    briefing(farmId: ID!): Briefing
+    "Earliest due first"
+    tasks(farmId: ID!): [Task!]!
+    briefingPreferences(farmId: ID!): BriefingPreferences!
   }
 
   type Mutation {
@@ -298,5 +382,10 @@ export const typeDefs = /* GraphQL */ `
     logOut: Boolean!
     recordTreatment(input: RecordTreatmentInput!): Treatment!
     recordObservation(input: RecordObservationInput!): Observation!
+    "Rebuilds today's briefing now"
+    refreshBriefing(farmId: ID!): Briefing!
+    createTask(input: CreateTaskInput!): Task!
+    setTaskDone(id: ID!, done: Boolean!): Task!
+    setBriefingPreferences(farmId: ID!, input: BriefingPreferencesInput!): BriefingPreferences!
   }
 `;

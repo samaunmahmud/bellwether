@@ -3,6 +3,7 @@ import {
   getRiskModules,
   historyRangeFor,
   modulesForGroup,
+  suggestedChecks,
   type AnimalCategory,
   type DailyRisk,
   type DailyWeather,
@@ -24,7 +25,8 @@ export interface RiskForecast {
   name: string;
   category: AnimalCategory;
   animals: string[];
-  days: DailyRisk[];
+  /** Each day with its suggested checks (FR-5.1) */
+  days: Array<DailyRisk & { checks: string[] }>;
 }
 
 export interface Forecast {
@@ -115,7 +117,10 @@ export function createForecastService(deps: ForecastDeps) {
       name: module.name,
       category: module.category,
       animals: module.animals,
-      days: module.assess(days, ctx),
+      days: module.assess(days, ctx).map((day) => ({
+        ...day,
+        checks: suggestedChecks(module, day.level),
+      })),
     }));
 
   return {

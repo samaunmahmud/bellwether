@@ -17,6 +17,7 @@ const TREATMENT_FIELDS = `
 `;
 
 interface AnnsData {
+  taskId: string;
   farmId: string;
   fieldId: string;
   otherFieldId: string;
@@ -133,6 +134,57 @@ const CROSS_USER: Record<string, Attempt> = {
     );
     expect(code(res)).toBe('NOT_FOUND');
   },
+  briefing: async (bob, ann) => {
+    const res = await bob(`query ($farmId: ID!) { briefing(farmId: $farmId) { date } }`, {
+      farmId: ann.farmId,
+    });
+    expect(res.data).toEqual({ briefing: null });
+  },
+  refreshBriefing: async (bob, ann) => {
+    const res = await bob(`mutation ($farmId: ID!) { refreshBriefing(farmId: $farmId) { date } }`, {
+      farmId: ann.farmId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  tasks: async (bob, ann) => {
+    const res = await bob(`query ($farmId: ID!) { tasks(farmId: $farmId) { id } }`, {
+      farmId: ann.farmId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  createTask: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($groupId: ID!) {
+        createTask(input: { groupId: $groupId, title: "Sneaky", dueDate: "2026-06-01" }) { id }
+      }`,
+      { groupId: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  setTaskDone: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { setTaskDone(id: $id, done: true) { id } }`, {
+      id: ann.taskId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  briefingPreferences: async (bob, ann) => {
+    const res = await bob(
+      `query ($farmId: ID!) { briefingPreferences(farmId: $farmId) { sendAt } }`,
+      { farmId: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  setBriefingPreferences: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($farmId: ID!) {
+        setBriefingPreferences(farmId: $farmId, input: {
+          emailEnabled: false, sendAt: "05:00", alwaysSend: true
+        }) { sendAt }
+      }`,
+      { farmId: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
   moveLivestockGroup: async (bob, ann, bobs) => {
     const move = `mutation ($groupId: ID!, $fieldId: ID!) {
       moveLivestockGroup(input: { groupId: $groupId, toFieldId: $fieldId, movedOn: "2026-06-01" }) { id }
@@ -169,6 +221,14 @@ const ANONYMOUS_CALLS: Record<string, string> = {
     administeredBy: "X", meatWithdrawalDays: 0 }) { id } }`,
   recordObservation: `mutation { recordObservation(input: {
     groupId: "x", date: "2026-06-01", type: "Check" }) { id } }`,
+  briefing: `query { briefing(farmId: "x") { date } }`,
+  refreshBriefing: `mutation { refreshBriefing(farmId: "x") { date } }`,
+  tasks: `query { tasks(farmId: "x") { id } }`,
+  createTask: `mutation { createTask(input: { groupId: "x", title: "X", dueDate: "2026-06-01" }) { id } }`,
+  setTaskDone: `mutation { setTaskDone(id: "x", done: true) { id } }`,
+  briefingPreferences: `query { briefingPreferences(farmId: "x") { sendAt } }`,
+  setBriefingPreferences: `mutation { setBriefingPreferences(farmId: "x", input: {
+    emailEnabled: true, sendAt: "06:00", alwaysSend: false }) { sendAt } }`,
   moveLivestockGroup: `mutation { moveLivestockGroup(input: {
     groupId: "x", toFieldId: "y", movedOn: "2026-06-01" }) { id } }`,
 };
@@ -246,6 +306,12 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     }`,
     { groupId },
   );
+  const task = await ann<{ createTask: Id }>(
+    `mutation ($groupId: ID!) {
+      createTask(input: { groupId: $groupId, title: "Check water", dueDate: "2026-06-01" }) { id }
+    }`,
+    { groupId },
+  );
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -259,6 +325,7 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     fieldId,
     otherFieldId,
     groupId,
+    taskId: task.data!.createTask.id,
     animalId,
     logId: log.data!.addLogEntry.id,
   };
@@ -308,11 +375,22 @@ describe('farm and owner scoping (FR-8.4)', () => {
     expect(Object.keys(ANONYMOUS_CALLS).sort()).toEqual(Object.keys(CROSS_USER).sort());
   });
 
+  /** Everything of Ann's that Bob might try to read or change. */
+  const snapshot = async () => [
+    await ann(ANNS_DATA),
+    await ann(
+      `query ($farmId: ID!) {
+        tasks(farmId: $farmId) { id title done }
+        briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
+      }`,
+      { farmId: annsData.farmId },
+    ),
+  ];
+
   it.each(Object.keys(CROSS_USER))('%s: Bob can’t reach Ann’s data', async (operation) => {
-    const before = await ann(ANNS_DATA);
+    const before = await snapshot();
     await CROSS_USER[operation]!(bob, annsData, bobsData);
-    const after = await ann(ANNS_DATA);
-    expect(after).toEqual(before);
+    expect(await snapshot()).toEqual(before);
   });
 
   it.each(Object.entries(ANONYMOUS_CALLS))(

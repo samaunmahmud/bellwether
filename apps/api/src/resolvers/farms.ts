@@ -1,6 +1,6 @@
-import type { GroupContext } from '@bellwether/risk-engine';
 import { requireUser, type GraphQLContext } from '../auth/context';
 import type { Farm, GroupMovement, LivestockGroup } from '../domain/farm';
+import { toGroupContext } from '../domain/groupContext';
 import type {
   FarmService,
   FieldInput,
@@ -13,19 +13,6 @@ import type { ForecastService } from '../services/forecastService';
 export interface FarmResolverDeps {
   farmService: FarmService;
   forecastService: ForecastService;
-}
-
-/** The engine's view of a livestock group (FR-3.0). */
-export function toGroupContext(group: LivestockGroup): GroupContext {
-  return {
-    species: group.species === 'SHEEP' ? 'sheep' : 'cattle',
-    livestockClass: group.livestockClass,
-    housed: group.housed,
-    lastShearingDate: group.lastShearingDate,
-    lambingStart: group.lambingStart,
-    lambingEnd: group.lambingEnd,
-    lambsAtGrassThisSpring: group.lambsAtGrassThisSpring,
-  };
 }
 
 /**

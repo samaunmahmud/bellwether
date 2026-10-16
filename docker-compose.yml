@@ -23,5 +23,12 @@ services:
     ports:
       - '6379:6379'
 
+  # Catches briefing emails in dev (FR-4.3). Inbox: http://localhost:8125
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - '1125:1025'
+      - '8125:8025'
+
 volumes:
   pgdata:

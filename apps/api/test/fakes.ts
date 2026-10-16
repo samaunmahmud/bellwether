@@ -3,7 +3,13 @@ import { createScryptHasher } from '../src/auth/passwords';
 import { MemoryCache, type Cache } from '../src/cache/cache';
 import type { Location, PostcodeClient } from '../src/clients/postcodesClient';
 import type { WeatherClient } from '../src/clients/weatherClient';
-import { createApp } from '../src/app';
+import { createApp, createServices, type AppDeps } from '../src/app';
+import type { EmailMessage, EmailSender } from '../src/email/emailSender';
+import { createBriefingJob } from '../src/jobs/briefingJob';
+import {
+  InMemoryBriefingRepository,
+  InMemoryTaskRepository,
+} from '../src/repositories/briefingRepository';
 import { silentLogger } from '../src/logger';
 import { InMemoryAnimalRepository } from '../src/repositories/animalRepository';
 import { InMemoryFarmRepository } from '../src/repositories/farmRepository';
@@ -85,10 +91,22 @@ const SIGN_UP = /* GraphQL */ `
   }
 `;
 
-export function buildTestApp(overrides: Partial<Parameters<typeof createApp>[0]> = {}) {
+/** Collects emails instead of sending them. */
+export function fakeEmail() {
+  const sent: EmailMessage[] = [];
+  const sender: EmailSender = {
+    async send(message) {
+      sent.push(message);
+    },
+  };
+  return { sender, sent };
+}
+
+export function buildTestApp(overrides: Partial<AppDeps> = {}) {
   const postcodes = fakePostcodes();
   const weather = fakeWeather();
-  const app = createApp({
+  const email = fakeEmail();
+  const deps: AppDeps = {
     postcodes: postcodes.client,
     weather: weather.client,
     cache: new MemoryCache(),
@@ -96,12 +114,19 @@ export function buildTestApp(overrides: Partial<Parameters<typeof createApp>[0]>
     farms: new InMemoryFarmRepository(),
     users: new InMemoryUserRepository(),
     records: new InMemoryRecordsRepository(),
+    tasks: new InMemoryTaskRepository(),
+    briefings: new InMemoryBriefingRepository(),
+    email: email.sender,
+    appUrl: 'https://bellwether.test',
     // Low scrypt cost keeps tests fast
     hasher: createScryptHasher(2 ** 10),
     logger: silentLogger,
     now: () => new Date('2026-06-01T09:00:00Z'),
     ...overrides,
-  });
+  };
+  const services = createServices(deps);
+  const app = createApp(deps, services);
+  const job = createBriefingJob({ ...deps, services });
 
   /** Sends a GraphQL request, optionally with a session cookie. Returns the body and response. */
   async function send<T>(
@@ -138,5 +163,16 @@ export function buildTestApp(overrides: Partial<Parameters<typeof createApp>[0]>
     return withCookie(setCookie.split(';')[0]!);
   }
 
-  return { app, gql, send, withCookie, signedIn, postcodes, weather };
+  return {
+    app,
+    gql,
+    send,
+    withCookie,
+    signedIn,
+    postcodes,
+    weather,
+    job,
+    briefings: deps.briefings,
+    email: { sent: email.sent },
+  };
 }
