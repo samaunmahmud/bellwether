@@ -21,6 +21,7 @@ const farm = {
   id: 'farm1',
   name: 'Hill Farm',
   postcode: 'UB8 3PH',
+  myRole: 'OWNER',
   fields: [
     field('f1', 'Fell', { latitude: 54.1234, longitude: -2.5432 }),
     field('f2', 'Meadow', { postcode: 'SW1A 1AA' }),
@@ -194,6 +195,37 @@ describe('FarmPage', () => {
 
     const fields = await screen.findByRole('list', { name: 'Fields' });
     expect(within(fields).getByText('Top')).toBeInTheDocument();
+  });
+
+  it('lets an owner add fields and groups and manage people (FR-8.2)', async () => {
+    renderWith([farmMock(farm)]);
+    expect(await screen.findByRole('link', { name: 'People' })).toHaveAttribute(
+      'href',
+      '/farms/farm1/people',
+    );
+    expect(screen.getByRole('link', { name: 'Farm settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add field' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Add a group' })).toBeInTheDocument();
+  });
+
+  it('lets a worker move groups but not add fields, groups or change settings (FR-8.2)', async () => {
+    renderWith([farmMock({ ...farm, myRole: 'WORKER' })]);
+    const flock = await screen.findByRole('article', { name: 'North flock' });
+    expect(within(flock).getByRole('button', { name: /move/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Farm settings' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add field' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Add a group' })).not.toBeInTheDocument();
+  });
+
+  it('shows a viewer everything but no forms (FR-8.2)', async () => {
+    renderWith([farmMock({ ...farm, myRole: 'VIEWER' })]);
+    const flock = await screen.findByRole('article', { name: 'North flock' });
+    expect(within(flock).getByText('120 ewes · in Fell')).toBeInTheDocument();
+    expect(within(flock).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add field' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Add a group' })).not.toBeInTheDocument();
+    expect(screen.getByText('You can view this farm but not make changes.')).toBeInTheDocument();
   });
 
   it('says when the farm doesn’t exist or isn’t yours (A14)', async () => {

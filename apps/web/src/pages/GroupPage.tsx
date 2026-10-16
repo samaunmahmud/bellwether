@@ -18,6 +18,7 @@ import {
   VOID_OBSERVATION,
   VOID_TREATMENT,
 } from '../graphql/records';
+import { canManage, canWork } from '../roles';
 import type { Correctable, GroupRecords, WithdrawalStatus } from '../types';
 
 /** The group's details as edit-form values. */
@@ -100,7 +101,10 @@ function Withdrawal({ status }: { status: WithdrawalStatus }) {
   );
 }
 
-/** One livestock group's records: withdrawal status, treatments and checks (FR-6). */
+/**
+ * One livestock group's records: withdrawal status, treatments and checks (FR-6).
+ * Workers record and correct; only owners archive; viewers only look (FR-8.2).
+ */
 export function GroupPage() {
   const { id = '' } = useParams();
   const { data, loading, error } = useQuery<{ livestockGroup: GroupRecords | null }>(GROUP_QUERY, {
@@ -131,6 +135,8 @@ export function GroupPage() {
     );
   const group = data?.livestockGroup;
   if (!group) return <h1>Group not found</h1>;
+  const worker = canWork(group.farm.myRole);
+  const owner = canManage(group.farm.myRole);
 
   return (
     <section>
@@ -144,28 +150,35 @@ export function GroupPage() {
             {group.headCount} {CLASS_LABELS[group.livestockClass].toLowerCase()}
           </p>
         </div>
-        {group.archivedOn ? (
-          <div className="actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => restoreGroup({ variables: { id: group.id } })}
-            >
-              Restore group
-            </button>
-          </div>
-        ) : (
-          groupMode === null && (
-            <div className="actions">
-              <button type="button" className="secondary" onClick={() => setGroupMode('edit')}>
-                Edit details
-              </button>
-              <button type="button" className="secondary" onClick={() => setGroupMode('archive')}>
-                Archive group
-              </button>
-            </div>
-          )
-        )}
+        {group.archivedOn
+          ? owner && (
+              <div className="actions">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => restoreGroup({ variables: { id: group.id } })}
+                >
+                  Restore group
+                </button>
+              </div>
+            )
+          : worker &&
+            groupMode === null && (
+              <div className="actions">
+                <button type="button" className="secondary" onClick={() => setGroupMode('edit')}>
+                  Edit details
+                </button>
+                {owner && (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setGroupMode('archive')}
+                  >
+                    Archive group
+                  </button>
+                )}
+              </div>
+            )}
       </header>
       {group.archivedOn && (
         <p className="pill" role="status">
@@ -227,12 +240,14 @@ export function GroupPage() {
                     </>
                   )}
                 </span>
-                <RecordActions
-                  label={label}
-                  record={t}
-                  onCorrect={() => setEditing({ id: t.id, mode: 'correct' })}
-                  onVoid={() => setEditing({ id: t.id, mode: 'void' })}
-                />
+                {worker && (
+                  <RecordActions
+                    label={label}
+                    record={t}
+                    onCorrect={() => setEditing({ id: t.id, mode: 'correct' })}
+                    onVoid={() => setEditing({ id: t.id, mode: 'void' })}
+                  />
+                )}
                 <RecordHistory history={t.history} />
                 {isOpen(t.id, 'correct') && (
                   <TreatmentForm
@@ -259,12 +274,14 @@ export function GroupPage() {
           })}
         </ul>
       )}
-      <TreatmentForm
-        headCount={group.headCount}
-        onSubmit={(values: TreatmentFormValues) =>
-          recordTreatment({ variables: { input: { groupId: group.id, ...values } } })
-        }
-      />
+      {worker && (
+        <TreatmentForm
+          headCount={group.headCount}
+          onSubmit={(values: TreatmentFormValues) =>
+            recordTreatment({ variables: { input: { groupId: group.id, ...values } } })
+          }
+        />
+      )}
 
       <h2>Checks and observations</h2>
       {group.observations.length === 0 ? (
@@ -282,12 +299,14 @@ export function GroupPage() {
                 <br />
                 <Voided record={o} />
               </span>
-              <RecordActions
-                label={`${o.type} on ${shortDay(o.date)}`}
-                record={o}
-                onCorrect={() => setEditing({ id: o.id, mode: 'correct' })}
-                onVoid={() => setEditing({ id: o.id, mode: 'void' })}
-              />
+              {worker && (
+                <RecordActions
+                  label={`${o.type} on ${shortDay(o.date)}`}
+                  record={o}
+                  onCorrect={() => setEditing({ id: o.id, mode: 'correct' })}
+                  onVoid={() => setEditing({ id: o.id, mode: 'void' })}
+                />
+              )}
               <RecordHistory history={o.history} />
               {isOpen(o.id, 'correct') && (
                 <ObservationForm
@@ -313,12 +332,14 @@ export function GroupPage() {
           ))}
         </ul>
       )}
-      <ObservationForm
-        species={group.species}
-        onSubmit={(values: ObservationFormValues) =>
-          recordObservation({ variables: { input: { groupId: group.id, ...values } } })
-        }
-      />
+      {worker && (
+        <ObservationForm
+          species={group.species}
+          onSubmit={(values: ObservationFormValues) =>
+            recordObservation({ variables: { input: { groupId: group.id, ...values } } })
+          }
+        />
+      )}
     </section>
   );
 }

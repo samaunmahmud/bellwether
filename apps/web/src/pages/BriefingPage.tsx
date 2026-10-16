@@ -7,6 +7,7 @@ import { RiskBadge } from '../components/RiskBadge';
 import { dayRanges, shortDay, todayIso } from '../dates';
 import { errorMessage } from '../errors';
 import { BRIEFING_QUERY, CREATE_TASK, REFRESH_BRIEFING, SET_TASK_DONE } from '../graphql/briefing';
+import { canWork } from '../roles';
 import type { Briefing, BriefingItem } from '../types';
 
 const ukTime = (iso: string) =>
@@ -23,7 +24,8 @@ function Item({
 }: {
   item: BriefingItem;
   added: (check: string) => boolean;
-  onAddTask: (check: string) => void;
+  /** Absent for viewers, who can't add tasks (FR-8.2) */
+  onAddTask?: (check: string) => void;
 }) {
   const headingId = `item-${item.riskId}-${item.daysAffected[0]!.date}`;
   return (
@@ -39,15 +41,17 @@ function Item({
         {item.checks.map((check) => (
           <li key={check}>
             <span>{check}</span>
-            <button
-              type="button"
-              className="secondary"
-              disabled={added(check)}
-              aria-label={`${added(check) ? 'Task added' : 'Add task'}: ${check}`}
-              onClick={() => onAddTask(check)}
-            >
-              {added(check) ? 'Task added' : 'Add task'}
-            </button>
+            {onAddTask && (
+              <button
+                type="button"
+                className="secondary"
+                disabled={added(check)}
+                aria-label={`${added(check) ? 'Task added' : 'Add task'}: ${check}`}
+                onClick={() => onAddTask(check)}
+              >
+                {added(check) ? 'Task added' : 'Add task'}
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -84,6 +88,7 @@ export function BriefingPage() {
     );
   const briefing = data?.briefing;
   if (!briefing) return <h1>Farm not found</h1>;
+  const worker = canWork(briefing.farm.myRole);
 
   /** FR-5.2: one tap turns a check into a task, due on the first day affected. */
   async function addTask(groupId: string, item: BriefingItem, check: string) {
@@ -140,13 +145,15 @@ export function BriefingPage() {
                     {task.group?.name ?? 'Whole farm'} · was due {shortDay(task.dueDate)}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  aria-label={`Done: ${task.title}`}
-                  onClick={() => setTaskDone({ variables: { id: task.id, done: true } })}
-                >
-                  Done
-                </button>
+                {worker && (
+                  <button
+                    type="button"
+                    aria-label={`Done: ${task.title}`}
+                    onClick={() => setTaskDone({ variables: { id: task.id, done: true } })}
+                  >
+                    Done
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -172,7 +179,7 @@ export function BriefingPage() {
                 key={item.riskId}
                 item={item}
                 added={(check) => addedTasks.has(`${group.groupId}:${check}`)}
-                onAddTask={(check) => addTask(group.groupId, item, check)}
+                onAddTask={worker ? (check) => addTask(group.groupId, item, check) : undefined}
               />
             ))}
           </section>

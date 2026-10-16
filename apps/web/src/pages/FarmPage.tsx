@@ -5,6 +5,7 @@ import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/Gro
 import { MoveGroupForm } from '../components/MoveGroupForm';
 import { dayMonth, shortDay } from '../dates';
 import { CREATE_FIELD, CREATE_GROUP, FARM_QUERY, MOVE_GROUP } from '../graphql/farms';
+import { canManage, canWork } from '../roles';
 import type { Farm, Field, LivestockGroup } from '../types';
 
 /** The later of the meat and milk withdrawal end dates. */
@@ -48,7 +49,10 @@ function groupDetails(group: LivestockGroup): string {
   return details.filter(Boolean).join(' · ');
 }
 
-/** One farm: its fields and livestock groups, with forms to add and move them (FR-2). */
+/**
+ * One farm: its fields and livestock groups, with forms to add and move them (FR-2).
+ * Forms show only to members allowed to use them (FR-8.2).
+ */
 export function FarmPage() {
   const { id = '' } = useParams();
   const { data, loading, error } = useQuery<{ farm: Farm | null }>(FARM_QUERY, {
@@ -70,11 +74,14 @@ export function FarmPage() {
   if (!farm) return <h1>Farm not found</h1>;
 
   const fieldOptions = farm.fields.map(({ id: fieldId, name }) => ({ id: fieldId, name }));
+  const owner = canManage(farm.myRole);
+  const worker = canWork(farm.myRole);
 
   return (
     <section>
       <h1>{farm.name}</h1>
       <p className="muted">{farm.postcode}</p>
+      {!worker && <p className="muted">You can view this farm but not make changes.</p>}
       <p className="actions">
         <Link to={`/farms/${farm.id}/briefing`} className="button">
           Morning briefing
@@ -83,7 +90,8 @@ export function FarmPage() {
           Tasks
         </Link>
         <Link to={`/farms/${farm.id}/records`}>Treatment records</Link>
-        <Link to={`/farms/${farm.id}/settings`}>Farm settings</Link>
+        <Link to={`/farms/${farm.id}/people`}>People</Link>
+        {owner && <Link to={`/farms/${farm.id}/settings`}>Farm settings</Link>}
       </p>
 
       <h2>Fields</h2>
@@ -98,11 +106,13 @@ export function FarmPage() {
           ))}
         </ul>
       )}
-      <FieldForm
-        onSubmit={(values: FieldFormValues) =>
-          createField({ variables: { input: { farmId: farm.id, ...values } } })
-        }
-      />
+      {owner && (
+        <FieldForm
+          onSubmit={(values: FieldFormValues) =>
+            createField({ variables: { input: { farmId: farm.id, ...values } } })
+          }
+        />
+      )}
 
       <h2>Livestock groups</h2>
       {farm.groups.length === 0 && <p className="muted">No groups yet.</p>}
@@ -127,14 +137,16 @@ export function FarmPage() {
             </p>
             {groupDetails(group) && <p className="muted">{groupDetails(group)}</p>}
 
-            <MoveGroupForm
-              groupName={group.name}
-              fields={fieldOptions}
-              currentFieldId={group.currentField?.id ?? null}
-              onSubmit={(values) =>
-                moveGroup({ variables: { input: { groupId: group.id, ...values } } })
-              }
-            />
+            {worker && (
+              <MoveGroupForm
+                groupName={group.name}
+                fields={fieldOptions}
+                currentFieldId={group.currentField?.id ?? null}
+                onSubmit={(values) =>
+                  moveGroup({ variables: { input: { groupId: group.id, ...values } } })
+                }
+              />
+            )}
 
             {group.movements.length > 0 && (
               <ul className="log" aria-label="Move history">
@@ -154,13 +166,17 @@ export function FarmPage() {
         ))}
       </div>
 
-      <h2>Add a group</h2>
-      <GroupForm
-        fields={fieldOptions}
-        onSubmit={(values: GroupFormValues) =>
-          createGroup({ variables: { input: { farmId: farm.id, ...values } } })
-        }
-      />
+      {owner && (
+        <>
+          <h2>Add a group</h2>
+          <GroupForm
+            fields={fieldOptions}
+            onSubmit={(values: GroupFormValues) =>
+              createGroup({ variables: { input: { farmId: farm.id, ...values } } })
+            }
+          />
+        </>
+      )}
     </section>
   );
 }

@@ -19,7 +19,7 @@ const briefing = (overrides: Record<string, unknown> = {}) => ({
   generatedAt: '2026-06-10T05:00:00.000Z',
   isStale: false,
   flaggedCount: 2,
-  farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm' },
+  farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm', myRole: 'OWNER' },
   overdueTasks: [
     {
       __typename: 'Task',
@@ -219,5 +219,21 @@ describe('BriefingPage actions', () => {
     ]);
     await userEvent.click(await screen.findByRole('button', { name: 'Refresh' }));
     await vi.waitFor(() => expect(refreshed).toHaveBeenCalled());
+  });
+
+  it('shows a viewer the briefing without task buttons (FR-8.2)', async () => {
+    renderWith([
+      briefingMock(
+        briefing({
+          farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm', myRole: 'VIEWER' },
+        }),
+      ),
+    ]);
+    const overdue = await screen.findByRole('region', { name: 'Overdue tasks' });
+    expect(overdue).toHaveTextContent('Check water troughs');
+    expect(within(overdue).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('Check the flock daily for signs of strike')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Add task/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Refresh/ })).toBeInTheDocument();
   });
 });

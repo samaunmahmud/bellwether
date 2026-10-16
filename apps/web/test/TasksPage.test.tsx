@@ -16,6 +16,8 @@ const task = (id: string, extra: Record<string, unknown>) => ({
   overdue: false,
   repeatEveryDays: null,
   group: null,
+  assignee: null,
+  assignedToMe: false,
   ...extra,
 });
 
@@ -24,11 +26,25 @@ const tasks = [
   task('t2', {
     title: 'Trim feet',
     group: { __typename: 'LivestockGroup', id: 'g1', name: 'Ewes' },
+    assignee: { __typename: 'User', id: 'u2', email: 'bob@example.com' },
+  }),
+  task('t4', {
+    title: 'Fix gate',
+    assignee: { __typename: 'User', id: 'u1', email: 'ann@example.com' },
+    assignedToMe: true,
   }),
   task('t3', { title: 'Order feed', done: true }),
 ];
 
-const pageMock: MockedResponse = {
+const member = (userId: string, email: string, role: string, isMe = false) => ({
+  __typename: 'FarmMember',
+  userId,
+  email,
+  role,
+  isMe,
+});
+
+const pageMockAs = (myRole: string): MockedResponse => ({
   request: { query: TASKS_PAGE_QUERY, variables: { farmId: 'f1' } },
   result: {
     data: {
@@ -36,12 +52,19 @@ const pageMock: MockedResponse = {
         __typename: 'Farm',
         id: 'f1',
         name: 'Hill Farm',
+        myRole,
         groups: [{ __typename: 'LivestockGroup', id: 'g1', name: 'Ewes' }],
+        members: [
+          member('u1', 'ann@example.com', myRole, true),
+          member('u2', 'bob@example.com', 'WORKER'),
+          member('u3', 'vic@example.com', 'VIEWER'),
+        ],
       },
       tasks,
     },
   },
-};
+});
+const pageMock = pageMockAs('OWNER');
 
 function renderWith(mocks: MockedResponse[]) {
   return render(
@@ -96,5 +119,40 @@ describe('TasksPage (FR-5.3)', () => {
     renderWith([pageMock]);
     await userEvent.click(await screen.findByRole('button', { name: 'Edit Trim feet' }));
     expect(screen.getByRole('form', { name: 'Edit task' })).toBeInTheDocument();
+  });
+
+  describe('people (FR-5.4, FR-8.2)', () => {
+    it('shows who each task is assigned to', async () => {
+      renderWith([pageMock]);
+      const todo = await screen.findByRole('list', { name: 'To do' });
+      expect(within(todo).getByText(/Assigned to bob@example.com/)).toBeInTheDocument();
+      expect(within(todo).getByText(/Assigned to you/)).toBeInTheDocument();
+    });
+
+    it('filters to only my tasks', async () => {
+      renderWith([pageMock]);
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Only my tasks' }));
+      const todo = screen.getByRole('list', { name: 'To do' });
+      expect(within(todo).getByText('Fix gate')).toBeInTheDocument();
+      expect(within(todo).queryByText('Trim feet')).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: 'Overdue' })).not.toBeInTheDocument();
+    });
+
+    it('offers only workers and owners to assign to', async () => {
+      renderWith([pageMock]);
+      const form = await screen.findByRole('form', { name: 'Add task' });
+      const options = within(within(form).getByLabelText('Assign to'))
+        .getAllByRole('option')
+        .map((o) => o.textContent);
+      expect(options).toEqual(['No one', 'You (ann@example.com)', 'bob@example.com']);
+    });
+
+    it('shows a viewer the tasks but nothing to change', async () => {
+      renderWith([pageMockAs('VIEWER')]);
+      expect(await screen.findByRole('list', { name: 'To do' })).toBeInTheDocument();
+      expect(screen.queryByRole('form', { name: 'Add task' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Done: Trim feet' })).toBeDisabled();
+    });
   });
 });

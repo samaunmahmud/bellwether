@@ -28,6 +28,7 @@ const settings = {
   id: 'farm1',
   name: 'Hill Farm',
   postcode: 'UB8 3PH',
+  myRole: 'OWNER',
   fields: [field('f1', 'Fell')],
   archivedFields: [field('f2', 'Old orchard', { archivedOn: '2026-01-10' })],
   archivedGroups: [
@@ -137,5 +138,19 @@ describe('FarmSettingsPage', () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
     expect(await screen.findByText('All farms')).toBeInTheDocument();
+  });
+
+  it('tells workers and viewers that only an owner can change settings (FR-8.2)', async () => {
+    renderWith([
+      {
+        request: { query: FARM_SETTINGS_QUERY, variables: { id: 'farm1' } },
+        result: { data: { farm: { ...settings, myRole: 'WORKER' } } },
+      },
+    ]);
+    expect(
+      await screen.findByText('Only a farm owner can change these settings.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

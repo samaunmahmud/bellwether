@@ -10,17 +10,30 @@ import {
   TASKS_PAGE_QUERY,
   UPDATE_TASK,
 } from '../graphql/briefing';
-import type { FarmTask } from '../types';
+import { canWork } from '../roles';
+import type { FarmMember, FarmRole, FarmTask } from '../types';
 
 interface PageData {
-  farm: { id: string; name: string; groups: Array<{ id: string; name: string }> } | null;
+  farm: {
+    id: string;
+    name: string;
+    myRole: FarmRole;
+    groups: Array<{ id: string; name: string }>;
+    members: FarmMember[];
+  } | null;
   tasks: FarmTask[];
 }
 
 const repeatLabel = (days: number | null) =>
   days === null ? null : days === 1 ? 'Repeats every day' : `Repeats every ${days} days`;
 
-/** FR-5.3: all of a farm's tasks, for groups or the whole farm, with repeats. */
+const assigneeLabel = (task: FarmTask) =>
+  task.assignedToMe ? 'Assigned to you' : task.assignee && `Assigned to ${task.assignee.email}`;
+
+/**
+ * FR-5.3: all of a farm's tasks, for groups or the whole farm, with repeats.
+ * Tasks can be assigned to workers and owners (FR-5.4); viewers only look (FR-8.2).
+ */
 export function TasksPage() {
   const { id = '' } = useParams();
   const { data, loading, error } = useQuery<PageData>(TASKS_PAGE_QUERY, {
@@ -32,6 +45,7 @@ export function TasksPage() {
   const [deleteTask] = useMutation(DELETE_TASK, refetch);
   const [setDone] = useMutation(SET_TASK_DONE, refetch);
   const [editing, setEditing] = useState<string | null>(null);
+  const [onlyMine, setOnlyMine] = useState(false);
 
   if (loading) return <p aria-live="polite">Loading tasks…</p>;
   if (error)
@@ -41,7 +55,13 @@ export function TasksPage() {
       </p>
     );
   if (!data?.farm) return <h1>Farm not found</h1>;
-  const { farm, tasks } = data;
+  const { farm } = data;
+  const tasks = onlyMine ? data.tasks.filter((t) => t.assignedToMe) : data.tasks;
+  const worker = canWork(farm.myRole);
+  // Viewers can't be given tasks: the API refuses them.
+  const people = farm.members
+    .filter((m) => canWork(m.role))
+    .map((m) => ({ id: m.userId, label: m.isMe ? `You (${m.email})` : m.email }));
 
   const overdue = tasks.filter((t) => t.overdue);
   const todo = tasks.filter((t) => !t.done && !t.overdue);
@@ -54,7 +74,12 @@ export function TasksPage() {
         <li key={task.id} className="task">
           <TaskForm
             groups={farm.groups}
-            initial={{ ...task, groupId: task.group?.id ?? null }}
+            people={people}
+            initial={{
+              ...task,
+              groupId: task.group?.id ?? null,
+              assigneeId: task.assignee?.id ?? null,
+            }}
             onCancel={() => setEditing(null)}
             onSubmit={async (values: TaskFormValues) => {
               await updateTask({ variables: { id: task.id, input: values } });
@@ -67,6 +92,7 @@ export function TasksPage() {
       task.group?.name ?? 'Whole farm',
       `${task.done || task.overdue ? 'was due' : 'due'} ${shortDay(task.dueDate)}`,
       repeatLabel(task.repeatEveryDays),
+      assigneeLabel(task),
     ].filter(Boolean);
     return (
       <li key={task.id} className={task.done ? 'task task--done' : 'task'}>
@@ -74,6 +100,7 @@ export function TasksPage() {
           <input
             type="checkbox"
             checked={task.done}
+            disabled={!worker}
             aria-label={`Done: ${task.title}`}
             onChange={(e) => setDone({ variables: { id: task.id, done: e.target.checked } })}
           />
@@ -90,27 +117,29 @@ export function TasksPage() {
             )}
           </span>
         </label>
-        <span className="log__actions">
-          <button
-            type="button"
-            className="link-button"
-            aria-label={`Edit ${task.title}`}
-            onClick={() => setEditing(task.id)}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="link-button"
-            aria-label={`Delete ${task.title}`}
-            onClick={() => {
-              if (window.confirm(`Delete the task "${task.title}"?`))
-                void deleteTask({ variables: { id: task.id } });
-            }}
-          >
-            Delete
-          </button>
-        </span>
+        {worker && (
+          <span className="log__actions">
+            <button
+              type="button"
+              className="link-button"
+              aria-label={`Edit ${task.title}`}
+              onClick={() => setEditing(task.id)}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="link-button"
+              aria-label={`Delete ${task.title}`}
+              onClick={() => {
+                if (window.confirm(`Delete the task "${task.title}"?`))
+                  void deleteTask({ variables: { id: task.id } });
+              }}
+            >
+              Delete
+            </button>
+          </span>
+        )}
       </li>
     );
   }
@@ -122,12 +151,26 @@ export function TasksPage() {
       </p>
       <h1>Tasks</h1>
 
-      <TaskForm
-        groups={farm.groups}
-        onSubmit={(values) => createTask({ variables: { input: { farmId: farm.id, ...values } } })}
-      />
+      {worker ? (
+        <TaskForm
+          groups={farm.groups}
+          people={people}
+          onSubmit={(values) =>
+            createTask({ variables: { input: { farmId: farm.id, ...values } } })
+          }
+        />
+      ) : (
+        <p className="muted">You can view this farm's tasks but not change them.</p>
+      )}
 
-      {tasks.length === 0 && (
+      <label className="toggle">
+        <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} />
+        Only my tasks
+      </label>
+
+      {onlyMine && tasks.length === 0 && <p className="muted">No tasks are assigned to you.</p>}
+
+      {!onlyMine && tasks.length === 0 && (
         <p className="muted">
           No tasks yet. Add one above, or from a suggested check on the{' '}
           <Link to={`/farms/${farm.id}/briefing`}>morning briefing</Link>.

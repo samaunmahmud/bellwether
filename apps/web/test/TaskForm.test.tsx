@@ -77,4 +77,50 @@ describe('TaskForm (FR-5.3)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('1 to 200');
   });
+
+  describe('assigning (FR-5.4)', () => {
+    const people = [
+      { id: 'u1', label: 'You (ann@example.com)' },
+      { id: 'u2', label: 'bob@example.com' },
+    ];
+
+    it('assigns the task to a farm member', async () => {
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(<TaskForm groups={groups} people={people} onSubmit={onSubmit} />);
+      await userEvent.type(screen.getByLabelText('Task'), 'Check troughs');
+      expect(screen.getByLabelText('Assign to')).toHaveValue('');
+      await userEvent.selectOptions(screen.getByLabelText('Assign to'), 'bob@example.com');
+      await userEvent.click(screen.getByRole('button', { name: 'Add task' }));
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: 'u2' }));
+    });
+
+    it('sends no one as null, and starts an edit from the current assignee', async () => {
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TaskForm
+          groups={groups}
+          people={people}
+          initial={{
+            title: 'Check troughs',
+            dueDate: '2026-06-20',
+            groupId: null,
+            note: null,
+            repeatEveryDays: null,
+            assigneeId: 'u2',
+          }}
+          onSubmit={onSubmit}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByLabelText('Assign to')).toHaveValue('u2');
+      await userEvent.selectOptions(screen.getByLabelText('Assign to'), 'No one');
+      await userEvent.click(screen.getByRole('button', { name: 'Save task' }));
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: null }));
+    });
+
+    it('has no assignee field without a list of people', () => {
+      render(<TaskForm groups={groups} onSubmit={vi.fn()} />);
+      expect(screen.queryByLabelText('Assign to')).not.toBeInTheDocument();
+    });
+  });
 });

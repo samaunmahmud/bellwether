@@ -52,7 +52,7 @@ const group = (
   calvingEnd: null,
   archivedOn: null,
   archiveReason: null,
-  farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm' },
+  farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm', myRole: 'OWNER' },
   withdrawal: { __typename: 'WithdrawalStatus', ...withdrawal },
   treatments: [treatment],
   observations: [
@@ -268,6 +268,30 @@ describe('GroupPage', () => {
       expect(screen.queryByRole('button', { name: 'Archive group' })).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Restore group' }));
       await vi.waitFor(() => expect(restored).toHaveBeenCalled());
+    });
+  });
+
+  describe('what each role can do (FR-8.2)', () => {
+    const as = (myRole: string) =>
+      group(
+        { inWithdrawal: false, meatEnds: null, milkEnds: null },
+        { farm: { __typename: 'Farm', id: 'farm1', name: 'Hill Farm', myRole } },
+      );
+
+    it('lets a worker record, correct and edit details, but not archive', async () => {
+      renderWith([groupMock(as('WORKER'))]);
+      expect(await screen.findByRole('button', { name: 'Edit details' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Archive group' })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('form').length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /^Correct / }).length).toBeGreaterThan(0);
+    });
+
+    it('shows a viewer the records with nothing to change', async () => {
+      renderWith([groupMock(as('VIEWER'))]);
+      const treatments = await screen.findByRole('list', { name: 'Treatments' });
+      expect(within(treatments).getByText(/Product from label/)).toBeInTheDocument();
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+      expect(screen.queryAllByRole('form')).toHaveLength(0);
     });
   });
 });

@@ -3,14 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { CREATE_FARM, FARMS_QUERY } from '../src/graphql/farms';
+import { ACCEPT_INVITE, MY_INVITES_QUERY } from '../src/graphql/members';
 import { FarmsPage } from '../src/pages/FarmsPage';
 import { routerFuture } from '../src/routerFuture';
 
-const farm = (id: string, name: string) => ({
+const farm = (id: string, name: string, myRole = 'OWNER') => ({
   __typename: 'Farm',
   id,
   name,
   postcode: 'UB8 3PH',
+  myRole,
 });
 
 function renderWith(mocks: MockedResponse[]) {
@@ -89,5 +91,49 @@ describe('FarmsPage (FR-2.1)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add farm' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Postcode ZZ1 1ZZ was not found');
+  });
+
+  it("shows a shared farm's role in words", async () => {
+    renderWith([
+      {
+        request: { query: FARMS_QUERY },
+        result: { data: { farms: [farm('a', 'Hill Farm', 'VIEWER')] } },
+      },
+    ]);
+    expect(await screen.findByText('Viewer')).toBeInTheDocument();
+  });
+
+  it('shows invitations and accepts one (FR-8.2)', async () => {
+    const accepted = vi.fn(() => ({
+      data: { acceptInvite: { __typename: 'Farm', id: 'b', name: 'Low Farm' } },
+    }));
+    const invites = {
+      request: { query: MY_INVITES_QUERY },
+      result: {
+        data: {
+          myInvites: [
+            {
+              __typename: 'MyInvite',
+              id: 'i1',
+              farmName: 'Low Farm',
+              role: 'WORKER',
+              invitedBy: 'ann@example.com',
+            },
+          ],
+        },
+      },
+    };
+    renderWith([
+      { request: { query: FARMS_QUERY }, result: { data: { farms: [] } } },
+      invites,
+      { request: { query: ACCEPT_INVITE, variables: { id: 'i1' } }, result: accepted },
+      { request: { query: FARMS_QUERY }, result: { data: { farms: [] } } },
+      { request: { query: MY_INVITES_QUERY }, result: { data: { myInvites: [] } } },
+    ]);
+    expect(
+      await screen.findByText(/ann@example.com invited you to Low Farm as a worker/),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Accept invitation to Low Farm' }));
+    await vi.waitFor(() => expect(accepted).toHaveBeenCalled());
   });
 });

@@ -50,10 +50,22 @@ export type Species = 'SHEEP' | 'CATTLE';
 export type LivestockClass = 'EWES' | 'LAMBS' | 'RAMS' | 'DAIRY_COWS' | 'BEEF_CATTLE' | 'CALVES';
 export type CattleType = 'DAIRY' | 'BEEF';
 
+/** FR-8.2 */
+export type FarmRole = 'OWNER' | 'WORKER' | 'VIEWER';
+
+export interface FarmMember {
+  userId: string;
+  email: string;
+  role: FarmRole;
+  isMe: boolean;
+}
+
 export interface FarmSummary {
   id: string;
   name: string;
   postcode: string;
+  /** The signed-in user's role on this farm */
+  myRole?: FarmRole;
 }
 
 export interface FieldOption {
@@ -163,7 +175,7 @@ export interface GroupRecords {
   calvingEnd: string | null;
   archivedOn: string | null;
   archiveReason: string | null;
-  farm: { id: string; name: string };
+  farm: { id: string; name: string; myRole: FarmRole };
   withdrawal: WithdrawalStatus;
   treatments: TreatmentRow[];
   observations: ObservationRow[];
@@ -186,7 +198,7 @@ export interface Briefing {
   generatedAt: string;
   isStale: boolean;
   flaggedCount: number;
-  farm: { id: string; name: string };
+  farm: { id: string; name: string; myRole: FarmRole };
   overdueTasks: Array<{
     id: string;
     title: string;
@@ -213,4 +225,7 @@ export interface FarmTask {
   overdue: boolean;
   repeatEveryDays: number | null;
   group: { id: string; name: string } | null;
+  /** FR-5.4 */
+  assignee: { id: string; email: string } | null;
+  assignedToMe: boolean;
 }

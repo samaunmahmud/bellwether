@@ -9,6 +9,7 @@ const BRIEFING_FIELDS = gql`
     farm {
       id
       name
+      myRole
     }
     overdueTasks {
       id
@@ -105,9 +106,16 @@ export const TASKS_PAGE_QUERY = gql`
     farm(id: $farmId) {
       id
       name
+      myRole
       groups {
         id
         name
+      }
+      members {
+        userId
+        email
+        role
+        isMe
       }
     }
     tasks(farmId: $farmId) {
@@ -122,6 +130,11 @@ export const TASKS_PAGE_QUERY = gql`
         id
         name
       }
+      assignee {
+        id
+        email
+      }
+      assignedToMe
     }
   }
 `;

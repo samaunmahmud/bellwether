@@ -1,8 +1,10 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Invitations } from '../components/Invitations';
 import { errorMessage } from '../errors';
 import { CREATE_FARM, FARMS_QUERY } from '../graphql/farms';
+import { ROLE_LABELS } from '../roles';
 import type { FarmSummary } from '../types';
 
 /** FR-2.1: the signed-in user's farms, and a form to add one. */
@@ -29,6 +31,7 @@ export function FarmsPage() {
   return (
     <section>
       <h1>My farms</h1>
+      <Invitations />
 
       {loading && <p aria-live="polite">Loading farms…</p>}
       {error && (
@@ -45,6 +48,9 @@ export function FarmsPage() {
             <li key={farm.id}>
               <Link to={`/farms/${farm.id}`} className="list__link">
                 <strong>{farm.name}</strong> <span className="muted">{farm.postcode}</span>
+                {farm.myRole && farm.myRole !== 'OWNER' && (
+                  <span className="pill">{ROLE_LABELS[farm.myRole]}</span>
+                )}
               </Link>
               <Link
                 to={`/farms/${farm.id}/briefing`}

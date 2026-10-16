@@ -68,6 +68,7 @@ export const GROUP_QUERY = gql`
       farm {
         id
         name
+        myRole
       }
       withdrawal {
         inWithdrawal

@@ -9,6 +9,8 @@ export interface TaskFormValues {
   groupId: string | null;
   note: string | null;
   repeatEveryDays: number | null;
+  /** FR-5.4: only sent when the form is given people to choose from; null for no one */
+  assigneeId?: string | null;
 }
 
 const REPEATS: Array<{ label: string; days: number | null }> = [
@@ -23,14 +25,19 @@ const CUSTOM = 'custom';
 const presetValue = (days: number | null) =>
   REPEATS.some((r) => r.days === days) ? String(days ?? '') : CUSTOM;
 
-/** FR-5.3: add or edit a task for a group or the whole farm, optionally repeating. */
+/**
+ * FR-5.3: add or edit a task for a group or the whole farm, optionally repeating.
+ * With `people`, it can also be assigned to one of them (FR-5.4).
+ */
 export function TaskForm({
   groups,
+  people,
   onSubmit,
   initial,
   onCancel,
 }: {
   groups: Array<{ id: string; name: string }>;
+  people?: Array<{ id: string; label: string }>;
   onSubmit: (values: TaskFormValues) => Promise<unknown>;
   initial?: TaskFormValues;
   onCancel?: () => void;
@@ -41,6 +48,7 @@ export function TaskForm({
   const [note, setNote] = useState(initial?.note ?? '');
   const [repeat, setRepeat] = useState(presetValue(initial?.repeatEveryDays ?? null));
   const [customDays, setCustomDays] = useState(String(initial?.repeatEveryDays ?? ''));
+  const [assigneeId, setAssigneeId] = useState(initial?.assigneeId ?? '');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -55,6 +63,7 @@ export function TaskForm({
         groupId: groupId || null,
         note: note.trim() || null,
         repeatEveryDays,
+        ...(people && { assigneeId: assigneeId || null }),
       });
       if (!initial) {
         setTitle('');
@@ -108,6 +117,19 @@ export function TaskForm({
             <option value={CUSTOM}>Every … days</option>
           </select>
         </label>
+        {people && (
+          <label>
+            Assign to
+            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <option value="">No one</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {repeat === CUSTOM && (
           <label>
             Repeat every (days)

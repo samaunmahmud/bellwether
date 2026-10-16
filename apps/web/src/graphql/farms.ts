@@ -6,6 +6,7 @@ export const FARMS_QUERY = gql`
       id
       name
       postcode
+      myRole
     }
   }
 `;
@@ -16,6 +17,7 @@ export const FARM_QUERY = gql`
       id
       name
       postcode
+      myRole
       fields {
         id
         name
@@ -116,6 +118,7 @@ export const FARM_SETTINGS_QUERY = gql`
       id
       name
       postcode
+      myRole
       fields {
         ...SettingsFieldFields
       }

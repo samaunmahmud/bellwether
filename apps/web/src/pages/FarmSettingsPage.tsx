@@ -14,7 +14,8 @@ import {
   UPDATE_FARM,
   UPDATE_FIELD,
 } from '../graphql/farms';
-import type { Field } from '../types';
+import { canManage } from '../roles';
+import type { Field, FarmRole } from '../types';
 
 interface SettingsField extends Field {
   archivedOn: string | null;
@@ -24,6 +25,7 @@ interface FarmSettings {
   id: string;
   name: string;
   postcode: string;
+  myRole: FarmRole;
   fields: SettingsField[];
   archivedFields: SettingsField[];
   archivedGroups: Array<{
@@ -151,6 +153,16 @@ export function FarmSettingsPage() {
     );
   const farm = data?.farm;
   if (!farm) return <h1>Farm not found</h1>;
+  if (!canManage(farm.myRole))
+    return (
+      <section>
+        <p className="muted">
+          <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
+        </p>
+        <h1>Farm settings</h1>
+        <p>Only a farm owner can change these settings.</p>
+      </section>
+    );
 
   const run = async (action: () => Promise<unknown>) => {
     setActionError(null);
