@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../db/prisma';
+import { isUuid } from '../db/ids';
 import type { Field, GroupMovement, LivestockGroup } from '../domain/farm';
 import type {
   FarmRepository,
@@ -101,10 +102,12 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   getFarm(id: string) {
+    if (!isUuid(id)) return Promise.resolve(null);
     return this.db.farm.findUnique({ where: { id }, select: farmSelect });
   }
 
   listFarmsForUser(userId: string) {
+    if (!isUuid(userId)) return Promise.resolve([]);
     return this.db.farm.findMany({
       where: { members: { some: { userId } } },
       orderBy: { name: 'asc' },
@@ -117,6 +120,7 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   listMembers(farmId: string) {
+    if (!isUuid(farmId)) return Promise.resolve([]);
     return this.db.farmMember.findMany({
       where: { farmId },
       orderBy: { createdAt: 'asc' },
@@ -125,6 +129,7 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   async getRole(farmId: string, userId: string) {
+    if (!isUuid(farmId) || !isUuid(userId)) return null;
     const member = await this.db.farmMember.findUnique({
       where: { farmId_userId: { farmId, userId } },
       select: { role: true },
@@ -137,10 +142,12 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   getField(id: string) {
+    if (!isUuid(id)) return Promise.resolve(null);
     return this.db.field.findUnique({ where: { id }, select: fieldSelect });
   }
 
   listFields(farmId: string) {
+    if (!isUuid(farmId)) return Promise.resolve([]);
     return this.db.field.findMany({
       where: { farmId },
       orderBy: { name: 'asc' },
@@ -171,11 +178,13 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   async getGroup(id: string) {
+    if (!isUuid(id)) return null;
     const row = await this.db.livestockGroup.findUnique({ where: { id }, select: groupSelect });
     return row ? toGroup(row) : null;
   }
 
   async listGroups(farmId: string) {
+    if (!isUuid(farmId)) return [];
     const rows = await this.db.livestockGroup.findMany({
       where: { farmId },
       orderBy: { name: 'asc' },
@@ -212,6 +221,7 @@ export class PrismaFarmRepository implements FarmRepository {
   }
 
   async listMovements(groupId: string) {
+    if (!isUuid(groupId)) return [];
     const rows = await this.db.groupMovement.findMany({
       where: { groupId },
       orderBy: [{ movedOn: 'desc' }, { seq: 'desc' }],

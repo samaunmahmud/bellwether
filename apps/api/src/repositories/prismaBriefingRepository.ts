@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../db/prisma';
+import { isUuid } from '../db/ids';
 import type { BriefingContent } from '../domain/briefing';
 import { Prisma } from '../generated/prisma/client';
 import {
@@ -42,11 +43,13 @@ export class PrismaTaskRepository implements TaskRepository {
   }
 
   async getTask(id: string) {
+    if (!isUuid(id)) return null;
     const row = await this.db.task.findUnique({ where: { id }, select: taskSelect });
     return row ? toTask(row) : null;
   }
 
   async listTasks(farmId: string) {
+    if (!isUuid(farmId)) return [];
     const rows = await this.db.task.findMany({
       where: { farmId },
       orderBy: [{ dueDate: 'asc' }, { seq: 'asc' }],
@@ -76,6 +79,7 @@ export class PrismaBriefingRepository implements BriefingRepository {
   }
 
   async getRun(farmId: string, date: string) {
+    if (!isUuid(farmId)) return null;
     const row = await this.db.briefingRun.findUnique({
       where: { farmId_date: { farmId, date: toDb(date) } },
       select: { content: true },
@@ -84,6 +88,7 @@ export class PrismaBriefingRepository implements BriefingRepository {
   }
 
   async latestRun(farmId: string) {
+    if (!isUuid(farmId)) return null;
     const row = await this.db.briefingRun.findFirst({
       where: { farmId },
       orderBy: { date: 'desc' },
@@ -93,6 +98,7 @@ export class PrismaBriefingRepository implements BriefingRepository {
   }
 
   async getPreferences(farmId: string, userId: string): Promise<BriefingPreferences> {
+    if (!isUuid(farmId) || !isUuid(userId)) return { ...DEFAULT_PREFERENCES };
     const row = await this.db.briefingPreference.findUnique({
       where: { farmId_userId: { farmId, userId } },
       select: { emailEnabled: true, sendAt: true, alwaysSend: true },

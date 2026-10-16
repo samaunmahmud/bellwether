@@ -127,4 +127,18 @@ export function briefingRepositoryContract(makeFixture: () => Promise<BriefingFi
       expect(await f.briefings.claimEmail(farmId, userId, '2026-06-11')).toBe(true);
     });
   });
+
+  describe('ids that are not UUIDs', () => {
+    it('are treated as not found', async () => {
+      expect(await f.tasks.getTask('x')).toBeNull();
+      expect(await f.tasks.listTasks('x')).toEqual([]);
+      expect(await f.briefings.getRun('x', '2026-06-10')).toBeNull();
+      expect(await f.briefings.latestRun('x')).toBeNull();
+      expect(await f.briefings.getPreferences('x', 'y')).toEqual({
+        emailEnabled: true,
+        sendAt: '06:00',
+        alwaysSend: false,
+      });
+    });
+  });
 }

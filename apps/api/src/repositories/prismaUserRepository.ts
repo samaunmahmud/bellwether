@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../db/prisma';
+import { isUuid } from '../db/ids';
 import { Prisma } from '../generated/prisma/client';
 import type { NewSession, UserRepository } from './userRepository';
 
@@ -27,6 +28,7 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   getUser(id: string) {
+    if (!isUuid(id)) return Promise.resolve(null);
     return this.db.user.findUnique({ where: { id }, select: userSelect });
   }
 

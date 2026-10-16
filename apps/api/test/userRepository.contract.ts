@@ -47,4 +47,10 @@ export function userRepositoryContract(makeRepo: () => Promise<UserRepository>) 
       await expect(repo.deleteSession('missing')).resolves.toBeUndefined();
     });
   });
+
+  describe('ids that are not UUIDs', () => {
+    it('are treated as not found', async () => {
+      expect(await repo.getUser('x')).toBeNull();
+    });
+  });
 }

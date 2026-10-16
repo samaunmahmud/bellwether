@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../db/prisma';
+import { isUuid } from '../db/ids';
 import type { Observation, Treatment } from '../domain/records';
 import type { NewObservation, NewTreatment, RecordsRepository } from './recordsRepository';
 
@@ -45,6 +46,7 @@ export class PrismaRecordsRepository implements RecordsRepository {
   }
 
   async listTreatments(groupId: string): Promise<Treatment[]> {
+    if (!isUuid(groupId)) return [];
     const rows = await this.db.treatment.findMany({
       where: { groupId },
       orderBy: [{ date: 'desc' }, { seq: 'desc' }],
@@ -54,6 +56,7 @@ export class PrismaRecordsRepository implements RecordsRepository {
   }
 
   async listFarmTreatments(farmId: string, from: string, to: string): Promise<Treatment[]> {
+    if (!isUuid(farmId)) return [];
     const rows = await this.db.treatment.findMany({
       where: { farmId, date: { gte: toDb(from), lte: toDb(to) } },
       orderBy: [{ date: 'asc' }, { seq: 'asc' }],
@@ -71,6 +74,7 @@ export class PrismaRecordsRepository implements RecordsRepository {
   }
 
   async listObservations(groupId: string): Promise<Observation[]> {
+    if (!isUuid(groupId)) return [];
     const rows = await this.db.observation.findMany({
       where: { groupId },
       orderBy: [{ date: 'desc' }, { seq: 'desc' }],

@@ -106,4 +106,12 @@ export function recordsRepositoryContract(makeFixture: () => Promise<RecordsFixt
       expect(await repo.listTreatments(b.groupId)).toEqual([]);
     });
   });
+
+  describe('ids that are not UUIDs', () => {
+    it('are treated as not found', async () => {
+      expect(await repo.listTreatments('x')).toEqual([]);
+      expect(await repo.listObservations('x')).toEqual([]);
+      expect(await repo.listFarmTreatments('x', '2026-01-01', '2026-12-31')).toEqual([]);
+    });
+  });
 }

@@ -280,4 +280,19 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
       expect(history[3]!.movedOn).toBe('2026-06-01');
     });
   });
+
+  describe('ids that are not UUIDs (as sent by clients)', () => {
+    it('are treated as not found, never as errors', async () => {
+      expect(await repo.getFarm('x')).toBeNull();
+      expect(await repo.getField('x')).toBeNull();
+      expect(await repo.getGroup('x')).toBeNull();
+      expect(await repo.getRole('x', 'y')).toBeNull();
+      expect(await repo.getRole('x', owner)).toBeNull();
+      expect(await repo.listFields('x')).toEqual([]);
+      expect(await repo.listGroups('x')).toEqual([]);
+      expect(await repo.listMovements('x')).toEqual([]);
+      expect(await repo.listMembers('x')).toEqual([]);
+      expect(await repo.listFarmsForUser('x')).toEqual([]);
+    });
+  });
 }
