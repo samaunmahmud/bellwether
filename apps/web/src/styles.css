@@ -2,7 +2,8 @@
   --bg: #f6f5f0;
   --surface: #ffffff;
   --text: #1c2321;
-  --muted: #5d6763;
+  /* Darker than usual so secondary text stays readable in bright daylight (FR-10.1) */
+  --muted: #48524e;
   --border: #dedcd3;
   --accent: #2f6b4f;
   --accent-text: #ffffff;
@@ -37,6 +38,12 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* FR-10.1: a slightly larger base size for reading outdoors */
+html {
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -147,6 +154,9 @@ label {
 input,
 select {
   font: inherit;
+  /* 16px or more stops phones zooming in when a field is tapped */
+  font-size: 17px;
+  min-height: 48px;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -154,15 +164,46 @@ select {
   color: var(--text);
 }
 
-button {
+/* FR-10.1: every tap target is at least 48px tall */
+button,
+a.button {
   font: inherit;
   font-weight: 600;
-  padding: 10px 16px;
+  min-height: 48px;
+  padding: 10px 18px;
   border: 0;
   border-radius: 8px;
   background: var(--accent);
   color: var(--accent-text);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.secondary,
+a.button--secondary {
+  background: var(--surface);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
 }
 
 button:focus-visible,
@@ -175,8 +216,9 @@ select:focus-visible {
 .link-button {
   background: none;
   color: var(--accent);
-  padding: 4px 0;
-  font-weight: 500;
+  padding: 4px 8px;
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .segmented {
@@ -213,8 +255,10 @@ select:focus-visible {
 .toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0 16px;
+  gap: 12px;
+  min-height: 48px;
+  margin: 4px 0;
+  font-size: 1rem;
 }
 
 .grid {
@@ -419,9 +463,10 @@ h2 {
 }
 
 .withdrawal--active {
-  border-color: #b45309;
-  background: #fff7ed;
-  color: #7c2d12;
+  border: 2px solid var(--high);
+  background: var(--high-bg);
+  color: var(--high);
+  font-weight: 700;
 }
 
 .actions {
@@ -429,16 +474,6 @@ h2 {
   flex-wrap: wrap;
   gap: 12px;
   margin: 16px 0;
-}
-
-a.button {
-  display: inline-block;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
 }
 
 .table-scroll {
@@ -475,5 +510,135 @@ a.button {
 
   .records {
     font-size: 10pt;
+  }
+}
+
+/* --- Morning briefing (FR-4.2) --- */
+
+.briefing-group {
+  margin: 16px 0;
+}
+
+.briefing-group > h2 {
+  margin: 0 0 8px;
+}
+
+.briefing-item {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.briefing-item__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.briefing-item__header h4 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.badge {
+  font-size: 0.85rem;
+}
+
+/* "New" is said in words, with a border, not by colour alone */
+.tag-new {
+  padding: 1px 8px;
+  border: 2px solid var(--high);
+  border-radius: 999px;
+  color: var(--high);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.checks {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.checks li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.overdue {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border: 2px solid var(--high);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.overdue h2 {
+  margin: 0 0 8px;
+  color: var(--high);
+}
+
+.quiet summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* --- Small screens: one column, full-width actions within thumb reach (FR-10.1) --- */
+@media (max-width: 600px) {
+  .shell {
+    padding: 0 12px 48px;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .topbar nav {
+    gap: 4px 12px;
+  }
+
+  .topbar nav a,
+  .topbar nav .link-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .topbar__user {
+    display: none;
+  }
+
+  .form--inline {
+    grid-template-columns: 1fr;
+  }
+
+  .form button[type='submit'],
+  .actions > a,
+  .actions > button {
+    width: 100%;
+  }
+
+  .checks li button {
+    flex: none;
+    padding: 10px 12px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .list > li {
+    display: grid;
+    gap: 8px;
   }
 }

@@ -4,12 +4,10 @@ import { Link, useParams } from 'react-router-dom';
 import { BriefingEmailSettings } from '../components/BriefingEmailSettings';
 import { Disclaimer } from '../components/Disclaimer';
 import { RiskBadge } from '../components/RiskBadge';
-import { shortDay, todayIso } from '../dates';
+import { dayRanges, shortDay, todayIso } from '../dates';
 import { errorMessage } from '../errors';
 import { BRIEFING_QUERY, CREATE_TASK, REFRESH_BRIEFING, SET_TASK_DONE } from '../graphql/briefing';
 import type { Briefing, BriefingItem } from '../types';
-
-const LEVEL_WORD = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 
 const ukTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-GB', {
@@ -35,9 +33,7 @@ function Item({
         {item.isNew && <span className="tag-new">New</span>}
         <h4 id={headingId}>{item.riskName}</h4>
       </header>
-      <p className="muted">
-        {item.daysAffected.map((d) => `${shortDay(d.date)} (${LEVEL_WORD[d.level]})`).join(', ')}
-      </p>
+      <p className="muted">{dayRanges(item.daysAffected)}</p>
       <p>{item.reason}</p>
       <ul className="checks">
         {item.checks.map((check) => (

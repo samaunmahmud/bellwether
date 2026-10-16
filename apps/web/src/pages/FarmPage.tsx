@@ -113,7 +113,11 @@ export function FarmPage() {
               </p>
             )}
             <p>
-              <Link to={`/groups/${group.id}`} aria-label={`Records for ${group.name}`}>
+              <Link
+                to={`/groups/${group.id}`}
+                className="button button--secondary"
+                aria-label={`Records for ${group.name}`}
+              >
                 Treatments and checks
               </Link>
             </p>

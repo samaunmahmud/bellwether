@@ -106,7 +106,7 @@ describe('BriefingPage (FR-4.1, FR-4.2)', () => {
     const blowfly = within(flock).getByRole('article', { name: /Sheep blowfly strike/ });
     expect(within(blowfly).getByText('High')).toBeInTheDocument();
     expect(within(blowfly).getByText('New')).toBeInTheDocument();
-    expect(blowfly).toHaveTextContent('Wed 10 Jun (High), Thu 11 Jun (Medium)');
+    expect(blowfly).toHaveTextContent('Wed 10 Jun: High · Thu 11 Jun: Medium');
     expect(blowfly).toHaveTextContent('Warm and humid: blowfly strike risk high');
     expect(
       within(blowfly).getByText('Check the flock daily for signs of strike'),
