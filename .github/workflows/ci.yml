@@ -8,6 +8,23 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bellwether
+          POSTGRES_PASSWORD: bellwether
+          POSTGRES_DB: bellwether_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bellwether"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      # Enables the Postgres repository contract tests
+      TEST_DATABASE_URL: postgresql://bellwether:bellwether@localhost:5432/bellwether_test
     steps:
       - uses: actions/checkout@v5
 
@@ -20,5 +37,6 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
+      - run: npm run db:test:prepare
       - run: npm run test:coverage
       - run: npm run build
