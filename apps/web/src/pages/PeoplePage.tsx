@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorMessage } from '../errors';
 import { FARMS_QUERY } from '../graphql/farms';
@@ -126,15 +127,14 @@ export function PeoplePage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <h1>People</h1>
-      <p className="muted">
-        You are{' '}
-        {farm.myRole === 'OWNER' ? 'an owner' : `a ${ROLE_LABELS[farm.myRole].toLowerCase()}`} on
-        this farm. {ROLE_HELP[farm.myRole]}.
-      </p>
+      <PageHero photo="cattle" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
+        <h1>People</h1>
+        <p className="muted">
+          You are{' '}
+          {farm.myRole === 'OWNER' ? 'an owner' : `a ${ROLE_LABELS[farm.myRole].toLowerCase()}`} on
+          this farm. {ROLE_HELP[farm.myRole]}.
+        </p>
+      </PageHero>
       {actionError && (
         <p className="error" role="alert">
           {actionError}

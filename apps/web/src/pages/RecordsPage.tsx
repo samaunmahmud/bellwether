@@ -1,4 +1,5 @@
 import { useQuery } from '@apollo/client';
+import { PageHero } from '../components/photos';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { treatmentsCsv } from '../csv';
 import { todayIso } from '../dates';
@@ -24,10 +25,9 @@ export function RecordsPage() {
 
   return (
     <section className="printable">
-      <p className="muted no-print">
-        <Link to={`/farms/${id}`}>Back to farm</Link>
-      </p>
-      <h1>Treatment records</h1>
+      <PageHero photo="barn" eyebrow={<Link to={`/farms/${id}`}>Back to farm</Link>}>
+        <h1>Treatment records</h1>
+      </PageHero>
       <p className="muted print-only">
         {from} to {to}
       </p>

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { TaskForm, type TaskFormValues } from '../components/TaskForm';
 import { shortDay } from '../dates';
@@ -148,10 +149,9 @@ export function TasksPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <h1>Tasks</h1>
+      <PageHero photo="gate" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
+        <h1>Tasks</h1>
+      </PageHero>
       <TaskSummary overdue={overdue.length} todo={todo.length} done={done.length} />
 
       <div className="tasks-layout">

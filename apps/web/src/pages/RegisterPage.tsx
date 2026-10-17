@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useMemo, useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { KINDS, RegisterEventForm } from '../components/RegisterEventForm';
 import { useToast } from '../components/Toasts';
@@ -133,10 +134,7 @@ export function RegisterPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <header className="page-title">
+      <PageHero photo="lambs" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
         <div>
           <h1>Holding register</h1>
           <p className="lead">
@@ -163,7 +161,7 @@ export function RegisterPage() {
             Print
           </button>
         </div>
-      </header>
+      </PageHero>
 
       <ul className="group-counts" aria-label="Head count now">
         {farm.groups.map((g) => (

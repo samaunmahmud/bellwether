@@ -1,4 +1,5 @@
 import { useQuery } from '@apollo/client';
+import { PageHero } from '../components/photos';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ForecastView } from '../components/ForecastView';
 import { FORECAST_QUERY } from '../graphql/queries';
@@ -25,7 +26,12 @@ export function ForecastPage() {
 
   return (
     <section>
-      <h1>{isPet ? 'Pet forecast' : 'Farm forecast'}</h1>
+      <PageHero photo={isPet ? 'dog' : 'storm'} eyebrow="14-day forecast">
+        <div>
+          <h1>{isPet ? 'Pet forecast' : 'Farm forecast'}</h1>
+          {postcode && <p>For {postcode.toUpperCase()}</p>}
+        </div>
+      </PageHero>
 
       {isPet && (
         <label className="toggle">

@@ -1,5 +1,6 @@
 import { useQuery } from '@apollo/client';
 import { useMemo, useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { KINDS } from '../components/RegisterEventForm';
 import { shortDay, todayIso } from '../dates';
@@ -182,10 +183,7 @@ export function CalendarPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${data.farm.id}`}>{data.farm.name}</Link>
-      </p>
-      <header className="page-title">
+      <PageHero photo="lambs" eyebrow={<Link to={`/farms/${data.farm.id}`}>{data.farm.name}</Link>}>
         <h1>Calendar</h1>
         <div className="calendar__nav">
           <button
@@ -218,7 +216,7 @@ export function CalendarPage() {
             Today
           </button>
         </div>
-      </header>
+      </PageHero>
 
       <fieldset className="chips">
         <legend className="visually-hidden">Show</legend>

@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { applyStoredPalette } from './components/PalettePicker';
 import { registerOffline } from './offline/registerOffline';
 import { routerFuture } from './routerFuture';
 import '@fontsource-variable/fraunces';
@@ -13,6 +14,7 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
+applyStoredPalette();
 registerOffline();
 
 createRoot(document.getElementById('root')!).render(

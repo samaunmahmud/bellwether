@@ -1,3 +1,4 @@
+import { PageHero } from '../components/photos';
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -51,7 +52,12 @@ export function FarmsPage() {
 
   return (
     <section>
-      <h1>My farms</h1>
+      <PageHero photo="fell" eyebrow="Your holdings">
+        <div>
+          <h1>My farms</h1>
+          <p>Every farm you own or help on. Open one for its dashboard, map and records.</p>
+        </div>
+      </PageHero>
       <Invitations />
 
       {loading && <p aria-live="polite">Loading farms…</p>}

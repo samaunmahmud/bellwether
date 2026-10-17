@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { FieldMap, type MapField } from '../components/FieldMap';
 import { useToast } from '../components/Toasts';
@@ -80,10 +81,7 @@ export function FarmMapPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <header className="page-title">
+      <PageHero photo="aerial" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
         <div>
           <h1>Farm map</h1>
           <p className="lead">
@@ -91,7 +89,7 @@ export function FarmMapPage() {
             {resting[0] && ` Longest rested: ${resting[0].name} (${resting[0].grazing.days} days).`}
           </p>
         </div>
-      </header>
+      </PageHero>
 
       {placingField && (
         <p className="notice" role="status">

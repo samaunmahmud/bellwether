@@ -11,6 +11,7 @@ import { Icon } from './Icon';
 import { BrandMark } from './BrandMark';
 import { NavBar } from './NavBar';
 import { OfflineBanner } from './OfflineBanner';
+import { PalettePicker } from './PalettePicker';
 
 const LAST_FARM_KEY = 'bellwether:lastFarm';
 const THEME_KEY = 'bellwether:theme';
@@ -209,17 +210,30 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="sidebar__footer">
-          <button type="button" className="sidebar__action" onClick={toggle}>
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
-            {themeLabel}
-          </button>
           <p className="sidebar__user" title={me.email}>
             {me.email}
           </p>
-          <button type="button" className="sidebar__action" onClick={handleLogOut}>
-            <Icon name="logout" />
-            Log out
-          </button>
+          <div className="sidebar__controls">
+            <PalettePicker />
+            <button
+              type="button"
+              className="sidebar__icon"
+              onClick={toggle}
+              aria-label={themeLabel}
+              title={themeLabel}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+            </button>
+            <button
+              type="button"
+              className="sidebar__icon"
+              onClick={handleLogOut}
+              aria-label="Log out"
+              title="Log out"
+            >
+              <Icon name="logout" />
+            </button>
+          </div>
         </div>
       </aside>
       {menuOpen && <div className="sidebar__scrim" onClick={() => setMenuOpen(false)} />}

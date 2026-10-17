@@ -80,8 +80,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
 
   return (
     <div className="auth">
+      <Photo name="gate" className="photo--drift auth__photo" />
       <aside className="auth__scene">
-        <Photo name="fell" className="photo--drift" />
         <div className="auth__scene-inner">
           <Link to="/" className="auth__brand">
             <BrandMark /> Bellwether

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { BriefingEmailSettings } from '../components/BriefingEmailSettings';
 import { Disclaimer } from '../components/Disclaimer';
@@ -104,12 +105,11 @@ export function BriefingPage() {
 
   return (
     <section className="briefing">
-      <p className="muted">
-        <Link to={`/farms/${briefing.farm.id}`}>{briefing.farm.name}</Link>
-      </p>
-      <header className="page-hero page-hero--compact page-hero--dawn">
-        <div className="page-hero__inner">
-          <p className="eyebrow">{briefing.farm.name}</p>
+      <PageHero
+        photo="gate"
+        eyebrow={<Link to={`/farms/${briefing.farm.id}`}>{briefing.farm.name}</Link>}
+      >
+        <div>
           <h1>Morning briefing</h1>
           <p>
             {shortDay(briefing.date)} · updated {ukTime(briefing.generatedAt)}{' '}
@@ -125,7 +125,7 @@ export function BriefingPage() {
             </button>
           </p>
         </div>
-      </header>
+      </PageHero>
       {briefing.isStale && (
         <p className="error" role="alert">
           Showing the briefing from {shortDay(briefing.date)} (updated{' '}

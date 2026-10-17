@@ -1,5 +1,6 @@
 import { useQuery } from '@apollo/client';
 import { DayStrip } from '../components/DayStrip';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { BarChart } from '../components/charts/BarChart';
 import { LineChart } from '../components/charts/LineChart';
@@ -43,11 +44,10 @@ export function OutlookPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <h1>Weather and risk</h1>
-      <p className="lead">The next 14 days at the farm, and what they mean for each group.</p>
+      <PageHero photo="storm" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
+        <h1>Weather and risk</h1>
+        <p className="lead">The next 14 days at the farm, and what they mean for each group.</p>
+      </PageHero>
 
       {farm.weather.length > 0 && (
         <div className="stats">

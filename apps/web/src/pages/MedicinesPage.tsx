@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { useToast } from '../components/Toasts';
 import { shortDay, todayIso } from '../dates';
@@ -139,10 +140,7 @@ export function MedicinesPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <header className="page-title">
+      <PageHero photo="barn" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
         <div>
           <h1>Medicine cabinet</h1>
           <p className="lead">
@@ -156,7 +154,7 @@ export function MedicinesPage() {
             Add a medicine
           </button>
         )}
-      </header>
+      </PageHero>
 
       {worker && adding && (
         <section className="panel" aria-labelledby="add-heading">

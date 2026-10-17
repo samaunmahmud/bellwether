@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ForecastView } from '../components/ForecastView';
 import { LogForm, type LogFormValues } from '../components/LogForm';
@@ -69,10 +70,7 @@ export function PetPage() {
 
   return (
     <section>
-      <p>
-        <Link to="/animals">← My pets</Link>
-      </p>
-      <header className="page-header">
+      <PageHero photo="dog" eyebrow={<Link to="/animals">← My pets</Link>}>
         <div>
           <h1>{pet.name}</h1>
           <p className="muted">
@@ -96,7 +94,7 @@ export function PetPage() {
             </button>
           </div>
         )}
-      </header>
+      </PageHero>
 
       {editingPet && (
         <PetForm initial={pet} onSubmit={savePet} onCancel={() => setEditingPet(false)} />

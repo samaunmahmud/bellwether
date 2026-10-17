@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
+import { PageHero } from '../components/photos';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FieldForm, type FieldFormValues } from '../components/FieldForm';
 import { dayMonth } from '../dates';
@@ -186,10 +187,9 @@ export function FarmSettingsPage() {
   if (!canManage(farm.myRole))
     return (
       <section>
-        <p className="muted">
-          <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-        </p>
-        <h1>Farm settings</h1>
+        <PageHero photo="aerial" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
+          <h1>Farm settings</h1>
+        </PageHero>
         <p>Only a farm owner can change these settings.</p>
       </section>
     );
@@ -205,10 +205,9 @@ export function FarmSettingsPage() {
 
   return (
     <section>
-      <p className="muted">
-        <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
-      </p>
-      <h1>Farm settings</h1>
+      <PageHero photo="aerial" eyebrow={<Link to={`/farms/${farm.id}`}>{farm.name}</Link>}>
+        <h1>Farm settings</h1>
+      </PageHero>
 
       <h2>Details</h2>
       <DetailsForm farm={farm} onSave={(input) => updateFarm({ variables: { id, input } })} />
