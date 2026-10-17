@@ -152,137 +152,189 @@ export function TasksPage() {
         <Link to={`/farms/${farm.id}`}>{farm.name}</Link>
       </p>
       <h1>Tasks</h1>
+      <TaskSummary overdue={overdue.length} todo={todo.length} done={done.length} />
 
-      {worker ? (
-        <TaskForm
-          groups={farm.groups}
-          people={people}
-          onSubmit={(values) =>
-            createTask({ variables: { input: { farmId: farm.id, ...values } } })
-          }
-        />
-      ) : (
-        <p className="muted">You can view this farm's tasks but not change them.</p>
-      )}
+      <div className="tasks-layout">
+        <div className="tasks-layout__main">
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={onlyMine}
+              onChange={(e) => setOnlyMine(e.target.checked)}
+            />
+            Only my tasks
+          </label>
 
-      <label className="toggle">
-        <input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} />
-        Only my tasks
-      </label>
-
-      <div className="tabs" role="tablist" aria-label="View">
-        {(['list', 'board'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            role="tab"
-            aria-selected={view === v}
-            className={view === v ? 'tab is-active' : 'tab'}
-            onClick={() => setView(v)}
-          >
-            {v === 'list' ? 'List' : 'Board'}
-          </button>
-        ))}
-      </div>
-
-      {onlyMine && tasks.length === 0 && <p className="muted">No tasks are assigned to you.</p>}
-
-      {view === 'board' && tasks.length > 0 && (
-        <div className="board">
-          {(
-            [
-              ['overdue', 'Overdue', overdue],
-              ['todo', 'To do', todo],
-              ['done', 'Done', done],
-            ] as const
-          ).map(([key, title, list]) => {
-            const target = key === 'done' ? 'done' : 'todo';
-            return (
-              <section
-                key={key}
-                className={`board__column board__column--${key}${dragOver === target && key !== 'overdue' ? ' is-over' : ''}`}
-                aria-label={title}
-                onDragOver={(e) => {
-                  if (!worker || key === 'overdue') return;
-                  e.preventDefault();
-                  setDragOver(target);
-                }}
-                onDragLeave={() => setDragOver(null)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(null);
-                  const taskId = e.dataTransfer.getData('text/plain');
-                  const task = tasks.find((t) => t.id === taskId);
-                  if (task && key !== 'overdue' && task.done !== (key === 'done'))
-                    void setDone({ variables: { id: task.id, done: key === 'done' } });
-                }}
+          <div className="tabs" role="tablist" aria-label="View">
+            {(['list', 'board'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                className={view === v ? 'tab is-active' : 'tab'}
+                onClick={() => setView(v)}
               >
-                <h2>
-                  {title} <span className="muted">{list.length}</span>
-                </h2>
-                {list.length === 0 && <p className="board__empty muted">Nothing here.</p>}
-                {list.map((task) => (
-                  <article
-                    key={task.id}
-                    className={`board__card${task.overdue ? ' board__card--overdue' : ''}`}
-                    draggable={worker}
-                    onDragStart={(e) => e.dataTransfer.setData('text/plain', task.id)}
+                {v === 'list' ? 'List' : 'Board'}
+              </button>
+            ))}
+          </div>
+
+          {onlyMine && tasks.length === 0 && <p className="muted">No tasks are assigned to you.</p>}
+
+          {view === 'board' && tasks.length > 0 && (
+            <div className="board">
+              {(
+                [
+                  ['overdue', 'Overdue', overdue],
+                  ['todo', 'To do', todo],
+                  ['done', 'Done', done],
+                ] as const
+              ).map(([key, title, list]) => {
+                const target = key === 'done' ? 'done' : 'todo';
+                return (
+                  <section
+                    key={key}
+                    className={`board__column board__column--${key}${dragOver === target && key !== 'overdue' ? ' is-over' : ''}`}
+                    aria-label={title}
+                    onDragOver={(e) => {
+                      if (!worker || key === 'overdue') return;
+                      e.preventDefault();
+                      setDragOver(target);
+                    }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(null);
+                      const taskId = e.dataTransfer.getData('text/plain');
+                      const task = tasks.find((t) => t.id === taskId);
+                      if (task && key !== 'overdue' && task.done !== (key === 'done'))
+                        void setDone({ variables: { id: task.id, done: key === 'done' } });
+                    }}
                   >
-                    <strong>{task.title}</strong>
-                    <span className="muted">
-                      {task.group?.name ?? 'Whole farm'} · {shortDay(task.dueDate)}
-                    </span>
-                    {assigneeLabel(task) && <span className="muted">{assigneeLabel(task)}</span>}
-                    {worker && (
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => setDone({ variables: { id: task.id, done: !task.done } })}
+                    <h2>
+                      {title} <span className="muted">{list.length}</span>
+                    </h2>
+                    {list.length === 0 && <p className="board__empty muted">Nothing here.</p>}
+                    {list.map((task) => (
+                      <article
+                        key={task.id}
+                        className={`board__card${task.overdue ? ' board__card--overdue' : ''}`}
+                        draggable={worker}
+                        onDragStart={(e) => e.dataTransfer.setData('text/plain', task.id)}
                       >
-                        {task.done ? 'Not done' : 'Mark done'}
-                      </button>
-                    )}
-                  </article>
-                ))}
-              </section>
-            );
-          })}
+                        <strong>{task.title}</strong>
+                        <span className="muted">
+                          {task.group?.name ?? 'Whole farm'} · {shortDay(task.dueDate)}
+                        </span>
+                        {assigneeLabel(task) && (
+                          <span className="muted">{assigneeLabel(task)}</span>
+                        )}
+                        {worker && (
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() =>
+                              setDone({ variables: { id: task.id, done: !task.done } })
+                            }
+                          >
+                            {task.done ? 'Not done' : 'Mark done'}
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+
+          {!onlyMine && tasks.length === 0 && (
+            <p className="muted">
+              No tasks yet. Add one with the form, or from a suggested check on the{' '}
+              <Link to={`/farms/${farm.id}/briefing`}>morning briefing</Link>.
+            </p>
+          )}
+
+          {view === 'list' && overdue.length > 0 && (
+            <section className="overdue">
+              <h2>Overdue</h2>
+              <ul className="tasks" aria-label="Overdue">
+                {overdue.map(row)}
+              </ul>
+            </section>
+          )}
+
+          {view === 'list' && todo.length > 0 && (
+            <>
+              <h2>To do</h2>
+              <ul className="tasks" aria-label="To do">
+                {todo.map(row)}
+              </ul>
+            </>
+          )}
+
+          {view === 'list' && done.length > 0 && (
+            <details className="quiet">
+              <summary>Done ({done.length})</summary>
+              <ul className="tasks" aria-label="Done">
+                {done.map(row)}
+              </ul>
+            </details>
+          )}
         </div>
-      )}
-
-      {!onlyMine && tasks.length === 0 && (
-        <p className="muted">
-          No tasks yet. Add one above, or from a suggested check on the{' '}
-          <Link to={`/farms/${farm.id}/briefing`}>morning briefing</Link>.
-        </p>
-      )}
-
-      {view === 'list' && overdue.length > 0 && (
-        <section className="overdue">
-          <h2>Overdue</h2>
-          <ul className="tasks" aria-label="Overdue">
-            {overdue.map(row)}
-          </ul>
-        </section>
-      )}
-
-      {view === 'list' && todo.length > 0 && (
-        <>
-          <h2>To do</h2>
-          <ul className="tasks" aria-label="To do">
-            {todo.map(row)}
-          </ul>
-        </>
-      )}
-
-      {view === 'list' && done.length > 0 && (
-        <details className="quiet">
-          <summary>Done ({done.length})</summary>
-          <ul className="tasks" aria-label="Done">
-            {done.map(row)}
-          </ul>
-        </details>
-      )}
+        <aside className="tasks-layout__side panel" aria-label="Add a task">
+          <h2>Add a task</h2>
+          {worker ? (
+            <TaskForm
+              groups={farm.groups}
+              people={people}
+              onSubmit={(values) =>
+                createTask({ variables: { input: { farmId: farm.id, ...values } } })
+              }
+            />
+          ) : (
+            <p className="muted">You can view this farm's tasks but not change them.</p>
+          )}
+        </aside>
+      </div>
     </section>
+  );
+}
+
+/** v3.2: how the farm's jobs stand, with a ring for the share done. */
+function TaskSummary({ overdue, todo, done }: { overdue: number; todo: number; done: number }) {
+  const total = overdue + todo + done;
+  const share = total ? done / total : 0;
+  const r = 22;
+  const length = 2 * Math.PI * r;
+  return (
+    <div className="task-summary">
+      <div className="task-summary__ring">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+          <circle cx="28" cy="28" r={r} className="task-summary__track" />
+          <circle
+            cx="28"
+            cy="28"
+            r={r}
+            className="task-summary__done"
+            strokeDasharray={`${share * length} ${length}`}
+            transform="rotate(-90 28 28)"
+          />
+        </svg>
+        <span>
+          <strong>
+            {done} of {total}
+          </strong>{' '}
+          done
+        </span>
+      </div>
+      <span className={overdue ? 'task-summary__count is-alert' : 'task-summary__count'}>
+        <strong>{overdue}</strong> overdue
+      </span>
+      <span className="task-summary__count">
+        <strong>{todo}</strong> to do
+      </span>
+    </div>
   );
 }

@@ -79,6 +79,16 @@ function InviteForm({
 }
 
 /** FR-8.2: who can see and work on this farm. */
+/** Two letters from the start of an email, e.g. "jo.vet@…" → "JV". */
+export function initials(email: string) {
+  const parts = email
+    .split('@')[0]!
+    .split(/[._+-]+/)
+    .filter(Boolean);
+  const letters = parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : (parts[0]?.slice(0, 2) ?? '?');
+  return letters.toUpperCase();
+}
+
 export function PeoplePage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -134,7 +144,12 @@ export function PeoplePage() {
       <ul className="list" aria-label="Members">
         {farm.members.map((m) => (
           <li key={m.userId} className="row">
-            <span>{m.isMe ? `${m.email} (you)` : m.email}</span>
+            <span className="member">
+              <span className={`avatar avatar--${m.role.toLowerCase()}`} aria-hidden="true">
+                {initials(m.email)}
+              </span>
+              <span>{m.isMe ? `${m.email} (you)` : m.email}</span>
+            </span>
             {owner ? (
               <span className="log__actions">
                 <select

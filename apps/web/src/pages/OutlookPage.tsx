@@ -1,4 +1,5 @@
 import { useQuery } from '@apollo/client';
+import { DayStrip } from '../components/DayStrip';
 import { Link, useParams } from 'react-router-dom';
 import { BarChart } from '../components/charts/BarChart';
 import { LineChart } from '../components/charts/LineChart';
@@ -68,6 +69,8 @@ export function OutlookPage() {
           )}
         </div>
       )}
+
+      {farm.weather.length > 0 && <DayStrip days={farm.weather} />}
 
       <div className="dashboard__grid">
         <section className="panel" aria-labelledby="temp-heading">

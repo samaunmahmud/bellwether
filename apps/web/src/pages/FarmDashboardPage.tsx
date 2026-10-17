@@ -5,6 +5,7 @@ import { Disclaimer } from '../components/Disclaimer';
 import { Icon } from '../components/Icon';
 import { RiskHeatmap } from '../components/RiskHeatmap';
 import { CountUp } from '../components/CountUp';
+import { dayIcon } from '../components/DayStrip';
 import { farmPhoto, Photo } from '../components/photos';
 import { StatTile } from '../components/StatTile';
 import { dayMonth, shortDay } from '../dates';
@@ -50,13 +51,6 @@ const TODAY_FORMAT = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'long',
 });
-
-/** Icon for the day: rain if it's wet, sun if it's warm and dry, cloud otherwise. */
-function weatherIcon(day: WeatherDay) {
-  if (day.precipitationMm >= 1) return 'drop' as const;
-  if (day.tempMaxC >= 15) return 'sun' as const;
-  return 'forecast' as const;
-}
 
 /** v3: the farm at a glance – figures, what needs doing, this week's risk, weather and activity. */
 export function FarmDashboardPage() {
@@ -104,7 +98,7 @@ export function FarmDashboardPage() {
           {today && (
             <div className="farm-hero__weather" role="group" aria-label="Today’s weather">
               <span className="farm-hero__weather-icon">
-                <Icon name={weatherIcon(today)} size={30} />
+                <Icon name={dayIcon(today)} size={30} />
               </span>
               <span className="farm-hero__temp">
                 {Math.round(today.tempMaxC)}°<small> / {Math.round(today.tempMinC)}°</small>

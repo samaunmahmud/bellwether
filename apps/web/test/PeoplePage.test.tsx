@@ -8,7 +8,7 @@ import {
   REMOVE_MEMBER,
   SET_MEMBER_ROLE,
 } from '../src/graphql/members';
-import { PeoplePage } from '../src/pages/PeoplePage';
+import { initials, PeoplePage } from '../src/pages/PeoplePage';
 import { routerFuture } from '../src/routerFuture';
 
 const member = (userId: string, email: string, role: string, isMe = false) => ({
@@ -134,5 +134,15 @@ describe('PeoplePage (FR-8.2)', () => {
     expect(screen.queryByLabelText(/Role for/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Leave this farm' }));
     expect(await screen.findByText('All farms')).toBeInTheDocument();
+  });
+});
+
+describe('initials', () => {
+  it.each([
+    ['jo.vet@example.com', 'JV'],
+    ['alex@example.com', 'AL'],
+    ['demo-1a2b@example.com', 'D1'],
+  ])('%s → %s', (email, expected) => {
+    expect(initials(email)).toBe(expected);
   });
 });

@@ -4116,3 +4116,200 @@ a.glass-button:hover {
     radial-gradient(ellipse 70% 35% at 75% 115%, #2f523c 0 60%, transparent 61%),
     linear-gradient(90deg, rgba(10, 16, 30, 0.45) 0%, rgba(10, 16, 30, 0) 70%);
 }
+
+/* v3.2: people */
+.member {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.avatar--worker {
+  background: var(--medium-bg);
+  color: var(--medium);
+}
+
+.avatar--viewer {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* v3.2: tasks */
+.task-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.task-summary__ring {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-summary__track,
+.task-summary__done {
+  fill: none;
+  stroke-width: 6;
+}
+
+.task-summary__track {
+  stroke: var(--border);
+}
+
+.task-summary__done {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.task-summary__count strong {
+  font-size: 1.4rem;
+  margin-right: 4px;
+}
+
+.task-summary__count.is-alert {
+  color: var(--high);
+}
+
+.tasks-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 24px;
+  align-items: start;
+}
+
+.tasks-layout__side {
+  position: sticky;
+  top: 16px;
+}
+
+.tasks-layout__side h2 {
+  margin-top: 0;
+}
+
+.tasks-layout__side .form--inline {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .tasks-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tasks-layout__side {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-summary__done {
+    transition: none;
+  }
+}
+
+/* v3.2: the fortnight as day cards */
+.day-strip {
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(104px, 1fr);
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 4px 2px 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+.day-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  text-align: center;
+  scroll-snap-align: start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: rise 0.45s ease-out both;
+}
+
+.day-card.is-today {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.day-card.is-today .muted {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.day-card__day {
+  font-weight: 700;
+}
+
+.day-card__date {
+  font-size: 0.8rem;
+}
+
+.day-card__icon {
+  margin: 4px 0;
+}
+
+.day-card__temps strong {
+  font-size: 1.2rem;
+}
+
+.day-card__rain {
+  position: relative;
+  width: 100%;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-card__rain-bar {
+  display: block;
+  height: 4px;
+  margin: 2px auto 4px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: var(--series-1);
+}
+
+.day-card.is-today .day-card__rain-bar {
+  background: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-card {
+    animation: none;
+  }
+}
