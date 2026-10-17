@@ -220,6 +220,166 @@ export function createDemoFarmService(deps: DemoFarmDeps) {
 
       return farm;
     },
+
+    /** v3.2: a dairy farm, for the one-click demo account. Fields sit a little east of `postcode`. */
+    async createDairy(user: Recorder, postcode: string) {
+      const today = londonToday(now());
+      const ago = (days: number) => addDays(today, -days);
+      const ahead = (days: number) => addDays(today, days);
+
+      const farm = await farmService.createFarm(user.id, {
+        name: 'Brookside Dairy (demo)',
+        postcode,
+      });
+      await farmService.updateFarm(user.id, farm.id, {
+        cphNumber: '00/000/0001',
+        flockMark: 'UK 0000001',
+      });
+
+      const { latitude, longitude } = await deps.locations.findPostcode(farm.postcode);
+      const field = async (name: string, dLat: number, dLon: number) =>
+        (
+          await farmService.createField(user.id, {
+            farmId: farm.id,
+            name,
+            latitude: Math.round((latitude + dLat) * 10000) / 10000,
+            longitude: Math.round((longitude + 0.03 + dLon) * 10000) / 10000,
+          })
+        ).id;
+      const parlour = await field('Parlour Field', 0.002, 0.001);
+      const brook = await field('Brook Pasture', -0.005, 0.006);
+      const highLeys = await field('High Leys', 0.007, -0.004);
+      await field('Calf Paddock', -0.001, -0.006);
+
+      const group = async (input: Omit<GroupInput, 'farmId'>) =>
+        (await farmService.createGroup(user.id, { ...input, farmId: farm.id })).id;
+      const milkers = await group({
+        name: 'Milking herd',
+        species: 'CATTLE',
+        livestockClass: 'DAIRY_COWS',
+        cattleType: 'DAIRY',
+        headCount: 182,
+        calvingStart: ago(150),
+        calvingEnd: ago(40),
+      });
+      const dry = await group({
+        name: 'Dry cows',
+        species: 'CATTLE',
+        livestockClass: 'DAIRY_COWS',
+        cattleType: 'DAIRY',
+        headCount: 31,
+      });
+      const heifers = await group({
+        name: 'In-calf heifers',
+        species: 'CATTLE',
+        livestockClass: 'DAIRY_COWS',
+        cattleType: 'DAIRY',
+        headCount: 38,
+      });
+      const calves = await group({
+        name: 'Calves',
+        species: 'CATTLE',
+        livestockClass: 'CALVES',
+        headCount: 20,
+        housed: true,
+      });
+
+      const move = (groupId: string, toFieldId: string, days: number) =>
+        farmService.moveGroup(user.id, { groupId, toFieldId, movedOn: ago(days) });
+      await move(milkers, parlour, 35);
+      await move(milkers, brook, 9);
+      await move(dry, highLeys, 28);
+      await move(heifers, parlour, 70);
+      await move(heifers, highLeys, 21);
+
+      const record = (
+        groupId: string,
+        kind: RegisterEventKind,
+        days: number,
+        fields: {
+          count?: number;
+          bornDead?: number;
+          value?: number;
+          otherParty?: string;
+          reference?: string;
+          cause?: string;
+          note?: string;
+        },
+      ) => registerService.record(user, { groupId, kind, date: ago(days), ...fields });
+      await record(calves, 'BIRTH', 140, { count: 46, bornDead: 3, note: 'Spring block calving' });
+      await record(calves, 'BIRTH', 60, { count: 18, bornDead: 1, note: 'Late calvers' });
+      await record(calves, 'MOVE_OFF', 100, {
+        count: 30,
+        otherParty: 'Calf rearer, Penrith',
+        reference: 'BCMS-8812',
+      });
+      await record(calves, 'DEATH', 120, { count: 1, cause: 'Scour', reference: 'FS-2201' });
+      await record(calves, 'WEIGHING', 90, { count: 20, value: 62 });
+      await record(calves, 'WEIGHING', 45, { count: 20, value: 98 });
+      await record(calves, 'WEIGHING', 8, { count: 20, value: 131 });
+      await record(milkers, 'BODY_CONDITION', 80, { count: 60, value: 2.5 });
+      await record(milkers, 'BODY_CONDITION', 30, { count: 60, value: 2.75 });
+      await record(milkers, 'BODY_CONDITION', 4, { count: 60, value: 3 });
+      await record(milkers, 'DEATH', 55, { count: 1, cause: 'Milk fever', reference: 'FS-2240' });
+      await record(heifers, 'MOVE_ON', 75, {
+        count: 8,
+        otherParty: 'Neighbour, Sedbergh',
+        reference: 'BCMS-8930',
+      });
+      await record(heifers, 'TAG_REPLACEMENT', 16, { count: 2, note: 'Replacement tags fitted' });
+
+      await recordsService.recordTreatment(user.id, {
+        groupId: milkers,
+        date: ago(12),
+        productName: 'Demo footbath product (as on label)',
+        batchNumber: 'D12',
+        animalsTreated: 181,
+        administeredBy: 'Demo farmer',
+        reason: 'Demo record',
+        meatWithdrawalDays: 0,
+      });
+      await recordsService.recordTreatment(user.id, {
+        groupId: heifers,
+        date: ago(3),
+        productName: 'Demo wormer (as on label)',
+        batchNumber: 'D3',
+        animalsTreated: 38,
+        administeredBy: 'Demo farmer',
+        reason: 'Demo record',
+        meatWithdrawalDays: 21,
+      });
+      await recordsService.recordObservation(user.id, {
+        groupId: milkers,
+        date: ago(1),
+        type: 'Herd check',
+        note: 'Three cows lame on back feet, foot trimmer booked',
+      });
+
+      for (const [title, due, groupId] of [
+        ['Foot trimmer visit', ahead(3), milkers],
+        ['Bulk tank service', ahead(8), null],
+        ['Dry off next batch', ahead(14), milkers],
+        ['Wean calves', ago(1), calves],
+      ] as const)
+        await taskService.createTask(user.id, {
+          farmId: farm.id,
+          groupId,
+          title,
+          dueDate: due,
+          repeatEveryDays: null,
+        });
+
+      await registerService.addMedicine(user.id, farm.id, {
+        productName: 'Demo footbath product (as on label)',
+        batchNumber: 'B-FB-01',
+        quantity: '25 l',
+        expiryDate: ahead(180),
+        supplier: 'Local merchant',
+        purchasedOn: ago(30),
+        meatWithdrawalDays: 0,
+      });
+      return farm;
+    },
   };
 }
 

@@ -15,6 +15,7 @@ import type { RegisterRepository } from './repositories/registerRepository';
 import type { UserRepository } from './repositories/userRepository';
 import { createResolvers } from './resolvers';
 import { createAuthResolvers } from './resolvers/auth';
+import { createDemoAccountService } from './services/demoAccountService';
 import { createBriefingResolvers } from './resolvers/briefing';
 import { createFarmResolvers } from './resolvers/farms';
 import { createMemberResolvers } from './resolvers/members';
@@ -52,6 +53,8 @@ export interface AppDeps {
   hasher?: PasswordHasher;
   /** Adds `Secure` to the session cookie. On in production (HTTPS). */
   secureCookies?: boolean;
+  /** v3.2: "Explore a demo account" on the login page. On unless turned off. */
+  demoAccounts?: boolean;
   now?: () => Date;
 }
 
@@ -88,11 +91,8 @@ export function createServices(deps: AppDeps) {
     logger: deps.logger,
     appUrl: deps.appUrl,
   });
-  const authService = createAuthService({
-    users: deps.users,
-    hasher: deps.hasher ?? createScryptHasher(),
-    now: deps.now,
-  });
+  const hasher = deps.hasher ?? createScryptHasher();
+  const authService = createAuthService({ users: deps.users, hasher, now: deps.now });
   const registerService = createRegisterService({
     register: deps.register,
     farms: deps.farms,
@@ -117,7 +117,20 @@ export function createServices(deps: AppDeps) {
     locations,
     now: deps.now,
   });
+  const demoAccountService = createDemoAccountService({
+    enabled: deps.demoAccounts ?? true,
+    authService,
+    demoFarmService,
+    petService,
+    recordsService,
+    taskService,
+    users: deps.users,
+    farms: deps.farms,
+    hasher,
+    now: deps.now,
+  });
   return {
+    demoAccountService,
     forecastService,
     registerService,
     insightsService,
@@ -142,6 +155,7 @@ export function createApp(deps: AppDeps, services: AppServices = createServices(
     createFarmResolvers({ farmService, forecastService }),
     createAuthResolvers({
       authService: services.authService,
+      demoAccountService: services.demoAccountService,
       secureCookies: deps.secureCookies ?? false,
     }),
     createRecordsResolvers({ farmService, recordsService }),

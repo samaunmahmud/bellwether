@@ -825,5 +825,7 @@ export const typeDefs = /* GraphQL */ `
     deleteMedicine(id: ID!): Boolean!
     "v3: a ready-made farm to explore, owned by the signed-in user"
     createDemoFarm(postcode: String!): Farm!
+    "v3.2: a new account with two demo farms, a team and pets, signed in straight away"
+    startDemo(postcode: String): User!
   }
 `;

@@ -9,7 +9,7 @@ import { buildTestApp, type Gql } from './fakes';
  */
 
 // Operations that read no user data, so anyone may call them (A15).
-const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut'];
+const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut', 'startDemo'];
 // Scoped to the signed-in user's own email rather than a farm; covered in sharing.integration.test.ts
 const OWN_INVITES = ['myInvites', 'acceptInvite', 'declineInvite'];
 

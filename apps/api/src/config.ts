@@ -15,6 +15,8 @@ export interface Config {
   appUrl: string;
   /** How often the briefing job runs, in minutes. 0 turns it off. */
   briefingJobMinutes: number;
+  /** v3.2: one-click demo accounts on the login page. DEMO_ACCOUNTS=off turns them off. */
+  demoAccounts: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -31,5 +33,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     emailFrom: env.EMAIL_FROM ?? 'Bellwether <briefing@bellwether.local>',
     appUrl: (env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
     briefingJobMinutes: Number(env.BRIEFING_JOB_MINUTES ?? 5),
+    demoAccounts: env.DEMO_ACCOUNTS !== 'off',
   };
 }
