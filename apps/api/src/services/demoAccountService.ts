@@ -168,9 +168,7 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
 
   /** v4: a few cows in the milking herd with their own (made-up) tags and ages. */
   async function addTaggedCows(ownerId: string, farmId: string) {
-    const herd = (await deps.farms.listGroups(farmId)).find(
-      (g) => g.livestockClass === 'DAIRY_COWS',
-    );
+    const herd = (await deps.farms.listGroups(farmId)).find((g) => g.name === 'Milking herd');
     if (!herd) return;
     const today = londonToday(now());
     const cows = [

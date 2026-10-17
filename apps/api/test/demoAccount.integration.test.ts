@@ -74,6 +74,9 @@ describe('one-click demo account (v3.2)', () => {
     });
     expect(cows.data!.taggedAnimals.length).toBeGreaterThanOrEqual(5);
     expect(cows.data!.taggedAnimals.every((c) => c.ageMonths >= 24)).toBe(true);
+    expect(new Set(cows.data!.taggedAnimals.map((c) => c.group.name))).toEqual(
+      new Set(['Milking herd']),
+    );
     expect(bess.logs.filter((l) => l.weightKg !== null).length).toBeGreaterThanOrEqual(4);
 
     // Vets to call in an emergency, from the farms and the pets' own contacts
