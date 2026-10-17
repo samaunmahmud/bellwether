@@ -49,6 +49,8 @@ export const typeDefs = /* GraphQL */ `
     postcode: String
     "Walks in long grass or woodland: raises tick risk"
     highExposureHabitat: Boolean!
+    "v3: email the owner a week before, on the day and 3 days after a next due date"
+    remindersEnabled: Boolean!
     "Newest first"
     logs: [LogEntry!]!
     "Risks for this species at its postcode; null without a postcode"
@@ -62,6 +64,7 @@ export const typeDefs = /* GraphQL */ `
     name: String
     postcode: String
     highExposureHabitat: Boolean
+    remindersEnabled: Boolean
   }
 
   "Omitted fields are unchanged; null clears the note or next due date."

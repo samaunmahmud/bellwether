@@ -30,6 +30,8 @@ export interface PetPatchInput {
   name?: string | null;
   postcode?: string | null;
   highExposureHabitat?: boolean | null;
+  /** v3 */
+  remindersEnabled?: boolean | null;
 }
 
 export interface LogInput {
@@ -115,6 +117,7 @@ export function createPetService(deps: PetDeps) {
         category: input.category,
         postcode: (await checkedPostcode(input.postcode)) ?? null,
         highExposureHabitat: input.highExposureHabitat ?? false,
+        remindersEnabled: false,
       });
     },
 
@@ -124,6 +127,7 @@ export function createPetService(deps: PetDeps) {
         name: input.name == null ? undefined : cleanName(input.name),
         postcode: await checkedPostcode(input.postcode),
         highExposureHabitat: input.highExposureHabitat ?? undefined,
+        remindersEnabled: input.remindersEnabled ?? undefined,
       });
       if (!updated) throw appError('NOT_FOUND', `Animal ${id} not found`);
       return updated;

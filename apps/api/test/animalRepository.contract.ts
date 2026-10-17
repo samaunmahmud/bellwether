@@ -14,6 +14,7 @@ const bella = (ownerId: string): Omit<Animal, 'id'> => ({
   category: 'pet',
   postcode: null,
   highExposureHabitat: false,
+  remindersEnabled: false,
 });
 
 /** Behaviour every AnimalRepository must have, run against the in-memory fake and Postgres. */
@@ -68,6 +69,31 @@ export function animalRepositoryContract(setup: () => Promise<AnimalRepositoryFi
       expect(await repo.getAnimal(animal.id)).toBeNull();
       expect(await repo.getLog(log.id)).toBeNull();
       expect(await repo.deleteAnimal(animal.id)).toBe(false);
+    });
+
+    it('lists animals with reminders turned on, across owners', async () => {
+      const { repo, newOwnerId } = await setup();
+      const ann = await newOwnerId();
+      const bob = await newOwnerId();
+      const on = await repo.createAnimal({ ...bella(ann), remindersEnabled: true });
+      await repo.createAnimal({ ...bella(ann), name: 'Off' });
+      const later = await repo.createAnimal({ ...bella(bob), name: 'Tom' });
+      expect(await repo.updateAnimal(later.id, { remindersEnabled: true })).toMatchObject({
+        remindersEnabled: true,
+      });
+      const mine = (await repo.listAnimalsWithReminders()).filter((a) =>
+        [ann, bob].includes(a.ownerId),
+      );
+      expect(mine.map((a) => a.id).sort()).toEqual([on.id, later.id].sort());
+    });
+
+    it('claims a reminder email once per owner per day', async () => {
+      const { repo, newOwnerId } = await setup();
+      const owner = await newOwnerId();
+      expect(await repo.claimReminderEmail(owner, '2026-06-01')).toBe(true);
+      expect(await repo.claimReminderEmail(owner, '2026-06-01')).toBe(false);
+      expect(await repo.claimReminderEmail(owner, '2026-06-02')).toBe(true);
+      expect(await repo.claimReminderEmail(await newOwnerId(), '2026-06-01')).toBe(true);
     });
 
     it('treats unknown or malformed ids as not found', async () => {

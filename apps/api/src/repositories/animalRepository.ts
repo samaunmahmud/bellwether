@@ -23,10 +23,14 @@ export interface Animal {
   postcode: string | null;
   /** Walks in long grass or woodland: raises tick risk. */
   highExposureHabitat: boolean;
+  /** v3: email the owner when health-plan items fall due. Off until turned on. */
+  remindersEnabled: boolean;
 }
 
 export type NewAnimal = Omit<Animal, 'id'>;
-export type AnimalPatch = Partial<Pick<Animal, 'name' | 'postcode' | 'highExposureHabitat'>>;
+export type AnimalPatch = Partial<
+  Pick<Animal, 'name' | 'postcode' | 'highExposureHabitat' | 'remindersEnabled'>
+>;
 
 export interface NewLogEntry {
   animalId: string;
@@ -56,6 +60,10 @@ export interface AnimalRepository {
   addLog(input: NewLogEntry): Promise<LogEntry>;
   updateLog(id: string, patch: LogEntryPatch): Promise<LogEntry | null>;
   deleteLog(id: string): Promise<boolean>;
+  /** v3: every owner's animals with reminders turned on. */
+  listAnimalsWithReminders(): Promise<Animal[]>;
+  /** v3: true the first time for this owner and UK day, so each reminder email goes out once. */
+  claimReminderEmail(ownerId: string, date: string): Promise<boolean>;
 }
 
 /** Drops keys whose value is undefined, so a patch only touches what was given. */
@@ -71,8 +79,20 @@ export class InMemoryAnimalRepository implements AnimalRepository {
   private animals = new Map<string, Animal>();
   private logs = new Map<string, LogEntry & { seq: number }>();
   private seq = 0;
+  private reminderClaims = new Set<string>();
 
   constructor(private newId: () => string = randomUUID) {}
+
+  async listAnimalsWithReminders() {
+    return [...this.animals.values()].filter((a) => a.remindersEnabled);
+  }
+
+  async claimReminderEmail(ownerId: string, date: string) {
+    const key = `${ownerId}:${date}`;
+    if (this.reminderClaims.has(key)) return false;
+    this.reminderClaims.add(key);
+    return true;
+  }
 
   async listAnimals(ownerId: string) {
     return [...this.animals.values()].filter((a) => a.ownerId === ownerId);

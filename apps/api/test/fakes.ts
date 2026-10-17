@@ -6,6 +6,7 @@ import type { WeatherClient } from '../src/clients/weatherClient';
 import { createApp, createServices, type AppDeps } from '../src/app';
 import type { EmailMessage, EmailSender } from '../src/email/emailSender';
 import { createBriefingJob } from '../src/jobs/briefingJob';
+import { createPetReminderJob } from '../src/jobs/petReminderJob';
 import {
   InMemoryBriefingRepository,
   InMemoryTaskRepository,
@@ -129,6 +130,7 @@ export function buildTestApp(overrides: Partial<AppDeps> = {}) {
   const services = createServices(deps);
   const app = createApp(deps, services);
   const job = createBriefingJob({ ...deps, services });
+  const petJob = createPetReminderJob(deps);
 
   /** Sends a GraphQL request, optionally with a session cookie. Returns the body and response. */
   async function send<T>(
@@ -174,6 +176,7 @@ export function buildTestApp(overrides: Partial<AppDeps> = {}) {
     postcodes,
     weather,
     job,
+    petJob,
     briefings: deps.briefings,
     email: { sent: email.sent },
   };

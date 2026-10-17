@@ -45,6 +45,7 @@ model User {
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
   pets           Pet[]
+  petReminders   PetReminderEmail[]
   revisions      RecordRevision[]
   invitesSent    FarmInvite[]
   assignedTasks  Task[]
@@ -351,6 +352,8 @@ model Pet {
   // Normalised UK postcode for the pet's own forecast
   postcode            String?
   highExposureHabitat Boolean  @default(false)
+  // v3: email the owner when health-plan items fall due
+  remindersEnabled    Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -432,4 +435,14 @@ model MedicineItem {
   createdAt          DateTime  @default(now())
 
   @@index([farmId])
+}
+
+// v3: one row per owner per UK day, claimed before sending pet reminders so each goes out once
+model PetReminderEmail {
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@id([userId, date])
 }

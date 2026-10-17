@@ -8,6 +8,7 @@ import { loadConfig } from './config';
 import { createPrismaClient } from './db/prisma';
 import { createLoggingSender, createSmtpSender } from './email/emailSender';
 import { createBriefingJob } from './jobs/briefingJob';
+import { createPetReminderJob } from './jobs/petReminderJob';
 import { createLogger } from './logger';
 import { InMemoryAnimalRepository } from './repositories/animalRepository';
 import { PrismaAnimalRepository } from './repositories/prismaAnimalRepository';
@@ -70,6 +71,7 @@ createServer(app).listen(config.port, () => {
 // FR-4.5 / FR-4.3: generate each farm's daily briefing and send emails at each user's chosen time.
 if (config.briefingJobMinutes > 0) {
   const job = createBriefingJob({ ...deps, services });
+  const petJob = createPetReminderJob(deps);
   let running = false;
   const tick = async () => {
     if (running) return; // never overlap runs
@@ -79,6 +81,12 @@ if (config.briefingJobMinutes > 0) {
       logger.debug(`briefing job: ${JSON.stringify(summary)}`);
     } catch (err) {
       logger.warn(`briefing job failed: ${(err as Error).message}`);
+    }
+    try {
+      const summary = await petJob.runOnce();
+      logger.debug(`pet reminder job: ${JSON.stringify(summary)}`);
+    } catch (err) {
+      logger.warn(`pet reminder job failed: ${(err as Error).message}`);
     } finally {
       running = false;
     }

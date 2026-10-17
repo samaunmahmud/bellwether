@@ -1,6 +1,7 @@
 import type { AnimalCategory } from '@bellwether/risk-engine';
 import type { PrismaClient } from '../db/prisma';
 import { isUuid } from '../db/ids';
+import { Prisma } from '../generated/prisma/client';
 import {
   definedOnly,
   type Animal,
@@ -26,6 +27,7 @@ const petSelect = {
   category: true,
   postcode: true,
   highExposureHabitat: true,
+  remindersEnabled: true,
 } as const;
 
 const logSelect = {
@@ -61,6 +63,27 @@ const toLog = ({ petId, date, nextDueDate, ...rest }: LogRow): LogEntry => ({
 /** Postgres-backed AnimalRepository. Shares its contract tests with the in-memory fake. */
 export class PrismaAnimalRepository implements AnimalRepository {
   constructor(private db: PrismaClient) {}
+
+  async listAnimalsWithReminders() {
+    const rows = await this.db.pet.findMany({
+      where: { remindersEnabled: true },
+      orderBy: { seq: 'asc' },
+      select: petSelect,
+    });
+    return rows.map(toAnimal);
+  }
+
+  async claimReminderEmail(ownerId: string, date: string) {
+    if (!isUuid(ownerId)) return false;
+    try {
+      await this.db.petReminderEmail.create({ data: { userId: ownerId, date: toDb(date) } });
+      return true;
+    } catch (err) {
+      // P2002: already claimed (possibly by another server instance)
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return false;
+      throw err;
+    }
+  }
 
   async listAnimals(ownerId: string) {
     if (!isUuid(ownerId)) return [];
