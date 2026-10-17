@@ -18,3 +18,35 @@ export interface Contact {
   address: string | null;
   notes: string | null;
 }
+
+export type TaggedSpecies = 'SHEEP' | 'CATTLE';
+export type AnimalSex = 'FEMALE' | 'MALE' | 'CASTRATED';
+export type AnimalStatus = 'ON_FARM' | 'SOLD' | 'DIED';
+
+/** v4: one animal with its own ear tag or ID, beside the group head counts. */
+export interface TaggedAnimal {
+  id: string;
+  farmId: string;
+  groupId: string | null;
+  /** As written, tidied: trimmed, single spaces, upper case */
+  tag: string;
+  name: string | null;
+  species: TaggedSpecies;
+  sex: AnimalSex;
+  breed: string | null;
+  dateOfBirth: string | null;
+  status: AnimalStatus;
+  /** When it was sold or died */
+  statusDate: string | null;
+  notes: string | null;
+}
+
+/** "UK 123  456" → "UK 123 456" */
+export const tidyTag = (tag: string) => tag.trim().replace(/\s+/g, ' ').toUpperCase();
+
+/** For comparing tags: no spaces, upper case. */
+export const tagKey = (tag: string) => tag.replace(/\s+/g, '').toUpperCase();
+
+/** Tags in natural order: UK 2 before UK 10. */
+export const byTag = (a: { tag: string }, b: { tag: string }) =>
+  a.tag.localeCompare(b.tag, 'en-GB', { numeric: true });

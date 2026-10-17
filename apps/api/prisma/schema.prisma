@@ -126,6 +126,7 @@ model Farm {
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
   contacts       Contact[]
+  taggedAnimals  TaggedAnimal[]
 }
 
 model Field {
@@ -181,6 +182,7 @@ model LivestockGroup {
   treatments     Treatment[]
   observations   Observation[]
   tasks          Task[]
+  taggedAnimals  TaggedAnimal[]
   registerEvents RegisterEvent[]
 
   @@index([farmId])
@@ -354,6 +356,11 @@ model Pet {
   // Normalised UK postcode for the pet's own forecast
   postcode            String?
   highExposureHabitat Boolean  @default(false)
+  // v4: details for the pet's record
+  dateOfBirth         DateTime? @db.Date
+  breed               String?
+  sex                 String?
+  microchip           String?
   // v3: email the owner when health-plan items fall due
   remindersEnabled    Boolean  @default(false)
   createdAt           DateTime @default(now())
@@ -476,4 +483,40 @@ model Contact {
 
   @@index([farmId])
   @@index([ownerId])
+}
+
+// v4: one animal with its own ear tag or ID, beside the group head counts
+enum AnimalSex {
+  FEMALE
+  MALE
+  CASTRATED
+}
+
+enum AnimalStatus {
+  ON_FARM
+  SOLD
+  DIED
+}
+
+model TaggedAnimal {
+  id          String          @id @default(uuid()) @db.Uuid
+  seq         Int             @default(autoincrement())
+  farmId      String          @db.Uuid
+  farm        Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId     String?         @db.Uuid
+  group       LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  tag         String
+  // The tag without spaces, upper case: unique per farm
+  tagKey      String
+  name        String?
+  species     Species
+  sex         AnimalSex
+  breed       String?
+  dateOfBirth DateTime?       @db.Date
+  status      AnimalStatus    @default(ON_FARM)
+  statusDate  DateTime?       @db.Date
+  notes       String?
+  createdAt   DateTime        @default(now())
+
+  @@unique([farmId, tagKey])
 }

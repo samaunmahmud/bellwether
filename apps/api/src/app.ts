@@ -122,7 +122,11 @@ export function createServices(deps: AppDeps) {
     locations,
     now: deps.now,
   });
-  const keepingService = createKeepingService({ keeping: deps.keeping, farmService });
+  const keepingService = createKeepingService({
+    keeping: deps.keeping,
+    farmService,
+    now: deps.now,
+  });
   const demoAccountService = createDemoAccountService({
     enabled: deps.demoAccounts ?? true,
     authService,

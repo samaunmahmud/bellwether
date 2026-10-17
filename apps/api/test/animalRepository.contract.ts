@@ -15,6 +15,10 @@ const bella = (ownerId: string): Omit<Animal, 'id'> => ({
   postcode: null,
   highExposureHabitat: false,
   remindersEnabled: false,
+  dateOfBirth: null,
+  breed: null,
+  sex: null,
+  microchip: null,
 });
 
 /** Behaviour every AnimalRepository must have, run against the in-memory fake and Postgres. */
@@ -54,6 +58,20 @@ export function animalRepositoryContract(setup: () => Promise<AnimalRepositoryFi
       const updated = await repo.updateAnimal(animal.id, { postcode: 'SW1A 1AA', name: 'Bel' });
       expect(updated).toEqual({ ...animal, postcode: 'SW1A 1AA', name: 'Bel' });
       expect(await repo.getAnimal(animal.id)).toEqual(updated);
+    });
+
+    it('keeps and clears a pet’s details (v4)', async () => {
+      const { repo, newOwnerId } = await setup();
+      const animal = await repo.createAnimal(bella(await newOwnerId()));
+      const details = {
+        dateOfBirth: '2019-04-02',
+        breed: 'Border collie',
+        sex: 'Female (spayed)',
+        microchip: '985112000123456',
+      };
+      expect(await repo.updateAnimal(animal.id, details)).toEqual({ ...animal, ...details });
+      const cleared = await repo.updateAnimal(animal.id, { dateOfBirth: null, microchip: null });
+      expect(cleared).toMatchObject({ dateOfBirth: null, microchip: null, breed: 'Border collie' });
     });
 
     it('deletes an animal together with its log', async () => {

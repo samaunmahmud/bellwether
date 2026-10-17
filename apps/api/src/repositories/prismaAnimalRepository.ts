@@ -28,7 +28,13 @@ const petSelect = {
   postcode: true,
   highExposureHabitat: true,
   remindersEnabled: true,
+  dateOfBirth: true,
+  breed: true,
+  sex: true,
+  microchip: true,
 } as const;
+
+type NewAnimalData = Omit<NewAnimal, 'dateOfBirth'> & { dateOfBirth: Date | null };
 
 const logSelect = {
   id: true,
@@ -40,7 +46,10 @@ const logSelect = {
   weightKg: true,
 } as const;
 
-type PetRow = Omit<Animal, 'category'> & { category: string };
+type PetRow = Omit<Animal, 'category' | 'dateOfBirth'> & {
+  category: string;
+  dateOfBirth: Date | null;
+};
 type LogRow = {
   id: string;
   petId: string;
@@ -51,7 +60,14 @@ type LogRow = {
   weightKg: number | null;
 };
 
-const toAnimal = (row: PetRow): Animal => ({ ...row, category: row.category as AnimalCategory });
+const toAnimal = (row: PetRow): Animal => ({
+  ...row,
+  category: row.category as AnimalCategory,
+  dateOfBirth: row.dateOfBirth ? fromDb(row.dateOfBirth) : null,
+});
+
+const petData = <T extends { dateOfBirth?: string | null }>(input: T) =>
+  definedOnly({ ...input, dateOfBirth: toDbOrNull(input.dateOfBirth) });
 
 const toLog = ({ petId, date, nextDueDate, ...rest }: LogRow): LogEntry => ({
   ...rest,
@@ -102,12 +118,14 @@ export class PrismaAnimalRepository implements AnimalRepository {
   }
 
   async createAnimal(input: NewAnimal) {
-    return toAnimal(await this.db.pet.create({ data: input, select: petSelect }));
+    return toAnimal(
+      await this.db.pet.create({ data: petData(input) as NewAnimalData, select: petSelect }),
+    );
   }
 
   async updateAnimal(id: string, patch: AnimalPatch) {
     if (!isUuid(id)) return null;
-    const { count } = await this.db.pet.updateMany({ where: { id }, data: definedOnly(patch) });
+    const { count } = await this.db.pet.updateMany({ where: { id }, data: petData(patch) });
     return count ? this.getAnimal(id) : null;
   }
 

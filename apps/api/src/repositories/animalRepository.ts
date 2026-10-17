@@ -25,11 +25,28 @@ export interface Animal {
   highExposureHabitat: boolean;
   /** v3: email the owner when health-plan items fall due. Off until turned on. */
   remindersEnabled: boolean;
+  /** v4: details for the pet's record */
+  dateOfBirth: string | null;
+  breed: string | null;
+  /** Free text, e.g. "Female (spayed)" */
+  sex: string | null;
+  /** Digits only */
+  microchip: string | null;
 }
 
 export type NewAnimal = Omit<Animal, 'id'>;
 export type AnimalPatch = Partial<
-  Pick<Animal, 'name' | 'postcode' | 'highExposureHabitat' | 'remindersEnabled'>
+  Pick<
+    Animal,
+    | 'name'
+    | 'postcode'
+    | 'highExposureHabitat'
+    | 'remindersEnabled'
+    | 'dateOfBirth'
+    | 'breed'
+    | 'sex'
+    | 'microchip'
+  >
 >;
 
 export interface NewLogEntry {

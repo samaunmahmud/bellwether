@@ -1,11 +1,26 @@
-import type { Contact, ContactKind } from '../domain/keeping';
+import { isIsoDate, londonToday } from '../dates';
+import {
+  tidyTag,
+  type AnimalSex,
+  type AnimalStatus,
+  type Contact,
+  type ContactKind,
+  type TaggedAnimal,
+  type TaggedSpecies,
+} from '../domain/keeping';
 import { appError } from '../errors';
-import type { ContactPatch, KeepingRepository } from '../repositories/keepingRepository';
+import type {
+  ContactPatch,
+  KeepingRepository,
+  NewTaggedAnimal,
+} from '../repositories/keepingRepository';
 import type { FarmService } from './farmService';
+import { checkedDateOfBirth } from './petService';
 
 export interface KeepingDeps {
   keeping: KeepingRepository;
   farmService: FarmService;
+  now?: () => Date;
 }
 
 export interface ContactInput {
@@ -20,6 +35,35 @@ export interface ContactInput {
   address?: string | null;
   notes?: string | null;
 }
+
+export interface TaggedAnimalInput {
+  farmId: string;
+  groupId?: string | null;
+  tag: string;
+  name?: string | null;
+  species: TaggedSpecies;
+  sex: AnimalSex;
+  breed?: string | null;
+  dateOfBirth?: string | null;
+  notes?: string | null;
+}
+
+/** Omitted fields are unchanged; null clears an optional one. Species can't change. */
+export interface TaggedAnimalUpdate {
+  groupId?: string | null;
+  tag?: string | null;
+  name?: string | null;
+  sex?: AnimalSex | null;
+  breed?: string | null;
+  dateOfBirth?: string | null;
+  status?: AnimalStatus | null;
+  statusDate?: string | null;
+  notes?: string | null;
+}
+
+/** Catches a mistyped year; older than any working sheep or cow. Heuristic, not a lifespan. */
+const MAX_LIVESTOCK_AGE_YEARS = 25;
+const MAX_TAG = 40;
 
 const MAX_TEXT = 500;
 
@@ -73,6 +117,15 @@ function checkedContact(input: ContactInput): Omit<Contact, 'id' | 'farmId' | 'o
   return fields;
 }
 
+const withoutId = ({ id: _id, ...rest }: TaggedAnimal): NewTaggedAnimal => rest;
+
+/** Whole calendar months from one YYYY-MM-DD to a later one. */
+export function monthsBetween(from: string, to: string) {
+  const [fy, fm, fd] = from.split('-').map(Number) as [number, number, number];
+  const [ty, tm, td] = to.split('-').map(Number) as [number, number, number];
+  return (ty - fy) * 12 + (tm - fm) - (td < fd ? 1 : 0);
+}
+
 /** Emergency line first, then by name. */
 const forEmergency = (a: Contact, b: Contact) =>
   Number(!a.emergencyPhone) - Number(!b.emergencyPhone) || a.name.localeCompare(b.name);
@@ -83,6 +136,58 @@ const forEmergency = (a: Contact, b: Contact) =>
  */
 export function createKeepingService(deps: KeepingDeps) {
   const { keeping, farmService } = deps;
+  const today = () => londonToday((deps.now ?? (() => new Date()))());
+
+  async function requireTagged(userId: string, id: string, level: 'view' | 'work') {
+    const animal = await keeping.getTagged(id);
+    if (!animal) throw appError('NOT_FOUND', `Animal ${id} not found`);
+    await farmService.requireFarm(userId, animal.farmId, level);
+    return animal;
+  }
+
+  /** The animal's group must be an active one on the same farm, of the same species. */
+  async function checkedGroup(userId: string, farmId: string, species: TaggedSpecies, id: string) {
+    const group = await farmService.getGroup(userId, id);
+    if (!group || group.farmId !== farmId)
+      throw appError('NOT_FOUND', `Group ${id} not found on this farm`);
+    if (group.archivedOn) throw appError('BAD_INPUT', `${group.name} has been archived`);
+    if (group.species !== species)
+      throw appError(
+        'BAD_INPUT',
+        `${group.name} is a ${group.species.toLowerCase()} group: the species must match`,
+      );
+    return group.id;
+  }
+
+  function checkedTag(raw: string) {
+    const tag = tidyTag(raw);
+    if (!tag) throw appError('BAD_INPUT', 'Give the ear tag or ID');
+    if (tag.length > MAX_TAG)
+      throw appError('BAD_INPUT', `Keep the tag under ${MAX_TAG} characters`);
+    return tag;
+  }
+
+  async function requireFreeTag(farmId: string, tag: string, selfId?: string) {
+    const existing = await keeping.findTaggedByTag(farmId, tag);
+    if (existing && existing.id !== selfId)
+      throw appError('BAD_INPUT', `${existing.tag} is already on this farm`);
+  }
+
+  /** Sold or died needs a date, not in the future nor before birth; on the farm has none. */
+  function checkStatus(animal: NewTaggedAnimal) {
+    if (animal.status === 'ON_FARM') return { ...animal, statusDate: null };
+    const date = animal.statusDate;
+    const what = animal.status === 'SOLD' ? 'it was sold' : 'it died';
+    if (!date) throw appError('BAD_INPUT', `Give the date ${what}`);
+    if (!isIsoDate(date)) throw appError('BAD_INPUT', 'Date must be YYYY-MM-DD');
+    if (date > today()) throw appError('BAD_INPUT', 'The date cannot be in the future');
+    if (animal.dateOfBirth && date < animal.dateOfBirth)
+      throw appError('BAD_INPUT', 'The date cannot be before its date of birth');
+    return animal;
+  }
+
+  const dob = (raw: string | null | undefined) =>
+    checkedDateOfBirth(raw, today(), MAX_LIVESTOCK_AGE_YEARS);
 
   async function requireContact(userId: string, id: string, level: 'view' | 'work') {
     const contact = await keeping.getContact(id);
@@ -134,6 +239,73 @@ export function createKeepingService(deps: KeepingDeps) {
       const updated = await keeping.updateContact(id, patch);
       if (!updated) throw appError('NOT_FOUND', `Contact ${id} not found`);
       return updated;
+    },
+
+    async taggedAnimals(userId: string, farmId: string) {
+      await farmService.requireFarm(userId, farmId, 'view');
+      return keeping.listTagged(farmId);
+    },
+
+    /** A group's animals that are still on the farm. Only for a group the caller can see. */
+    taggedInGroup: async (farmId: string, groupId: string) =>
+      (await keeping.listTagged(farmId)).filter(
+        (a) => a.groupId === groupId && a.status === 'ON_FARM',
+      ),
+
+    async addTaggedAnimal(userId: string, input: TaggedAnimalInput) {
+      await farmService.requireFarm(userId, input.farmId, 'work');
+      const tag = checkedTag(input.tag);
+      const animal: NewTaggedAnimal = {
+        farmId: input.farmId,
+        groupId: input.groupId
+          ? await checkedGroup(userId, input.farmId, input.species, input.groupId)
+          : null,
+        tag,
+        name: clean(input.name),
+        species: input.species,
+        sex: input.sex,
+        breed: clean(input.breed),
+        dateOfBirth: dob(input.dateOfBirth) ?? null,
+        status: 'ON_FARM',
+        statusDate: null,
+        notes: clean(input.notes),
+      };
+      await requireFreeTag(input.farmId, tag);
+      return keeping.addTagged(animal);
+    },
+
+    async updateTaggedAnimal(userId: string, id: string, input: TaggedAnimalUpdate) {
+      const current = await requireTagged(userId, id, 'work');
+      const next = withoutId(current);
+      if (input.tag != null) next.tag = checkedTag(input.tag);
+      if (input.groupId !== undefined)
+        next.groupId = input.groupId
+          ? await checkedGroup(userId, current.farmId, current.species, input.groupId)
+          : null;
+      if (input.name !== undefined) next.name = clean(input.name);
+      if (input.sex != null) next.sex = input.sex;
+      if (input.breed !== undefined) next.breed = clean(input.breed);
+      if (input.dateOfBirth !== undefined) next.dateOfBirth = dob(input.dateOfBirth) ?? null;
+      if (input.status != null) next.status = input.status;
+      if (input.statusDate !== undefined) next.statusDate = input.statusDate || null;
+      if (input.notes !== undefined) next.notes = clean(input.notes);
+      const checked = checkStatus(next);
+      await requireFreeTag(current.farmId, checked.tag, id);
+      const updated = await keeping.updateTagged(id, checked);
+      if (!updated) throw appError('NOT_FOUND', `Animal ${id} not found`);
+      return updated;
+    },
+
+    async deleteTaggedAnimal(userId: string, id: string) {
+      const animal = await keeping.getTagged(id);
+      if (!animal || !(await farmService.getRole(animal.farmId, userId))) return false;
+      await requireTagged(userId, id, 'work');
+      return keeping.deleteTagged(id);
+    },
+
+    /** Whole months old today, or null without a date of birth. */
+    ageMonths(animal: { dateOfBirth: string | null }) {
+      return animal.dateOfBirth ? monthsBetween(animal.dateOfBirth, today()) : null;
     },
 
     async deleteContact(userId: string, id: string) {

@@ -23,7 +23,7 @@ interface Explored {
 const EXPLORE = `{
   me { email }
   farms { id name myRole groups { species } members { email role isMe } }
-  animals { name species remindersEnabled logs { type weightKg } }
+  animals { name species remindersEnabled breed dateOfBirth logs { type weightKg } }
 }`;
 
 /** Signs in with the session cookie returned by startDemo. */
@@ -64,6 +64,16 @@ describe('one-click demo account (v3.2)', () => {
     expect(animals.map((a) => `${a.name}:${a.species}`).sort()).toEqual(['Bess:dog', 'Tom:cat']);
     const bess = animals.find((a) => a.name === 'Bess')!;
     expect(bess.remindersEnabled).toBe(true);
+    expect(bess).toMatchObject({ breed: 'Border collie', dateOfBirth: expect.any(String) });
+
+    // Tagged cows with ages in the dairy's milking herd (v4)
+    const cows = await gql<{
+      taggedAnimals: Array<{ ageMonths: number; group: { name: string } }>;
+    }>(`query ($id: ID!) { taggedAnimals(farmId: $id) { ageMonths group { name } } }`, {
+      id: dairy.id,
+    });
+    expect(cows.data!.taggedAnimals.length).toBeGreaterThanOrEqual(5);
+    expect(cows.data!.taggedAnimals.every((c) => c.ageMonths >= 24)).toBe(true);
     expect(bess.logs.filter((l) => l.weightKg !== null).length).toBeGreaterThanOrEqual(4);
 
     // Vets to call in an emergency, from the farms and the pets' own contacts

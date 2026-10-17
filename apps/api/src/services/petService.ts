@@ -32,6 +32,11 @@ export interface PetPatchInput {
   highExposureHabitat?: boolean | null;
   /** v3 */
   remindersEnabled?: boolean | null;
+  /** v4; null clears */
+  dateOfBirth?: string | null;
+  breed?: string | null;
+  sex?: string | null;
+  microchip?: string | null;
 }
 
 export interface LogInput {
@@ -46,6 +51,48 @@ export interface LogInput {
 /** Sanity limit to catch typos, not a veterinary value */
 const MAX_PET_WEIGHT_KG = 150;
 
+/** Oldest date of birth accepted: catches typos such as 1919 for 2019. */
+const MAX_PET_AGE_YEARS = 40;
+const MAX_DETAIL = 100;
+
+/** undefined leaves it unchanged; null or blank clears it. */
+function cleanDetail(raw: string | null | undefined, label: string) {
+  if (raw === undefined) return undefined;
+  const text = raw?.trim().replace(/\s+/g, ' ');
+  if (text && text.length > MAX_DETAIL)
+    throw appError('BAD_INPUT', `${label} should be under ${MAX_DETAIL} characters`);
+  return text || null;
+}
+
+/** Microchips are 15 digits (ISO 11784); some older chips have 9 or 10. Spaces are dropped. */
+function checkedMicrochip(raw: string | null | undefined) {
+  const text = cleanDetail(raw, 'Microchip number');
+  if (!text) return text;
+  const digits = text.replace(/[\s-]/g, '');
+  if (!/^(\d{9}|\d{10}|\d{15})$/.test(digits))
+    throw appError('BAD_INPUT', 'A microchip number has 15 digits (older chips 9 or 10)');
+  return digits;
+}
+
+/** A date of birth that isn't in the future or implausibly long ago. */
+export function checkedDateOfBirth(
+  raw: string | null | undefined,
+  today: string,
+  maxAgeYears: number,
+) {
+  if (raw === undefined) return undefined;
+  if (raw === null || !raw.trim()) return null;
+  if (!isIsoDate(raw)) throw appError('BAD_INPUT', 'Date of birth must be YYYY-MM-DD');
+  if (raw > today) throw appError('BAD_INPUT', 'Date of birth cannot be in the future');
+  const earliest = `${Number(today.slice(0, 4)) - maxAgeYears}${today.slice(4)}`;
+  if (raw < earliest)
+    throw appError(
+      'BAD_INPUT',
+      `Date of birth is more than ${maxAgeYears} years ago: check the year`,
+    );
+  return raw;
+}
+
 function cleanName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw appError('BAD_INPUT', 'Name is required');
@@ -55,6 +102,7 @@ function cleanName(name: string) {
 /** Pets and their logs (FR-2.6). Every call is scoped to the owner: other people's pets are "not found". */
 export function createPetService(deps: PetDeps) {
   const { animals, locations } = deps;
+  const today = () => londonToday((deps.now ?? (() => new Date()))());
 
   /** Validates and normalises a postcode against postcodes.io, so the pet's forecast will work. */
   const checkedPostcode = async (raw: string | null | undefined) => {
@@ -118,6 +166,10 @@ export function createPetService(deps: PetDeps) {
         postcode: (await checkedPostcode(input.postcode)) ?? null,
         highExposureHabitat: input.highExposureHabitat ?? false,
         remindersEnabled: false,
+        dateOfBirth: null,
+        breed: null,
+        sex: null,
+        microchip: null,
       });
     },
 
@@ -128,6 +180,10 @@ export function createPetService(deps: PetDeps) {
         postcode: await checkedPostcode(input.postcode),
         highExposureHabitat: input.highExposureHabitat ?? undefined,
         remindersEnabled: input.remindersEnabled ?? undefined,
+        dateOfBirth: checkedDateOfBirth(input.dateOfBirth, today(), MAX_PET_AGE_YEARS),
+        breed: cleanDetail(input.breed, 'Breed'),
+        sex: cleanDetail(input.sex, 'Sex'),
+        microchip: checkedMicrochip(input.microchip),
       });
       if (!updated) throw appError('NOT_FOUND', `Animal ${id} not found`);
       return updated;
@@ -154,7 +210,7 @@ export function createPetService(deps: PetDeps) {
       if (!animal.postcode || animal.species !== 'dog') return null;
       const { latitude, longitude } = await locations.findPostcode(animal.postcode);
       const days = await deps.forecastService.getDaysAt(latitude, longitude);
-      return walkPlan(days, londonToday((deps.now ?? (() => new Date()))()));
+      return walkPlan(days, today());
     },
 
     logs: (animalId: string) => animals.listLogs(animalId),

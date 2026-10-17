@@ -34,6 +34,7 @@ interface AnnsData {
   medicineId: string;
   contactId: string;
   personalContactId: string;
+  taggedId: string;
 }
 
 interface BobsData {
@@ -427,6 +428,32 @@ const CROSS_USER: Record<string, Attempt> = {
       expect(res.data).toEqual({ deleteContact: false });
     }
   },
+  taggedAnimals: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { taggedAnimals(farmId: $id) { id } }`, {
+      id: ann.farmId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  addTaggedAnimal: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { addTaggedAnimal(input: { farmId: $id, tag: "BOB 1", species: SHEEP, sex: FEMALE }) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateTaggedAnimal: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateTaggedAnimal(id: $id, input: { name: "Mine" }) { id } }`,
+      { id: ann.taggedId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteTaggedAnimal: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteTaggedAnimal(id: $id) }`, {
+      id: ann.taggedId,
+    });
+    expect(res.data).toEqual({ deleteTaggedAnimal: false });
+  },
   // Creates Bob's own demo farm; the snapshot proves Ann's data is untouched.
   createDemoFarm: async (bob) => {
     const res = await bob(`mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`);
@@ -452,6 +479,10 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   addContact: `mutation { addContact(input: { kind: VET, name: "X", phone: "0100 000000" }) { id } }`,
   updateContact: `mutation { updateContact(id: "x", input: { kind: VET, name: "X", phone: "0100" }) { id } }`,
   deleteContact: `mutation { deleteContact(id: "x") }`,
+  taggedAnimals: `query { taggedAnimals(farmId: "x") { id } }`,
+  addTaggedAnimal: `mutation { addTaggedAnimal(input: { farmId: "x", tag: "X", species: SHEEP, sex: FEMALE }) { id } }`,
+  updateTaggedAnimal: `mutation { updateTaggedAnimal(id: "x", input: { name: "X" }) { id } }`,
+  deleteTaggedAnimal: `mutation { deleteTaggedAnimal(id: "x") }`,
   animals: `query { animals { id } }`,
   animal: `query { animal(id: "x") { id } }`,
   createAnimal: `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
@@ -616,6 +647,10 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
   const personalContact = await ann<{ addContact: Id }>(
     `mutation { addContact(input: { kind: VET, name: "Pet Vets", phone: "0100 000000" }) { id } }`,
   );
+  const tagged = await ann<{ addTaggedAnimal: Id }>(
+    `mutation ($farmId: ID!) { addTaggedAnimal(input: { farmId: $farmId, tag: "UK 1", species: SHEEP, sex: FEMALE }) { id } }`,
+    { farmId },
+  );
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -640,6 +675,7 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     medicineId: medicine.data!.addMedicine.id,
     contactId: contact.data!.addContact.id,
     personalContactId: personalContact.data!.addContact.id,
+    taggedId: tagged.data!.addTaggedAnimal.id,
   };
 }
 
@@ -697,6 +733,7 @@ describe('farm and owner scoping (FR-8.4)', () => {
         medicines(farmId: $farmId) { id productName finishedOn }
         contacts(farmId: $farmId) { id name phone }
         personal: contacts { id name phone }
+        taggedAnimals(farmId: $farmId) { id tag name status }
         briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
       }`,
       { farmId: annsData.farmId },

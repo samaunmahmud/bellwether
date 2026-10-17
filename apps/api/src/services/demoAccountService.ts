@@ -132,6 +132,7 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
     if (input.farms.includes('dairy')) {
       const dairy = await deps.demoFarmService.createDairy(owner, postcode);
       await addContacts(owner.id, dairy.id, FARM_CONTACTS.slice(0, 2));
+      await addTaggedCows(owner.id, dairy.id);
     }
     if (input.pets) {
       await addPets(owner.id, postcode);
@@ -165,6 +166,33 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
     for (const c of contacts) await deps.keepingService.addContact(ownerId, { ...c, farmId });
   }
 
+  /** v4: a few cows in the milking herd with their own (made-up) tags and ages. */
+  async function addTaggedCows(ownerId: string, farmId: string) {
+    const herd = (await deps.farms.listGroups(farmId)).find(
+      (g) => g.livestockClass === 'DAIRY_COWS',
+    );
+    if (!herd) return;
+    const today = londonToday(now());
+    const cows = [
+      { name: 'Clover', years: 3, breed: 'Holstein Friesian' },
+      { name: 'Daisy', years: 5, breed: 'Holstein Friesian' },
+      { name: 'Bramble', years: 4, breed: 'Jersey' },
+      { name: 'Hazel', years: 6, breed: 'Holstein Friesian' },
+      { name: 'Poppy', years: 2, breed: 'Jersey' },
+    ];
+    for (const [i, cow] of cows.entries())
+      await deps.keepingService.addTaggedAnimal(ownerId, {
+        farmId,
+        groupId: herd.id,
+        tag: `UK 000000 10000${i + 1}`,
+        name: cow.name,
+        species: 'CATTLE',
+        sex: 'FEMALE',
+        breed: cow.breed,
+        dateOfBirth: addDays(today, -Math.round(cow.years * 365.25) - 40 * i),
+      });
+  }
+
   async function addPets(ownerId: string, postcode: string) {
     const today = londonToday(now());
     const ago = (days: number) => addDays(today, -days);
@@ -178,7 +206,12 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
       postcode,
       highExposureHabitat: true,
     });
-    await pets.update(ownerId, bess.id, { remindersEnabled: true });
+    await pets.update(ownerId, bess.id, {
+      remindersEnabled: true,
+      dateOfBirth: addDays(today, -Math.round(6.5 * 365.25)),
+      breed: 'Border collie',
+      sex: 'Female (spayed)',
+    });
     const bessLogs = [
       { date: ago(330), type: 'Vaccination', note: 'Annual booster', nextDueDate: ahead(35) },
       { date: ago(150), type: 'Weigh-in', weightKg: 19.6 },
@@ -196,6 +229,11 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
       species: 'cat',
       category: 'pet',
       postcode,
+    });
+    await pets.update(ownerId, tom.id, {
+      dateOfBirth: addDays(today, -Math.round(9.2 * 365.25)),
+      breed: 'Domestic shorthair',
+      sex: 'Male (neutered)',
     });
     const tomLogs = [
       { date: ago(200), type: 'Vaccination', nextDueDate: ahead(165), weightKg: 4.1 },

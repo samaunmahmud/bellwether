@@ -51,6 +51,13 @@ export const typeDefs = /* GraphQL */ `
     highExposureHabitat: Boolean!
     "v3: email the owner a week before, on the day and 3 days after a next due date"
     remindersEnabled: Boolean!
+    "v4: YYYY-MM-DD"
+    dateOfBirth: String
+    breed: String
+    "Free text, e.g. Female (spayed)"
+    sex: String
+    "Digits only"
+    microchip: String
     "Newest first"
     logs: [LogEntry!]!
     "Risks for this species at its postcode; null without a postcode"
@@ -59,12 +66,17 @@ export const typeDefs = /* GraphQL */ `
     walkPlanner: WalkPlan
   }
 
-  "Omitted fields are unchanged; a null postcode clears it."
+  "Omitted fields are unchanged; null clears a postcode or a v4 detail."
   input UpdateAnimalInput {
     name: String
     postcode: String
     highExposureHabitat: Boolean
     remindersEnabled: Boolean
+    dateOfBirth: String
+    breed: String
+    sex: String
+    "15 digits (older chips 9 or 10); spaces are ignored"
+    microchip: String
   }
 
   "Omitted fields are unchanged; null clears the note or next due date."
@@ -406,6 +418,8 @@ export const typeDefs = /* GraphQL */ `
     "Set when the group was sold or finished"
     archivedOn: String
     archiveReason: String
+    "v4: its tagged animals still on the farm, by tag"
+    taggedAnimals: [TaggedAnimal!]!
     "v3: births, deaths, moves and measurements, newest first"
     registerEvents: [RegisterEvent!]!
     "v3: weighings, oldest first, with daily live-weight gain"
@@ -745,6 +759,63 @@ export const typeDefs = /* GraphQL */ `
     farmName: String
   }
 
+  enum AnimalSex {
+    FEMALE
+    MALE
+    CASTRATED
+  }
+
+  enum AnimalStatus {
+    ON_FARM
+    SOLD
+    DIED
+  }
+
+  "v4: one animal with its own ear tag or ID, beside the group head counts"
+  type TaggedAnimal {
+    id: ID!
+    "Tidied: trimmed, single spaces, upper case"
+    tag: String!
+    name: String
+    species: Species!
+    sex: AnimalSex!
+    breed: String
+    dateOfBirth: String
+    "Whole months old today; null without a date of birth"
+    ageMonths: Int
+    status: AnimalStatus!
+    "When it was sold or died"
+    statusDate: String
+    notes: String
+    group: LivestockGroup
+  }
+
+  "The group, if given, must be on the same farm and of the same species."
+  input TaggedAnimalInput {
+    farmId: ID!
+    groupId: ID
+    tag: String!
+    name: String
+    species: Species!
+    sex: AnimalSex!
+    breed: String
+    dateOfBirth: String
+    notes: String
+  }
+
+  "Omitted fields are unchanged; null clears an optional one. Sold or died needs a statusDate."
+  input UpdateTaggedAnimalInput {
+    groupId: ID
+    tag: String
+    name: String
+    sex: AnimalSex
+    breed: String
+    dateOfBirth: String
+    status: AnimalStatus
+    statusDate: String
+    notes: String
+  }
+
   "Omit farmId for a personal contact (e.g. your pet's vet)."
   input ContactInput {
     farmId: ID
@@ -763,6 +834,8 @@ export const typeDefs = /* GraphQL */ `
     contacts(farmId: ID): [Contact!]!
     "v4: every vet you can call, from your farms and your own contacts, out-of-hours first"
     emergencyContacts: [Contact!]!
+    "v4: a farm's individually tagged animals, by tag"
+    taggedAnimals(farmId: ID!): [TaggedAnimal!]!
     "The signed-in user, or null."
     me: User
     forecast(postcode: String!, category: AnimalCategory!, highExposureHabitat: Boolean): Forecast!
@@ -871,5 +944,9 @@ export const typeDefs = /* GraphQL */ `
     "farmId in the input is ignored: a contact stays where it was added"
     updateContact(id: ID!, input: ContactInput!): Contact!
     deleteContact(id: ID!): Boolean!
+    "v4: workers and owners"
+    addTaggedAnimal(input: TaggedAnimalInput!): TaggedAnimal!
+    updateTaggedAnimal(id: ID!, input: UpdateTaggedAnimalInput!): TaggedAnimal!
+    deleteTaggedAnimal(id: ID!): Boolean!
   }
 `;

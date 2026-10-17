@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { NewContact, KeepingRepository } from '../src/repositories/keepingRepository';
+import type {
+  KeepingRepository,
+  NewContact,
+  NewTaggedAnimal,
+} from '../src/repositories/keepingRepository';
 
 export interface KeepingFixture {
   repo: KeepingRepository;
@@ -17,6 +21,24 @@ export const contactInput = (overrides: Partial<NewContact> = {}): NewContact =>
   email: null,
   website: null,
   address: null,
+  notes: null,
+  ...overrides,
+});
+
+export const taggedInput = (
+  farmId: string,
+  overrides: Partial<NewTaggedAnimal> = {},
+): NewTaggedAnimal => ({
+  farmId,
+  groupId: null,
+  tag: 'UK 1',
+  name: null,
+  species: 'SHEEP',
+  sex: 'FEMALE',
+  breed: null,
+  dateOfBirth: '2024-03-01',
+  status: 'ON_FARM',
+  statusDate: null,
   notes: null,
   ...overrides,
 });
@@ -73,6 +95,40 @@ export function keepingRepositoryContract(setup: () => Promise<KeepingFixture>) 
       expect(await repo.updateContact('nope', { name: 'x' })).toBeNull();
       expect(await repo.deleteContact('00000000-0000-4000-8000-000000000000')).toBe(false);
       expect(await repo.listContacts({ ownerId: 'nope' })).toEqual([]);
+    });
+  });
+
+  describe('tagged animals', () => {
+    it('adds, gets and lists a farm’s animals by tag', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId } = await newFarm();
+      const other = await newFarm();
+      const b = await repo.addTagged(taggedInput(farmId, { tag: 'UK 2' }));
+      await repo.addTagged(taggedInput(farmId, { tag: 'UK 10' }));
+      await repo.addTagged(taggedInput(other.farmId, { tag: 'UK 1' }));
+      expect(await repo.getTagged(b.id)).toEqual(b);
+      expect((await repo.listTagged(farmId)).map((a) => a.tag)).toEqual(['UK 2', 'UK 10']);
+    });
+
+    it('finds an animal by tag on a farm, ignoring case and spaces', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId } = await newFarm();
+      const a = await repo.addTagged(taggedInput(farmId, { tag: 'UK 123 456' }));
+      expect(await repo.findTaggedByTag(farmId, 'uk123456')).toEqual(a);
+      expect(await repo.findTaggedByTag(farmId, 'UK 9')).toBeNull();
+    });
+
+    it('updates and deletes, and treats malformed ids as not found', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId } = await newFarm();
+      const a = await repo.addTagged(taggedInput(farmId));
+      const sold = await repo.updateTagged(a.id, { status: 'SOLD', statusDate: '2026-05-01' });
+      expect(sold).toEqual({ ...a, status: 'SOLD', statusDate: '2026-05-01' });
+      expect(await repo.deleteTagged(a.id)).toBe(true);
+      expect(await repo.getTagged(a.id)).toBeNull();
+      expect(await repo.getTagged('nope')).toBeNull();
+      expect(await repo.updateTagged('nope', { name: 'x' })).toBeNull();
+      expect(await repo.listTagged('nope')).toEqual([]);
     });
   });
 }
