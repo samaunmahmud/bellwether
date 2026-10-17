@@ -13,7 +13,9 @@ Enter a UK postcode and Bellwether turns the next 14 days of weather into day-by
 | Farm (cattle)     | Heat stress    | Temperature-Humidity Index (THI)                 |
 | Farm (sheep)      | Blowfly strike | Warm, humid weather, especially after rain       |
 
-You can also keep a simple treatment and check log per animal or herd, with "next due" dates and overdue highlighting.
+Around the forecast, Bellwether keeps a small farm's records: a holding register (births, deaths, moves, tag replacements, the 1 December count), a medicine book and cabinet, weights and worm egg counts with charts, grazing per field on a map, a calendar and a task board shared with the farm's team. Pet owners get a health plan with emailed reminders, a weight chart and a dog walk planner. Try it with **"Create the demo farm"** after signing up.
+
+It installs on a phone from the browser and still shows pages you've opened when there's no signal (saving needs a connection).
 
 > This is an awareness tool, not veterinary advice.
 
@@ -23,16 +25,18 @@ Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether doe
 
 ## Status
 
-| Step | Scope                                                                                           | State                                                                                                                      |
-| ---- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Rename to Bellwether, CI updates                                                                | Done                                                                                                                       |
-| 1    | Farms, fields, livestock groups and moves in Postgres (FR-2.1–2.5, 2.7)                         | Done                                                                                                                       |
-| 2    | Sign-up, login and per-farm access control (FR-8.1, 8.4)                                        | Done                                                                                                                       |
-| 3    | Engine upgrades: hourly heat stress, fleece-aware blowfly, lamb chill, liver fluke (FR-3.0–3.4) | Done                                                                                                                       |
-| 4    | Treatment records, withdrawal periods, checks, CSV and print export (FR-6.1–6.4, 6.6)           | Done                                                                                                                       |
-| 5    | Morning briefing page and daily email, suggested checks, tasks (FR-4.1–4.5, 5.1, 5.2, 5.5)      | Done                                                                                                                       |
-| 6    | Mobile-first briefing, tasks and treatment form (FR-10.1)                                       | Done                                                                                                                       |
-| 7    | Deploy                                                                                          | Containers, production compose and Azure guide ready ([docs/deploy.md](docs/deploy.md)); waiting for an Azure subscription |
+| Step | Scope                                                                                                                                                                                                     | State                                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Rename to Bellwether, CI updates                                                                                                                                                                          | Done                                                                                                                       |
+| 1    | Farms, fields, livestock groups and moves in Postgres (FR-2.1–2.5, 2.7)                                                                                                                                   | Done                                                                                                                       |
+| 2    | Sign-up, login and per-farm access control (FR-8.1, 8.4)                                                                                                                                                  | Done                                                                                                                       |
+| 3    | Engine upgrades: hourly heat stress, fleece-aware blowfly, lamb chill, liver fluke (FR-3.0–3.4)                                                                                                           | Done                                                                                                                       |
+| 4    | Treatment records, withdrawal periods, checks, CSV and print export (FR-6.1–6.4, 6.6)                                                                                                                     | Done                                                                                                                       |
+| 5    | Morning briefing page and daily email, suggested checks, tasks (FR-4.1–4.5, 5.1, 5.2, 5.5)                                                                                                                | Done                                                                                                                       |
+| 6    | Mobile-first briefing, tasks and treatment form (FR-10.1)                                                                                                                                                 | Done                                                                                                                       |
+| 7    | Deploy                                                                                                                                                                                                    | Containers, production compose and Azure guide ready ([docs/deploy.md](docs/deploy.md)); waiting for an Azure subscription |
+| v3   | 24 features: farm dashboard, map and grazing, risk heatmap, holding register, medicine cabinet, calendar, task board, pet health plan, walk planner, demo farm ([docs/roadmap-v3.md](docs/roadmap-v3.md)) | Done                                                                                                                       |
+| v3.1 | Pet reminder emails, install on a phone, read offline                                                                                                                                                     | Done                                                                                                                       |
 
 ## Architecture
 

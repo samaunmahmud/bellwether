@@ -63,7 +63,7 @@ export function FieldMap({
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitToFields points={pinned.map((f) => [f.latitude, f.longitude])} />
       <ClickToPick onPick={onPick} />

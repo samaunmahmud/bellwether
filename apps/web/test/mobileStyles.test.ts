@@ -43,7 +43,13 @@ describe('mobile styles (FR-10.1)', () => {
 
   it('stacks forms into one column and widens actions on small screens', () => {
     const small = /@media \(max-width: 600px\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    expect(small).toMatch(/\.form--inline\s*\{[^}]*grid-template-columns:\s*1fr/);
+    expect(small).toMatch(/\.form--inline\s*\{[^}]*grid-template-columns:\s*(minmax\(0,\s*)?1fr/);
     expect(small).toMatch(/\.form button\[type='submit'\][^{]*\{[^}]*width:\s*100%/);
+  });
+
+  it('never lets a single-column grid grow wider than the phone', () => {
+    // A bare `1fr` column grows to fit its widest child (a table or heatmap), pushing the whole
+    // page sideways; `minmax(0, 1fr)` keeps it to the screen and lets that child scroll.
+    expect(css).not.toMatch(/grid-template-columns:\s*1fr\s*;/);
   });
 });

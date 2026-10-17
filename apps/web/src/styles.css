@@ -823,7 +823,7 @@ button.danger {
   }
 
   .form--inline {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .form button[type='submit'],
@@ -1052,7 +1052,9 @@ h1 {
 
 @media (max-width: 900px) {
   .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    /* Short pages mustn't stretch the header bar to fill the screen */
+    align-content: start;
   }
 
   .mobilebar {
@@ -1682,7 +1684,7 @@ h1 {
 
 @media (max-width: 800px) {
   .landing__hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .preview {
@@ -1765,7 +1767,7 @@ h1 {
 
 @media (max-width: 700px) {
   .demo-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2108,7 +2110,7 @@ h1 {
 
 @media (max-width: 900px) {
   .map-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2272,7 +2274,7 @@ h1 {
 
 @media (max-width: 900px) {
   .calendar-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .calendar__day {
@@ -2348,7 +2350,7 @@ h1 {
 
 @media (max-width: 800px) {
   .board {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2594,4 +2596,28 @@ h1 {
 .form--inline select {
   width: 100%;
   min-width: 0;
+}
+
+/* v3: offline notice and pet reminder switch */
+.offline-banner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--medium);
+  background: var(--medium-bg);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.reminder-toggle {
+  margin: 8px 0 16px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.reminder-toggle small {
+  display: block;
+  font-size: 0.875rem;
 }
