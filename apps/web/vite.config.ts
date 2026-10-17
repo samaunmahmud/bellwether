@@ -1,9 +1,22 @@
 /// <reference types="vitest" />
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      // v3: the service worker is its own entry, served at /sw.js so it controls the whole site.
+      input: {
+        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        sw: fileURLToPath(new URL('src/offline/sw.ts', import.meta.url)),
+      },
+      output: {
+        entryFileNames: (chunk) => (chunk.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js'),
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

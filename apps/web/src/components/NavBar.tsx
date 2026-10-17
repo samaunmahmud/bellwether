@@ -1,6 +1,7 @@
 import { useApolloClient, useMutation, useQuery } from '@apollo/client';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LOG_OUT, ME_QUERY } from '../graphql/auth';
+import { clearOfflineData } from '../offline/registerOffline';
 
 export function NavBar() {
   const client = useApolloClient();
@@ -11,6 +12,7 @@ export function NavBar() {
 
   async function handleLogOut() {
     await logOut();
+    await clearOfflineData();
     // Drop everything cached for this user and re-ask who is signed in.
     await client.resetStore();
     navigate('/');

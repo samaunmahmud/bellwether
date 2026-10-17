@@ -3,11 +3,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LOG_OUT, ME_QUERY } from '../graphql/auth';
 import { FARMS_QUERY } from '../graphql/farms';
+import { clearOfflineData } from '../offline/registerOffline';
 import type { FarmSummary } from '../types';
 import { CommandPalette } from './CommandPalette';
 import { FARM_PAGES } from './farmPages';
 import { Icon } from './Icon';
 import { NavBar } from './NavBar';
+import { OfflineBanner } from './OfflineBanner';
 
 const LAST_FARM_KEY = 'bellwether:lastFarm';
 const THEME_KEY = 'bellwether:theme';
@@ -96,12 +98,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <div className="shell">
         <NavBar />
+        <OfflineBanner />
         <main className="content">{children}</main>
       </div>
     );
 
   async function handleLogOut() {
     await logOut();
+    await clearOfflineData();
     await client.resetStore();
     navigate('/');
   }
@@ -216,6 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {menuOpen && <div className="sidebar__scrim" onClick={() => setMenuOpen(false)} />}
 
       <main className="app__main content" id="main">
+        <OfflineBanner />
         {children}
       </main>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} farmId={farmId} />
