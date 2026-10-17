@@ -28,6 +28,7 @@ deadline we show.
 ## Features (24)
 
 ### Interface
+
 1. **App shell**: a sidebar with a farm switcher, light/dark toggle and toast messages.
 2. **Farm dashboard**: head count by species, groups in withdrawal, overdue tasks, the week's
    highest risks, recent activity and quick actions.
@@ -41,6 +42,7 @@ deadline we show.
 8. **Command palette** (Ctrl/⌘+K): jump to any farm, group, field or page.
 
 ### Holding register and records
+
 9. **Holding details**: CPH number and flock/herd mark on the farm.
 10. **Movements on and off the holding**: bought in, sold, to market or abattoir; head count,
     other holding and reference. Head count updates automatically.
@@ -61,15 +63,18 @@ deadline we show.
 22. **Notification centre**: overdue tasks, withdrawals ending, medicines expiring, in one list.
 
 ### Pets
+
 23. **Pet health plan**: vaccinations, flea/tick/worm treatments and check-ups with next due
     dates and a countdown; weight log with a chart.
 24. **Walk planner**: today's hourly temperature with the coolest times to walk a dog highlighted.
 
 ### Demo data
+
 A **"Try a demo farm"** button builds a realistic farm (fields, groups, a season of records) so
 the app can be explored without typing everything in.
 
 ## Rules kept from v1 and v2
+
 - No dosing or product advice; products are typed by the farmer from the label.
 - Rule-based, explainable risk; heuristics labelled `TODO(verify source)`.
 - Every change checked by role on the API (FR-8.2).
