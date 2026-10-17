@@ -44,6 +44,7 @@ const PATHS = {
   siren: 'M7 18v-6a5 5 0 0 1 10 0v6M5 18h14v3H5zM12 3v2M4.5 6l1.4 1.4M19.5 6l-1.4 1.4',
   thermometer: 'M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0zM12 9v6',
   drop: 'M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z',
+  tag: 'M3 12V4h8l10 10-8 8zm5-4.5a1 1 0 1 0 0 .1',
   scale: 'M4 20h16M6 20l2-12h8l2 12M12 8V5m-3 0h6',
 } as const;
 

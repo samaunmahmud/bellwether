@@ -26,6 +26,10 @@ const pet = (forecast: unknown) => ({
   postcode: forecast ? 'UB8 3PH' : null,
   highExposureHabitat: true,
   remindersEnabled: false,
+  dateOfBirth: null,
+  breed: null,
+  sex: null,
+  microchip: null,
   forecast,
   logs: [
     log('l1', { type: 'Treatment given', nextDueDate: '2000-01-01' }),
@@ -72,6 +76,10 @@ describe('PetPage', () => {
             postcode: null,
             highExposureHabitat: true,
             remindersEnabled: true,
+            dateOfBirth: null,
+            breed: null,
+            sex: null,
+            microchip: null,
           },
         },
       },
@@ -81,6 +89,44 @@ describe('PetPage', () => {
     expect(toggle).not.toBeChecked();
     await userEvent.click(toggle);
     expect(await screen.findByRole('checkbox', { name: /Email me reminders/ })).toBeChecked();
+  });
+
+  it('shows and edits the pet’s record card: born, breed, sex and microchip (v4)', async () => {
+    const details = {
+      dateOfBirth: '2019-04-02',
+      breed: 'Border collie',
+      sex: 'Female (spayed)',
+      microchip: '985112000123456',
+    };
+    const update: MockedResponse = {
+      request: { query: UPDATE_ANIMAL, variables: { id: 'p1', input: details } },
+      result: {
+        data: {
+          updateAnimal: {
+            __typename: 'Animal',
+            id: 'p1',
+            name: 'Bella',
+            postcode: null,
+            highExposureHabitat: true,
+            remindersEnabled: false,
+            ...details,
+          },
+        },
+      },
+    };
+    renderWith([petMock(pet(null)), update, petMock({ ...pet(null), ...details })]);
+    const card = await screen.findByRole('region', { name: 'Record card' });
+    expect(within(card).getByText(/Not recorded/)).toBeInTheDocument();
+    await userEvent.click(within(card).getByRole('button', { name: 'Edit record card' }));
+    const form = within(card).getByRole('form', { name: 'Record card' });
+    await userEvent.type(within(form).getByLabelText('Date of birth'), '2019-04-02');
+    await userEvent.type(within(form).getByLabelText('Breed'), 'Border collie');
+    await userEvent.type(within(form).getByLabelText('Sex'), 'Female (spayed)');
+    await userEvent.type(within(form).getByLabelText('Microchip number'), '985112000123456');
+    await userEvent.click(within(form).getByRole('button', { name: 'Save' }));
+    expect(await within(card).findByText('Border collie')).toBeInTheDocument();
+    expect(within(card).getByText('985 112 000 123 456')).toBeInTheDocument();
+    expect(within(card).getByText(/2 April 2019/)).toBeInTheDocument();
   });
 
   it('asks for a postcode when there is none', async () => {

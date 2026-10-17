@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ForecastView } from '../components/ForecastView';
 import { LogForm, type LogFormValues } from '../components/LogForm';
 import { PetForm, type PetFormValues } from '../components/PetForm';
+import { PetRecordCard, type PetDetails } from '../components/PetRecordCard';
 import { PetHealth } from '../components/PetHealth';
 import { isOverdue, shortDay } from '../dates';
 import {
@@ -57,6 +58,10 @@ export function PetPage() {
     setEditingPet(false);
   }
 
+  async function saveDetails(details: PetDetails) {
+    await updateAnimal({ variables: { id, input: details }, awaitRefetchQueries: true });
+  }
+
   async function removePet() {
     if (!window.confirm(`Delete ${pet!.name} and their whole log? This can't be undone.`)) return;
     await deleteAnimal({ variables: { id } });
@@ -99,6 +104,8 @@ export function PetPage() {
       {editingPet && (
         <PetForm initial={pet} onSubmit={savePet} onCancel={() => setEditingPet(false)} />
       )}
+
+      <PetRecordCard key={pet.id} pet={pet} onSave={saveDetails} />
 
       <label className="toggle reminder-toggle">
         <input

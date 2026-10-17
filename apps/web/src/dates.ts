@@ -22,6 +22,30 @@ export function dayMonth(iso: string): string {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+/** "2026-05-01" → "1 May 2026" */
+export function fullDate(iso: string): string {
+  const date = new Date(`${iso}T12:00:00`);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** Whole calendar months from one YYYY-MM-DD to a later one. */
+export function monthsBetween(from: string, to: string): number {
+  const [fy, fm, fd] = from.split('-').map(Number) as [number, number, number];
+  const [ty, tm, td] = to.split('-').map(Number) as [number, number, number];
+  return (ty - fy) * 12 + (tm - fm) - (td < fd ? 1 : 0);
+}
+
+/** 38 → "3 years 2 months" */
+export function formatAge(months: number | null): string {
+  if (months === null) return '–';
+  if (months < 1) return 'Under a month';
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  const y = years ? `${years} year${years === 1 ? '' : 's'}` : '';
+  const m = rest ? `${rest} month${rest === 1 ? '' : 's'}` : '';
+  return [y, m].filter(Boolean).join(' ');
+}
+
 const LEVEL_WORD = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 
 const weekdayDay = (iso: string) =>

@@ -61,6 +61,10 @@ export const PET_QUERY = gql`
       postcode
       highExposureHabitat
       remindersEnabled
+      dateOfBirth
+      breed
+      sex
+      microchip
       logs {
         ...LogFields
       }
@@ -116,6 +120,10 @@ export const UPDATE_ANIMAL = gql`
       postcode
       highExposureHabitat
       remindersEnabled
+      dateOfBirth
+      breed
+      sex
+      microchip
     }
   }
 `;

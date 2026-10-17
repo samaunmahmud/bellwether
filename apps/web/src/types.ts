@@ -44,6 +44,11 @@ export interface Pet extends Animal {
   forecast: Forecast | null;
   /** v3: email reminders for next due dates */
   remindersEnabled: boolean;
+  /** v4: the pet's record card */
+  dateOfBirth: string | null;
+  breed: string | null;
+  sex: string | null;
+  microchip: string | null;
 }
 
 // --- Farms (FR-2) ---
@@ -357,4 +362,24 @@ export interface Contact {
   address: string | null;
   notes: string | null;
   farmName: string | null;
+}
+
+// --- v4: tagged animals ---
+
+export type AnimalSex = 'FEMALE' | 'MALE' | 'CASTRATED';
+export type AnimalStatus = 'ON_FARM' | 'SOLD' | 'DIED';
+
+export interface TaggedAnimal {
+  id: string;
+  tag: string;
+  name: string | null;
+  species: Species;
+  sex: AnimalSex;
+  breed: string | null;
+  dateOfBirth: string | null;
+  ageMonths: number | null;
+  status: AnimalStatus;
+  statusDate: string | null;
+  notes: string | null;
+  group: { id: string; name: string } | null;
 }

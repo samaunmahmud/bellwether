@@ -4,6 +4,7 @@ import { AppShell } from './components/AppShell';
 import { RequireAuth } from './components/RequireAuth';
 import { ToastProvider } from './components/Toasts';
 import { ContactsPage } from './pages/ContactsPage';
+import { TaggedAnimalsPage } from './pages/TaggedAnimalsPage';
 import { EmergencyPage } from './pages/EmergencyPage';
 import { MyContactsPage } from './pages/MyContactsPage';
 import { AnimalsPage } from './pages/AnimalsPage';
@@ -57,6 +58,7 @@ export function App() {
           <Route path="/contacts" element={signedIn(<MyContactsPage />)} />
           <Route path="/emergency" element={signedIn(<EmergencyPage />)} />
           <Route path="/farms/:id/contacts" element={signedIn(<ContactsPage />)} />
+          <Route path="/farms/:id/animals" element={signedIn(<TaggedAnimalsPage />)} />
           <Route path="/pets/:id" element={signedIn(<PetPage />)} />
         </Routes>
       </AppShell>

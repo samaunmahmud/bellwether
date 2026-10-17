@@ -6,6 +6,7 @@ export const FARM_PAGES: ReadonlyArray<{ label: string; path: string; icon: Icon
   { label: 'Morning briefing', path: '/briefing', icon: 'briefing' },
   { label: 'Farm map', path: '/map', icon: 'map' },
   { label: 'Livestock', path: '/livestock', icon: 'livestock' },
+  { label: 'Tagged animals', path: '/animals', icon: 'tag' },
   { label: 'Weather and risk', path: '/outlook', icon: 'outlook' },
   { label: 'Calendar', path: '/calendar', icon: 'calendar' },
   { label: 'Tasks', path: '/tasks', icon: 'tasks' },

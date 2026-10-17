@@ -4,6 +4,7 @@ import { Photo } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { ArchiveGroupForm } from '../components/ArchiveGroupForm';
 import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/GroupForm';
+import { GroupTaggedAnimals } from '../components/GroupTaggedAnimals';
 import { GroupPerformance } from '../components/GroupPerformance';
 import { ObservationForm, type ObservationFormValues } from '../components/ObservationForm';
 import { RecordHistory } from '../components/RecordHistory';
@@ -218,6 +219,7 @@ export function GroupPage() {
       )}
       <Withdrawal status={group.withdrawal} />
       <GroupPerformance groupId={group.id} farmId={group.farm.id} />
+      <GroupTaggedAnimals groupId={group.id} farmId={group.farm.id} />
 
       <h2>Treatments</h2>
       {group.treatments.length === 0 ? (
