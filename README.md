@@ -13,7 +13,7 @@ Enter a UK postcode and Bellwether turns the next 14 days of weather into day-by
 | Farm (cattle)     | Heat stress    | Temperature-Humidity Index (THI)                 |
 | Farm (sheep)      | Blowfly strike | Warm, humid weather, especially after rain       |
 
-Around the forecast, Bellwether keeps a small farm's records: a holding register (births, deaths, moves, tag replacements, the 1 December count), a medicine book and cabinet, weights and worm egg counts with charts, grazing per field on a map, a calendar and a task board shared with the farm's team. Pet owners get a health plan with emailed reminders, a weight chart and a dog walk planner. Try it with **"Explore a demo account"** on the login page: one click builds a private account with two farms, a team and two pets. For local demos, `npm run seed:demo -w @bellwether/api` creates named customers (`hill.farmer@example.com`, `dairy.farmer@example.com`, `pet.owner@example.com`, `mixed.farm@example.com`, password `correct horse battery`).
+Around the forecast, Bellwether keeps a small farm's records: a holding register (births, deaths, moves, tag replacements, the 1 December count), a medicine book and cabinet, weights and worm egg counts with charts, grazing per field on a map, a calendar, a task board shared with the farm's team, individually tagged animals with their ages, and the farm's vets and suppliers one tap from a call. Pet owners get a record card (date of birth, breed, microchip), a health plan with emailed reminders, a weight chart and a dog walk planner. Try it with **"Explore a demo account"** on the login page: one click builds a private account with two farms, a team and two pets. For local demos, `npm run seed:demo -w @bellwether/api` creates named customers (`hill.farmer@example.com`, `dairy.farmer@example.com`, `pet.owner@example.com`, `mixed.farm@example.com`, password `correct horse battery`).
 
 It installs on a phone from the browser and still shows pages you've opened when there's no signal (saving needs a connection).
 
@@ -38,6 +38,7 @@ Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether doe
 | v3   | 24 features: farm dashboard, map and grazing, risk heatmap, holding register, medicine cabinet, calendar, task board, pet health plan, walk planner, demo farm ([docs/roadmap-v3.md](docs/roadmap-v3.md)) | Done                                                                                                                       |
 | v3.2 | Photo login with live conditions and one-click demo accounts, farm hero dashboard, photo farm/pet/livestock cards, 14-day day strip, task summary, motion                                                 | Done                                                                                                                       |
 | v3.1 | Pet reminder emails, install on a phone, read offline                                                                                                                                                     | Done                                                                                                                       |
+| v4   | Contacts and suppliers, emergency page with one-tap calls, find vets nearby; individually tagged animals with ages; pet record card (date of birth, breed, sex, microchip)                                | Done                                                                                                                       |
 
 ## Architecture
 
@@ -75,8 +76,13 @@ Farm (name, postcode)
  ├── Field (name, postcode and/or map pin)
  ├── LivestockGroup (species, class, head count, housed?, current field,
  │                   shearing / lambing dates for sheep, dairy-or-beef / calving dates for cattle)
- └── GroupMovement (group, from field → to field, date)   one row per move, so history is kept
+ ├── GroupMovement (group, from field → to field, date)   one row per move, so history is kept
+ ├── TaggedAnimal (ear tag or ID, name, sex, breed, date of birth, group,
+ │                 on farm / sold / died with a date)   v4, beside the group head counts
+ └── Contact (vet, feed merchant, supplier: phones, email, website)   v4
 ```
+
+Groups stay the unit for head counts, treatments and forecasts. A **tagged animal** is an optional record for one animal you want to follow on its own (a cow, a ram, a pedigree ewe); its tag is unique on the farm, ignoring case and spaces.
 
 Every record carries a `farmId`. Farms belong to users through a membership table, so only a farm's members can see or change its data.
 
