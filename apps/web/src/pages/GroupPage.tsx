@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState } from 'react';
+import { Photo } from '../components/photos';
 import { Link, useParams } from 'react-router-dom';
 import { ArchiveGroupForm } from '../components/ArchiveGroupForm';
 import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/GroupForm';
@@ -151,10 +152,12 @@ export function GroupPage() {
       <p className="muted">
         <Link to={`/farms/${group.farm.id}`}>{group.farm.name}</Link>
       </p>
-      <header className="page-header">
-        <div>
+      <header className="page-hero page-hero--compact page-hero--split">
+        <Photo name={group.species === 'SHEEP' ? 'fell' : 'cattle'} className="photo--drift" />
+        <div className="page-hero__inner">
+          <p className="eyebrow">{group.species === 'SHEEP' ? 'Sheep' : 'Cattle'}</p>
           <h1>{group.name}</h1>
-          <p className="muted">
+          <p>
             {group.headCount} {CLASS_LABELS[group.livestockClass].toLowerCase()}
           </p>
         </div>

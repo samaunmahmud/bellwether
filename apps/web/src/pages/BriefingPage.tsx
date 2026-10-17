@@ -107,18 +107,25 @@ export function BriefingPage() {
       <p className="muted">
         <Link to={`/farms/${briefing.farm.id}`}>{briefing.farm.name}</Link>
       </p>
-      <h1>Morning briefing</h1>
-      <p className="muted">
-        {shortDay(briefing.date)} · updated {ukTime(briefing.generatedAt)}{' '}
-        <button
-          type="button"
-          className="link-button"
-          disabled={refreshState.loading}
-          onClick={() => refresh({ variables }).catch((err) => setActionError(errorMessage(err)))}
-        >
-          Refresh
-        </button>
-      </p>
+      <header className="page-hero page-hero--compact page-hero--dawn">
+        <div className="page-hero__inner">
+          <p className="eyebrow">{briefing.farm.name}</p>
+          <h1>Morning briefing</h1>
+          <p>
+            {shortDay(briefing.date)} · updated {ukTime(briefing.generatedAt)}{' '}
+            <button
+              type="button"
+              className="link-button"
+              disabled={refreshState.loading}
+              onClick={() =>
+                refresh({ variables }).catch((err) => setActionError(errorMessage(err)))
+              }
+            >
+              Refresh
+            </button>
+          </p>
+        </div>
+      </header>
       {briefing.isStale && (
         <p className="error" role="alert">
           Showing the briefing from {shortDay(briefing.date)} (updated{' '}
