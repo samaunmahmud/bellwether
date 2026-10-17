@@ -60,6 +60,7 @@ export const PET_QUERY = gql`
       category
       postcode
       highExposureHabitat
+      remindersEnabled
       logs {
         ...LogFields
       }
@@ -114,6 +115,7 @@ export const UPDATE_ANIMAL = gql`
       name
       postcode
       highExposureHabitat
+      remindersEnabled
     }
   }
 `;

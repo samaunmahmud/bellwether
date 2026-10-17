@@ -2,7 +2,7 @@ import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { DELETE_ANIMAL, PET_QUERY, UPDATE_LOG_ENTRY } from '../src/graphql/queries';
+import { DELETE_ANIMAL, PET_QUERY, UPDATE_ANIMAL, UPDATE_LOG_ENTRY } from '../src/graphql/queries';
 import { PetPage } from '../src/pages/PetPage';
 import { routerFuture } from '../src/routerFuture';
 import { petForecast, withTypenames } from './fixtures';
@@ -25,6 +25,7 @@ const pet = (forecast: unknown) => ({
   category: 'PET',
   postcode: forecast ? 'UB8 3PH' : null,
   highExposureHabitat: true,
+  remindersEnabled: false,
   forecast,
   logs: [
     log('l1', { type: 'Treatment given', nextDueDate: '2000-01-01' }),
@@ -57,6 +58,29 @@ describe('PetPage', () => {
     expect(screen.getByText('Tick activity')).toBeInTheDocument();
     expect(screen.getByText(/not veterinary advice/i)).toBeInTheDocument();
     expect(screen.getByText(/walks in long grass or woodland/i)).toBeInTheDocument();
+  });
+
+  it('turns on reminder emails with one switch', async () => {
+    const update: MockedResponse = {
+      request: { query: UPDATE_ANIMAL, variables: { id: 'p1', input: { remindersEnabled: true } } },
+      result: {
+        data: {
+          updateAnimal: {
+            __typename: 'Animal',
+            id: 'p1',
+            name: 'Bella',
+            postcode: null,
+            highExposureHabitat: true,
+            remindersEnabled: true,
+          },
+        },
+      },
+    };
+    renderWith([petMock(pet(null)), update, petMock({ ...pet(null), remindersEnabled: true })]);
+    const toggle = await screen.findByRole('checkbox', { name: /Email me reminders/ });
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    expect(await screen.findByRole('checkbox', { name: /Email me reminders/ })).toBeChecked();
   });
 
   it('asks for a postcode when there is none', async () => {

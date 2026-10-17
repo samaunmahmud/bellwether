@@ -102,6 +102,23 @@ export function PetPage() {
         <PetForm initial={pet} onSubmit={savePet} onCancel={() => setEditingPet(false)} />
       )}
 
+      <label className="toggle reminder-toggle">
+        <input
+          type="checkbox"
+          checked={pet.remindersEnabled}
+          onChange={(e) =>
+            updateAnimal({ variables: { id, input: { remindersEnabled: e.target.checked } } })
+          }
+        />
+        <span>
+          Email me reminders
+          <small className="muted">
+            {' '}
+            A week before, on the day and 3 days after anything in the health plan is due.
+          </small>
+        </span>
+      </label>
+
       <PetHealth
         // Remount after any log change so the plan and weights refetch.
         key={pet.logs.map((l) => `${l.id}:${l.nextDueDate ?? ''}`).join(',')}

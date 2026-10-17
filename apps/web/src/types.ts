@@ -42,6 +42,8 @@ export interface Animal {
 
 export interface Pet extends Animal {
   forecast: Forecast | null;
+  /** v3: email reminders for next due dates */
+  remindersEnabled: boolean;
 }
 
 // --- Farms (FR-2) ---
