@@ -7,6 +7,7 @@ import { createApp, createServices, type AppDeps } from '../src/app';
 import type { EmailMessage, EmailSender } from '../src/email/emailSender';
 import { createBriefingJob } from '../src/jobs/briefingJob';
 import { createPetReminderJob } from '../src/jobs/petReminderJob';
+import { InMemoryKeepingRepository } from '../src/repositories/keepingRepository';
 import {
   InMemoryBriefingRepository,
   InMemoryTaskRepository,
@@ -119,6 +120,7 @@ export function buildTestApp(overrides: Partial<AppDeps> = {}) {
     register: new InMemoryRegisterRepository(),
     tasks: new InMemoryTaskRepository(),
     briefings: new InMemoryBriefingRepository(),
+    keeping: new InMemoryKeepingRepository(),
     email: email.sender,
     appUrl: 'https://bellwether.test',
     // Low scrypt cost keeps tests fast

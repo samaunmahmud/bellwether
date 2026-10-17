@@ -15,6 +15,9 @@ import type { RegisterRepository } from './repositories/registerRepository';
 import type { UserRepository } from './repositories/userRepository';
 import { createResolvers } from './resolvers';
 import { createAuthResolvers } from './resolvers/auth';
+import { createKeepingResolvers } from './resolvers/keeping';
+import type { KeepingRepository } from './repositories/keepingRepository';
+import { createKeepingService } from './services/keepingService';
 import { createDemoAccountService } from './services/demoAccountService';
 import { createBriefingResolvers } from './resolvers/briefing';
 import { createFarmResolvers } from './resolvers/farms';
@@ -46,6 +49,8 @@ export interface AppDeps {
   tasks: TaskRepository;
   briefings: BriefingRepository;
   users: UserRepository;
+  /** v4: contacts, tagged animals, documents, cameras */
+  keeping: KeepingRepository;
   email: EmailSender;
   logger: Logger;
   /** Public URL of the web app, for links in emails */
@@ -117,10 +122,12 @@ export function createServices(deps: AppDeps) {
     locations,
     now: deps.now,
   });
+  const keepingService = createKeepingService({ keeping: deps.keeping, farmService });
   const demoAccountService = createDemoAccountService({
     enabled: deps.demoAccounts ?? true,
     authService,
     demoFarmService,
+    keepingService,
     petService,
     recordsService,
     taskService,
@@ -130,6 +137,7 @@ export function createServices(deps: AppDeps) {
     now: deps.now,
   });
   return {
+    keepingService,
     demoAccountService,
     forecastService,
     registerService,
@@ -170,6 +178,7 @@ export function createApp(deps: AppDeps, services: AppServices = createServices(
       insightsService: services.insightsService,
       demoFarmService: services.demoFarmService,
     }),
+    createKeepingResolvers({ farms: deps.farms, keepingService: services.keepingService }),
     createBriefingResolvers({
       farmService,
       taskService,

@@ -4722,3 +4722,247 @@ button.sidebar__icon:hover {
     min-height: 40px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* v4: contacts, emergency                                             */
+/* ------------------------------------------------------------------ */
+
+/* The nav scrolls on its own so the footer (scheme, theme, log out) is always in view */
+@media (min-width: 901px) {
+  .sidebar {
+    overflow: hidden;
+  }
+
+  .sidebar__nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-right: -6px;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+}
+
+a.sidebar__emergency {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(180deg, #c2410c, #9a2c08);
+  box-shadow: 0 6px 16px rgba(194, 65, 12, 0.35);
+}
+
+a.sidebar__emergency:hover {
+  filter: brightness(1.08);
+}
+
+.mobilebar__right {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.mobilebar__sos {
+  color: #fff;
+  background: #b4380a;
+  border-radius: 10px;
+}
+
+.emergency__hero {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 20px;
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: calc(var(--radius) + 8px);
+  color: #fff;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.18), transparent 40%),
+    linear-gradient(135deg, #b4380a, #7c1d06);
+  box-shadow: 0 18px 40px rgba(124, 29, 6, 0.3);
+}
+
+.emergency__hero h1 {
+  color: #fff;
+  margin: 0 0 4px;
+}
+
+.emergency__hero p {
+  margin: 0;
+  max-width: 60ch;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.emergency__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.16);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.contacts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 24px;
+  align-items: start;
+}
+
+.contact-book__add {
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.contact-book__section h2 {
+  margin: 8px 0 12px;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.contact {
+  --tone: var(--accent);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: rise 0.45s ease-out both;
+}
+
+.contact--feed {
+  --tone: var(--medium);
+}
+
+.contact--supplier {
+  --tone: var(--series-1);
+}
+
+.contact--other {
+  --tone: var(--muted);
+}
+
+.contact__head {
+  display: grid;
+}
+
+.contact__head h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.contact__ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact__ways .button {
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  overflow-wrap: anywhere;
+}
+
+a.contact__call--urgent {
+  background: linear-gradient(180deg, #c2410c, #9a2c08);
+  color: #fff;
+}
+
+.contact__address {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.contact__actions {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.contact-grid--emergency .contact__ways .button {
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
+.nearby {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.nearby a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.nearby a span {
+  flex: 1;
+}
+
+.nearby a:hover {
+  border-color: var(--accent);
+  transform: translateX(2px);
+}
+
+.contact-form {
+  margin: 0 0 16px;
+}
+
+@media (max-width: 1000px) {
+  .contacts-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emergency__icon,
+  .contact {
+    animation: none;
+  }
+}

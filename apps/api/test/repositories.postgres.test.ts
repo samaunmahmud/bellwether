@@ -14,6 +14,8 @@ import { farmRepositoryContract } from './farmRepository.contract';
 import { sheepGroup } from './farmRepository.contract';
 import { recordsRepositoryContract } from './recordsRepository.contract';
 import { registerRepositoryContract } from './registerRepository.contract';
+import { keepingRepositoryContract } from './keepingRepository.contract';
+import { PrismaKeepingRepository } from '../src/repositories/prismaKeepingRepository';
 import { briefingRepositoryContract } from './briefingRepository.contract';
 import { userRepositoryContract } from './userRepository.contract';
 
@@ -120,6 +122,24 @@ describe.skipIf(!testDatabaseUrl)('Postgres repositories', () => {
           const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
           const group = await farms.createGroup(sheepGroup(farm.id), null);
           return { farmId: farm.id, groupId: group.id, userId: user.id };
+        },
+      };
+    });
+  });
+
+  describe('PrismaKeepingRepository', () => {
+    keepingRepositoryContract(async () => {
+      await reset();
+      const farms = new PrismaFarmRepository(prisma);
+      let n = 0;
+      return {
+        repo: new PrismaKeepingRepository(prisma),
+        newFarm: async () => {
+          const user = await prisma.user.create({
+            data: { email: `keeping${++n}@example.com`, passwordHash: 'x' },
+          });
+          const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
+          return { farmId: farm.id, userId: user.id };
         },
       };
     });

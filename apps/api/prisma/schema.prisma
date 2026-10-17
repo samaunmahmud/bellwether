@@ -46,6 +46,7 @@ model User {
   briefingEmails BriefingEmail[]
   pets           Pet[]
   petReminders   PetReminderEmail[]
+  contacts       Contact[]
   revisions      RecordRevision[]
   invitesSent    FarmInvite[]
   assignedTasks  Task[]
@@ -124,6 +125,7 @@ model Farm {
   briefingRuns   BriefingRun[]
   briefingPrefs  BriefingPreference[]
   briefingEmails BriefingEmail[]
+  contacts       Contact[]
 }
 
 model Field {
@@ -445,4 +447,33 @@ model PetReminderEmail {
   createdAt DateTime @default(now())
 
   @@id([userId, date])
+}
+
+// v4: the people a farm or pet owner deals with (vets, feed merchants, suppliers)
+enum ContactKind {
+  VET
+  FEED
+  SUPPLIER
+  OTHER
+}
+
+model Contact {
+  id             String      @id @default(uuid()) @db.Uuid
+  // Exactly one of farmId (shared with the farm's members) or ownerId (a user's own) is set
+  farmId         String?     @db.Uuid
+  farm           Farm?       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  ownerId        String?     @db.Uuid
+  owner          User?       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  kind           ContactKind
+  name           String
+  phone          String?
+  emergencyPhone String?
+  email          String?
+  website        String?
+  address        String?
+  notes          String?
+  createdAt      DateTime    @default(now())
+
+  @@index([farmId])
+  @@index([ownerId])
 }

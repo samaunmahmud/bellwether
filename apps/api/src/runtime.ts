@@ -25,6 +25,8 @@ import { PrismaUserRepository } from './repositories/prismaUserRepository';
 import { InMemoryRecordsRepository } from './repositories/recordsRepository';
 import { InMemoryRegisterRepository } from './repositories/registerRepository';
 import { InMemoryUserRepository } from './repositories/userRepository';
+import { InMemoryKeepingRepository } from './repositories/keepingRepository';
+import { PrismaKeepingRepository } from './repositories/prismaKeepingRepository';
 
 /**
  * Builds the real dependencies from the environment: Postgres, Redis, SMTP and the live
@@ -56,6 +58,7 @@ export function buildRuntime() {
     register: prisma ? new PrismaRegisterRepository(prisma) : new InMemoryRegisterRepository(),
     tasks: prisma ? new PrismaTaskRepository(prisma) : new InMemoryTaskRepository(),
     briefings: prisma ? new PrismaBriefingRepository(prisma) : new InMemoryBriefingRepository(),
+    keeping: prisma ? new PrismaKeepingRepository(prisma) : new InMemoryKeepingRepository(),
     email: config.smtpUrl
       ? createSmtpSender(config.smtpUrl, config.emailFrom)
       : createLoggingSender(logger),

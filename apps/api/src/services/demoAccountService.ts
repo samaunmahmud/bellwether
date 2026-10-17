@@ -7,6 +7,7 @@ import type { UserRepository } from '../repositories/userRepository';
 import type { PasswordHasher } from '../auth/passwords';
 import type { AuthService } from './authService';
 import type { DemoFarmService } from './demoFarmService';
+import type { ContactInput, KeepingService } from './keepingService';
 import type { PetService } from './petService';
 import type { RecordsService } from './recordsService';
 import type { TaskService } from './taskService';
@@ -18,6 +19,7 @@ export interface DemoAccountDeps {
   enabled: boolean;
   authService: AuthService;
   demoFarmService: DemoFarmService;
+  keepingService: KeepingService;
   petService: PetService;
   recordsService: RecordsService;
   taskService: TaskService;
@@ -28,6 +30,49 @@ export interface DemoAccountDeps {
 }
 
 const secret = () => randomBytes(24).toString('base64url');
+
+// Ofcom reserves 01632 960xxx for drama, and example.com is reserved, so no real business is named.
+const FARM_CONTACTS: ReadonlyArray<Omit<ContactInput, 'farmId'>> = [
+  {
+    kind: 'VET',
+    name: 'Fellside Veterinary Practice (demo)',
+    phone: '01632 960001',
+    emergencyPhone: '01632 960999',
+    website: 'https://vets.example.com',
+    notes: 'Farm vet: ask for the large-animal team',
+  },
+  {
+    kind: 'FEED',
+    name: 'Valley Feeds (demo)',
+    phone: '01632 960002',
+    email: 'orders@feeds.example.com',
+    website: 'https://feeds.example.com',
+    notes: 'Delivers Tuesdays and Fridays',
+  },
+  {
+    kind: 'SUPPLIER',
+    name: 'County Farm Supplies (demo)',
+    phone: '01632 960003',
+    website: 'https://supplies.example.com',
+    notes: 'Tags, fencing and handling kit',
+  },
+];
+
+const PET_CONTACTS: ReadonlyArray<Omit<ContactInput, 'farmId'>> = [
+  {
+    kind: 'VET',
+    name: 'Town Pet Clinic (demo)',
+    phone: '01632 960010',
+    emergencyPhone: '01632 960911',
+    website: 'https://petclinic.example.com',
+  },
+  {
+    kind: 'FEED',
+    name: 'High Street Pet Shop (demo)',
+    phone: '01632 960011',
+    website: 'https://petshop.example.com',
+  },
+];
 
 export interface DemoCustomer {
   email: string;
@@ -70,6 +115,7 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
 
     if (input.farms.includes('hill')) {
       const fellside = await deps.demoFarmService.create(owner, postcode);
+      await addContacts(owner.id, fellside.id, FARM_CONTACTS);
       if (input.team) {
         // A worker who does the day-to-day jobs, and a viewer (e.g. the farm's vet or adviser).
         const worker = await teammate('alex', tag);
@@ -83,8 +129,14 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
           await deps.taskService.updateTask(owner.id, task.id, { assigneeId: worker.id });
       }
     }
-    if (input.farms.includes('dairy')) await deps.demoFarmService.createDairy(owner, postcode);
-    if (input.pets) await addPets(owner.id, postcode);
+    if (input.farms.includes('dairy')) {
+      const dairy = await deps.demoFarmService.createDairy(owner, postcode);
+      await addContacts(owner.id, dairy.id, FARM_CONTACTS.slice(0, 2));
+    }
+    if (input.pets) {
+      await addPets(owner.id, postcode);
+      await addContacts(owner.id, null, PET_CONTACTS);
+    }
     return signedIn;
   }
 
@@ -104,6 +156,14 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
       });
     },
   };
+
+  async function addContacts(
+    ownerId: string,
+    farmId: string | null,
+    contacts: ReadonlyArray<Omit<ContactInput, 'farmId'>>,
+  ) {
+    for (const c of contacts) await deps.keepingService.addContact(ownerId, { ...c, farmId });
+  }
 
   async function addPets(ownerId: string, postcode: string) {
     const today = londonToday(now());

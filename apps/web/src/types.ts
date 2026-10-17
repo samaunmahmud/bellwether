@@ -341,3 +341,20 @@ export interface WeightPoint {
   averageKg: number;
   dailyGainKg: number | null;
 }
+
+// --- v4: contacts ---
+
+export type ContactKind = 'VET' | 'FEED' | 'SUPPLIER' | 'OTHER';
+
+export interface Contact {
+  id: string;
+  kind: ContactKind;
+  name: string;
+  phone: string | null;
+  emergencyPhone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  notes: string | null;
+  farmName: string | null;
+}

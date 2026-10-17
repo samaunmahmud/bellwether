@@ -65,6 +65,14 @@ describe('one-click demo account (v3.2)', () => {
     const bess = animals.find((a) => a.name === 'Bess')!;
     expect(bess.remindersEnabled).toBe(true);
     expect(bess.logs.filter((l) => l.weightKg !== null).length).toBeGreaterThanOrEqual(4);
+
+    // Vets to call in an emergency, from the farms and the pets' own contacts
+    const vets = await gql<{ emergencyContacts: Array<{ emergencyPhone: string | null }> }>(
+      `query { emergencyContacts { emergencyPhone } }`,
+    );
+    // The farm vet (saved on both farms) once, and the pets' clinic
+    expect(vets.data!.emergencyContacts).toHaveLength(2);
+    expect(vets.data!.emergencyContacts[0]!.emergencyPhone).toMatch(/^01632 960/);
   });
 
   it('gives tasks to the worker', async () => {

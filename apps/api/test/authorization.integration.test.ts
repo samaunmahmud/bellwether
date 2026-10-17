@@ -32,6 +32,8 @@ interface AnnsData {
   userId: string;
   registerEventId: string;
   medicineId: string;
+  contactId: string;
+  personalContactId: string;
 }
 
 interface BobsData {
@@ -393,6 +395,38 @@ const CROSS_USER: Record<string, Attempt> = {
     });
     expect(code(res)).toBe('NOT_FOUND');
   },
+  contacts: async (bob, ann) => {
+    const res = await bob(`query ($id: ID) { contacts(farmId: $id) { id } }`, { id: ann.farmId });
+    expect(code(res)).toBe('NOT_FOUND');
+    expect((await bob(`query { contacts { id } }`)).data).toEqual({ contacts: [] });
+  },
+  emergencyContacts: async (bob) => {
+    expect((await bob(`query { emergencyContacts { id } }`)).data).toEqual({
+      emergencyContacts: [],
+    });
+  },
+  addContact: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { addContact(input: { farmId: $id, kind: VET, name: "Bob", phone: "0100 000000" }) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateContact: async (bob, ann) => {
+    for (const id of [ann.contactId, ann.personalContactId]) {
+      const res = await bob(
+        `mutation ($id: ID!) { updateContact(id: $id, input: { kind: VET, name: "Bob", phone: "0100 000000" }) { id } }`,
+        { id },
+      );
+      expect(code(res)).toBe('NOT_FOUND');
+    }
+  },
+  deleteContact: async (bob, ann) => {
+    for (const id of [ann.contactId, ann.personalContactId]) {
+      const res = await bob(`mutation ($id: ID!) { deleteContact(id: $id) }`, { id });
+      expect(res.data).toEqual({ deleteContact: false });
+    }
+  },
   // Creates Bob's own demo farm; the snapshot proves Ann's data is untouched.
   createDemoFarm: async (bob) => {
     const res = await bob(`mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`);
@@ -413,6 +447,11 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   updateMedicine: `mutation { updateMedicine(id: "x", input: { productName: "X" }) { id } }`,
   deleteMedicine: `mutation { deleteMedicine(id: "x") }`,
   createDemoFarm: `mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`,
+  contacts: `query { contacts { id } }`,
+  emergencyContacts: `query { emergencyContacts { id } }`,
+  addContact: `mutation { addContact(input: { kind: VET, name: "X", phone: "0100 000000" }) { id } }`,
+  updateContact: `mutation { updateContact(id: "x", input: { kind: VET, name: "X", phone: "0100" }) { id } }`,
+  deleteContact: `mutation { deleteContact(id: "x") }`,
   animals: `query { animals { id } }`,
   animal: `query { animal(id: "x") { id } }`,
   createAnimal: `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
@@ -570,6 +609,13 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     `mutation ($farmId: ID!) { addMedicine(farmId: $farmId, input: { productName: "Label product" }) { id } }`,
     { farmId },
   );
+  const contact = await ann<{ addContact: Id }>(
+    `mutation ($farmId: ID!) { addContact(input: { farmId: $farmId, kind: VET, name: "Dale Vets", phone: "0100 000000" }) { id } }`,
+    { farmId },
+  );
+  const personalContact = await ann<{ addContact: Id }>(
+    `mutation { addContact(input: { kind: VET, name: "Pet Vets", phone: "0100 000000" }) { id } }`,
+  );
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -592,6 +638,8 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     userId: me.data!.me.id,
     registerEventId: registerEvent.data!.recordRegisterEvent.id,
     medicineId: medicine.data!.addMedicine.id,
+    contactId: contact.data!.addContact.id,
+    personalContactId: personalContact.data!.addContact.id,
   };
 }
 
@@ -647,6 +695,8 @@ describe('farm and owner scoping (FR-8.4)', () => {
         tasks(farmId: $farmId) { id title done }
         holdingRegister(farmId: $farmId) { headCountAfter event { id voided } }
         medicines(farmId: $farmId) { id productName finishedOn }
+        contacts(farmId: $farmId) { id name phone }
+        personal: contacts { id name phone }
         briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
       }`,
       { farmId: annsData.farmId },

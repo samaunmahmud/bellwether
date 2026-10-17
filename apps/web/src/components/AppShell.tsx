@@ -135,14 +135,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link to={farm ? `/farms/${farm.id}` : '/farms'} className="brand">
           <BrandMark /> Bellwether
         </Link>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Search"
-          onClick={() => setPaletteOpen(true)}
-        >
-          <Icon name="search" />
-        </button>
+        <span className="mobilebar__right">
+          <Link to="/emergency" className="icon-button mobilebar__sos" aria-label="Emergency">
+            <Icon name="siren" />
+          </Link>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Search"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <Icon name="search" />
+          </button>
+        </span>
       </header>
 
       <aside className="sidebar" id="sidebar" aria-label="Main">
@@ -155,6 +160,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span>Go to…</span>
           <kbd>⌘K</kbd>
         </button>
+
+        <NavLink to="/emergency" className="sidebar__emergency">
+          <Icon name="siren" size={18} />
+          Emergency: call a vet
+        </NavLink>
 
         {farms.length > 0 && farmId && (
           <label className="sidebar__switcher">
@@ -198,6 +208,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink to="/animals">
                 <Icon name="pets" />
                 My pets
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/contacts">
+                <Icon name="phone" />
+                My contacts
               </NavLink>
             </li>
             <li>

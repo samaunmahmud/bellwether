@@ -722,7 +722,47 @@ export const typeDefs = /* GraphQL */ `
     email: String!
   }
 
+  "v4: who a farm or pet owner deals with"
+  enum ContactKind {
+    VET
+    FEED
+    SUPPLIER
+    OTHER
+  }
+
+  type Contact {
+    id: ID!
+    kind: ContactKind!
+    name: String!
+    phone: String
+    "Out-of-hours or emergency line"
+    emergencyPhone: String
+    email: String
+    website: String
+    address: String
+    notes: String
+    "Null for a personal contact"
+    farmName: String
+  }
+
+  "Omit farmId for a personal contact (e.g. your pet's vet)."
+  input ContactInput {
+    farmId: ID
+    kind: ContactKind!
+    name: String!
+    phone: String
+    emergencyPhone: String
+    email: String
+    website: String
+    address: String
+    notes: String
+  }
+
   type Query {
+    "v4: a farm's contacts, or your own when farmId is omitted"
+    contacts(farmId: ID): [Contact!]!
+    "v4: every vet you can call, from your farms and your own contacts, out-of-hours first"
+    emergencyContacts: [Contact!]!
     "The signed-in user, or null."
     me: User
     forecast(postcode: String!, category: AnimalCategory!, highExposureHabitat: Boolean): Forecast!
@@ -827,5 +867,9 @@ export const typeDefs = /* GraphQL */ `
     createDemoFarm(postcode: String!): Farm!
     "v3.2: a new account with two demo farms, a team and pets, signed in straight away"
     startDemo(postcode: String): User!
+    addContact(input: ContactInput!): Contact!
+    "farmId in the input is ignored: a contact stays where it was added"
+    updateContact(id: ID!, input: ContactInput!): Contact!
+    deleteContact(id: ID!): Boolean!
   }
 `;

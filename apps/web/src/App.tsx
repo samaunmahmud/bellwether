@@ -3,6 +3,9 @@ import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { RequireAuth } from './components/RequireAuth';
 import { ToastProvider } from './components/Toasts';
+import { ContactsPage } from './pages/ContactsPage';
+import { EmergencyPage } from './pages/EmergencyPage';
+import { MyContactsPage } from './pages/MyContactsPage';
 import { AnimalsPage } from './pages/AnimalsPage';
 import { AuthPage } from './pages/AuthPage';
 import { BriefingPage } from './pages/BriefingPage';
@@ -51,6 +54,9 @@ export function App() {
           <Route path="/farms/:id/people" element={signedIn(<PeoplePage />)} />
           <Route path="/groups/:id" element={signedIn(<GroupPage />)} />
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
+          <Route path="/contacts" element={signedIn(<MyContactsPage />)} />
+          <Route path="/emergency" element={signedIn(<EmergencyPage />)} />
+          <Route path="/farms/:id/contacts" element={signedIn(<ContactsPage />)} />
           <Route path="/pets/:id" element={signedIn(<PetPage />)} />
         </Routes>
       </AppShell>
