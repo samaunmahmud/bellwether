@@ -2,6 +2,7 @@ import { useApolloClient, useMutation, useQuery } from '@apollo/client';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LOG_OUT, ME_QUERY } from '../graphql/auth';
 import { clearOfflineData } from '../offline/registerOffline';
+import { BrandMark } from './BrandMark';
 
 export function NavBar() {
   const client = useApolloClient();
@@ -20,8 +21,8 @@ export function NavBar() {
 
   return (
     <header className="topbar">
-      <NavLink to="/" className="brand">
-        Bellwether
+      <NavLink to="/" className="brand topbar__brand">
+        <BrandMark /> Bellwether
       </NavLink>
       <nav>
         <NavLink to="/" end>
@@ -37,7 +38,14 @@ export function NavBar() {
             </button>
           </>
         ) : (
-          data && <NavLink to="/login">Log in</NavLink>
+          data && (
+            <>
+              <NavLink to="/login">Log in</NavLink>
+              <NavLink to="/signup" className="button topbar__cta">
+                Try it free
+              </NavLink>
+            </>
+          )
         )}
       </nav>
     </header>

@@ -4,6 +4,8 @@ import { LineChart } from '../components/charts/LineChart';
 import { Disclaimer } from '../components/Disclaimer';
 import { Icon } from '../components/Icon';
 import { RiskHeatmap } from '../components/RiskHeatmap';
+import { CountUp } from '../components/CountUp';
+import { farmPhoto, Photo } from '../components/photos';
 import { StatTile } from '../components/StatTile';
 import { dayMonth, shortDay } from '../dates';
 import { DASHBOARD_QUERY } from '../graphql/v3';
@@ -33,7 +35,28 @@ interface DashboardFarm {
 
 const ALERT_WORD = { URGENT: 'Urgent', WARNING: 'Soon', INFO: 'Note' } as const;
 
-const percent = (value: number | null) => (value === null ? '–' : `${value}%`);
+const percent = (value: number | null) =>
+  value === null ? '–' : <CountUp value={value} decimals={1} suffix="%" />;
+
+/** v3.2: the hero's hello, by the time of day on this device. */
+export function greeting(hour: number) {
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const TODAY_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
+
+/** Icon for the day: rain if it's wet, sun if it's warm and dry, cloud otherwise. */
+function weatherIcon(day: WeatherDay) {
+  if (day.precipitationMm >= 1) return 'drop' as const;
+  if (day.tempMaxC >= 15) return 'sun' as const;
+  return 'forecast' as const;
+}
 
 /** v3: the farm at a glance – figures, what needs doing, this week's risk, weather and activity. */
 export function FarmDashboardPage() {
@@ -58,33 +81,54 @@ export function FarmDashboardPage() {
     .filter(({ risk }) => risk.days.slice(0, 7).some((d) => d.level === 'HIGH'));
   const weekWeather = farm.weather.slice(0, 7);
 
+  const today = farm.weather[0];
+  const now = new Date();
+
   return (
     <section className="dashboard">
-      <header className="page-title">
-        <div>
-          <p className="eyebrow">
-            {farm.postcode}
-            {farm.cphNumber && ` · CPH ${farm.cphNumber}`}
-            {farm.flockMark && ` · ${farm.flockMark}`}
-            {farm.myRole !== 'OWNER' && ` · ${ROLE_LABELS[farm.myRole]}`}
-          </p>
-          <h1>{farm.name}</h1>
+      <section className="farm-hero" aria-labelledby="farm-title">
+        <Photo name={farmPhoto(stats)} className="photo--drift farm-hero__photo" />
+        <div className="farm-hero__inner">
+          <div className="farm-hero__text">
+            <p className="farm-hero__greet">
+              {greeting(now.getHours())} · {TODAY_FORMAT.format(now)}
+            </p>
+            <h1 id="farm-title">{farm.name}</h1>
+            <p className="farm-hero__meta">
+              {farm.postcode}
+              {farm.cphNumber && ` · CPH ${farm.cphNumber}`}
+              {farm.flockMark && ` · ${farm.flockMark}`}
+              {farm.myRole !== 'OWNER' && ` · ${ROLE_LABELS[farm.myRole]}`}
+            </p>
+          </div>
+          {today && (
+            <div className="farm-hero__weather" role="group" aria-label="Today’s weather">
+              <span className="farm-hero__weather-icon">
+                <Icon name={weatherIcon(today)} size={30} />
+              </span>
+              <span className="farm-hero__temp">
+                {Math.round(today.tempMaxC)}°<small> / {Math.round(today.tempMinC)}°</small>
+              </span>
+              <span className="farm-hero__rain">
+                {Math.round(today.precipitationMm * 10) / 10} mm rain
+              </span>
+              <span className="farm-hero__risk">
+                {highThisWeek.length === 0
+                  ? 'No high risks this week'
+                  : `${highThisWeek.length} high ${highThisWeek.length === 1 ? 'risk' : 'risks'} this week`}
+              </span>
+            </div>
+          )}
         </div>
         {worker && (
-          <div className="quick-actions" aria-label="Quick actions">
-            <Link
-              to={`/farms/${farm.id}/register?record=DEATH`}
-              className="button button--secondary"
-            >
+          <div className="farm-hero__actions quick-actions" aria-label="Quick actions">
+            <Link to={`/farms/${farm.id}/register?record=DEATH`} className="button glass-button">
               <Icon name="plus" size={18} /> Record a loss
             </Link>
-            <Link
-              to={`/farms/${farm.id}/register?record=WEIGHING`}
-              className="button button--secondary"
-            >
+            <Link to={`/farms/${farm.id}/register?record=WEIGHING`} className="button glass-button">
               <Icon name="scale" size={18} /> Record weights
             </Link>
-            <Link to={`/farms/${farm.id}/tasks`} className="button button--secondary">
+            <Link to={`/farms/${farm.id}/tasks`} className="button glass-button">
               <Icon name="tasks" size={18} /> Add a task
             </Link>
             <Link to={`/farms/${farm.id}/briefing`} className="button">
@@ -92,25 +136,25 @@ export function FarmDashboardPage() {
             </Link>
           </div>
         )}
-      </header>
+      </section>
 
       <div className="stats" aria-label="Farm figures">
         <StatTile
           label="Animals on the holding"
-          value={stats.totalHead.toLocaleString('en-GB')}
+          value={<CountUp value={stats.totalHead} />}
           note={`${stats.sheep.toLocaleString('en-GB')} sheep · ${stats.cattle.toLocaleString('en-GB')} cattle`}
           to={`/farms/${farm.id}/livestock`}
         />
         <StatTile
           label="Tasks overdue"
-          value={stats.overdueTasks}
+          value={<CountUp value={stats.overdueTasks} />}
           note={`${stats.openTasks} still to do`}
           tone={stats.overdueTasks > 0 ? 'alert' : undefined}
           to={`/farms/${farm.id}/tasks`}
         />
         <StatTile
           label="Groups in withdrawal"
-          value={stats.groupsInWithdrawal}
+          value={<CountUp value={stats.groupsInWithdrawal} />}
           note={stats.groupsInWithdrawal ? 'Check before selling' : 'All groups clear'}
           tone={stats.groupsInWithdrawal > 0 ? 'alert' : 'good'}
           to={`/farms/${farm.id}/records`}

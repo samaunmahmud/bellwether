@@ -8,6 +8,7 @@ import type { FarmSummary } from '../types';
 import { CommandPalette } from './CommandPalette';
 import { FARM_PAGES } from './farmPages';
 import { Icon } from './Icon';
+import { BrandMark } from './BrandMark';
 import { NavBar } from './NavBar';
 import { OfflineBanner } from './OfflineBanner';
 
@@ -93,6 +94,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // v3.2: the log-in and sign-up pages are full-screen, with their own brand link.
+  if (!me && /^\/(login|signup)$/.test(location.pathname))
+    return <main className="auth-main">{children}</main>;
 
   if (!me)
     return (
@@ -221,7 +226,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="app__main content" id="main">
         <OfflineBanner />
-        {children}
+        {/* v3.2: each page fades in as you move between them */}
+        <div className="page-enter" key={location.pathname}>
+          {children}
+        </div>
       </main>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} farmId={farmId} />
     </div>
@@ -229,19 +237,3 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 /** A bell with a sheep's ear: the Bellwether mark. */
-export function BrandMark() {
-  return (
-    <svg className="brand__mark" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="15" fill="var(--accent)" />
-      <path
-        d="M10 21c0-6 2.5-10 6-10s6 4 6 10H10zm4.5 2.5a1.5 1.5 0 0 0 3 0"
-        fill="none"
-        stroke="var(--accent-text)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M16 11V8" stroke="var(--accent-text)" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}

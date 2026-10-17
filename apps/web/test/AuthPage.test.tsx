@@ -2,7 +2,7 @@ import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { LOG_IN, ME_QUERY, SIGN_UP } from '../src/graphql/auth';
+import { LOG_IN, ME_QUERY, SIGN_UP, START_DEMO } from '../src/graphql/auth';
 import { AuthPage } from '../src/pages/AuthPage';
 import { routerFuture } from '../src/routerFuture';
 
@@ -66,5 +66,38 @@ describe('AuthPage (FR-8.1)', () => {
       'href',
       '/signup?next=%2Ffarms',
     );
+  });
+
+  it('opens a demo account with one click, saying what it is building', async () => {
+    renderAt('/login', [
+      {
+        request: { query: START_DEMO },
+        delay: 50,
+        result: { data: { startDemo: { ...user, email: 'demo-1a2b3c4d@example.com' } } },
+      },
+      meMock,
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: /Explore a demo account/ }));
+    expect(screen.getByRole('button', { name: /Building your demo/ })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(/Fellside Farm|dairy|pets|team/i);
+    expect(await screen.findByText('Farms page')).toBeInTheDocument();
+  });
+
+  it('says so if the demo can’t be built', async () => {
+    renderAt('/login', [
+      {
+        request: { query: START_DEMO },
+        result: { errors: [{ message: 'Demo accounts are turned off on this server' }] },
+      },
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: /Explore a demo account/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('turned off');
+  });
+
+  it('switches between log in and sign up with tabs', async () => {
+    renderAt('/login', []);
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('aria-current', 'page');
+    await userEvent.click(screen.getByRole('link', { name: 'Create account' }));
+    expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
   });
 });

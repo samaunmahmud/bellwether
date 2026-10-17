@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { registerOffline } from './offline/registerOffline';
 import { routerFuture } from './routerFuture';
+import '@fontsource-variable/fraunces';
 import './styles.css';
 
 const client = new ApolloClient({

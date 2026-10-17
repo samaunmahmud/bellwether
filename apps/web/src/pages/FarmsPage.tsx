@@ -1,12 +1,11 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { FarmCard } from '../components/FarmCard';
 import { Invitations } from '../components/Invitations';
 import { errorMessage } from '../errors';
 import { CREATE_FARM, FARMS_QUERY } from '../graphql/farms';
 import { CREATE_DEMO_FARM } from '../graphql/v3';
-import { Icon } from '../components/Icon';
-import { ROLE_LABELS } from '../roles';
 import type { FarmSummary } from '../types';
 
 /** FR-2.1: the signed-in user's farms, and a form to add one. */
@@ -65,35 +64,9 @@ export function FarmsPage() {
         <p className="muted">No farms yet. Add your first farm below, or try the demo farm.</p>
       )}
       {data && data.farms.length > 0 && (
-        <ul className="farm-cards">
+        <ul className="farm-tiles">
           {data.farms.map((farm) => (
-            <li key={farm.id} className="farm-card">
-              <Link to={`/farms/${farm.id}`} className="farm-card__link">
-                <span className="farm-card__icon" aria-hidden="true">
-                  <Icon name="farms" size={28} />
-                </span>
-                <strong>{farm.name}</strong> <span className="muted">{farm.postcode}</span>
-                {farm.myRole && farm.myRole !== 'OWNER' && (
-                  <span className="pill">{ROLE_LABELS[farm.myRole]}</span>
-                )}
-              </Link>
-              <div className="farm-card__actions">
-                <Link
-                  to={`/farms/${farm.id}/briefing`}
-                  className="button"
-                  aria-label={`Briefing for ${farm.name}`}
-                >
-                  Briefing
-                </Link>
-                <Link
-                  to={`/farms/${farm.id}/map`}
-                  className="button button--secondary"
-                  aria-label={`Map of ${farm.name}`}
-                >
-                  Map
-                </Link>
-              </div>
-            </li>
+            <FarmCard key={farm.id} farm={farm} />
           ))}
         </ul>
       )}

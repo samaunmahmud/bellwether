@@ -32,3 +32,13 @@ export const LOG_OUT = gql`
     logOut
   }
 `;
+
+/** v3.2: a new account full of example data, signed in straight away */
+export const START_DEMO = gql`
+  mutation StartDemo {
+    startDemo {
+      id
+      email
+    }
+  }
+`;

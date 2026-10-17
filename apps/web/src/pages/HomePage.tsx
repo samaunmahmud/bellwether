@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon, type IconName } from '../components/Icon';
+import { LiveConditions } from '../components/LiveConditions';
+import { Photo } from '../components/photos';
 
 type Role = 'pet' | 'farm';
 
@@ -47,15 +49,6 @@ const FEATURES: Array<{ icon: IconName; title: string; text: string }> = [
   },
 ];
 
-/** The cells of the preview card: a week of made-up levels, purely illustrative. */
-const PREVIEW = [
-  ['Ewes · flystrike', 'MMHHHMM'],
-  ['Lambs · flystrike', 'MHHHHHM'],
-  ['Cows · heat stress', 'LLMMLLL'],
-  ['Calves · fluke', 'LLLMMMM'],
-] as const;
-const LEVEL = { L: 'low', M: 'medium', H: 'high' } as const;
-
 export function HomePage() {
   const navigate = useNavigate();
   const [role, setRole] = useState<Role>('farm');
@@ -71,7 +64,8 @@ export function HomePage() {
   return (
     <div className="landing">
       <section className="landing__hero">
-        <div>
+        <Photo name="fell" className="photo--drift" />
+        <div className="landing__copy">
           <p className="eyebrow">For UK livestock farms and pet owners</p>
           <h1>Animal health risk, 14 days ahead</h1>
           <p className="lead">
@@ -79,7 +73,7 @@ export function HomePage() {
             keeps the records that go with it: register, medicine book, tasks and more.
           </p>
 
-          <form className="form hero-form" onSubmit={handleSubmit}>
+          <form className="form hero-form hero-card" onSubmit={handleSubmit}>
             <fieldset className="segmented">
               <legend>I'm a…</legend>
               <label className={role === 'farm' ? 'is-active' : ''}>
@@ -117,43 +111,16 @@ export function HomePage() {
               </label>
               <button type="submit">See forecast</button>
             </div>
+            <p className="muted hero-card__note">
+              No account needed for the forecast. <Link to="/login">Explore a demo account</Link> or{' '}
+              <Link to="/signup">sign up</Link> to add your farm.
+            </p>
           </form>
-          <p className="muted">
-            Free to try, no account needed for the forecast.{' '}
-            <Link to="/signup">Create an account</Link> to add your farm or try the demo farm.
-          </p>
         </div>
 
-        <figure className="preview" aria-label="Example: a week of risk for four groups">
-          <figcaption>
-            <strong>This week</strong>
-            <span className="muted">Example farm</span>
-          </figcaption>
-          <table className="heatmap__table">
-            <tbody>
-              {PREVIEW.map(([label, levels]) => (
-                <tr key={label}>
-                  <th scope="row" className="heatmap__label">
-                    {label}
-                  </th>
-                  {[...levels].map((l, i) => (
-                    <td key={i} className="heatmap__cell-wrap">
-                      <span
-                        className={`heatmap__cell heatmap__cell--${LEVEL[l as keyof typeof LEVEL]}`}
-                      >
-                        {l}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="preview__note">
-            <span className="badge badge--high">High</span> Warm and humid: blowfly strike risk
-            high. Check the flock daily.
-          </p>
-        </figure>
+        <div className="landing__live">
+          <LiveConditions postcode="LA9 4DQ" place="Kendal, Cumbria" />
+        </div>
       </section>
 
       <section aria-labelledby="features-heading">
@@ -161,8 +128,8 @@ export function HomePage() {
           Everything a small farm keeps track of, in one place
         </h2>
         <ul className="features">
-          {FEATURES.map((f) => (
-            <li key={f.title} className="feature">
+          {FEATURES.map((f, i) => (
+            <li key={f.title} className="feature" style={{ ['--i' as string]: i }}>
               <span className="feature__icon" aria-hidden="true">
                 <Icon name={f.icon} size={24} />
               </span>

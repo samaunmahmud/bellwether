@@ -391,3 +391,25 @@ export const PET_HEALTH_QUERY = gql`
     }
   }
 `;
+
+/** v3.2: the figures on a farm's card on My farms */
+export const FARM_CARD_QUERY = gql`
+  query FarmCard($id: ID!) {
+    farm(id: $id) {
+      id
+      stats {
+        totalHead
+        sheep
+        cattle
+        overdueTasks
+        groupsInWithdrawal
+      }
+      weather {
+        date
+        tempMaxC
+        tempMinC
+        precipitationMm
+      }
+    }
+  }
+`;

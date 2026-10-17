@@ -1,14 +1,21 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { Link } from 'react-router-dom';
+import { Icon } from '../components/Icon';
+import { daysUntil, dueText } from '../components/PetHealth';
 import { PetForm, type PetFormValues } from '../components/PetForm';
-import { isOverdue, shortDay } from '../dates';
+import { Photo } from '../components/photos';
+import { shortDay } from '../dates';
 import { ANIMALS_QUERY, CREATE_ANIMAL } from '../graphql/queries';
 import type { Animal } from '../types';
 
-/** The next due date still to come or most overdue, across the pet's log. */
-function nextDue(animal: Animal): string | null {
-  const dates = animal.logs.map((l) => l.nextDueDate).filter((d): d is string => d !== null);
-  return dates.sort()[0] ?? null;
+/** What's due for a pet: the latest entry of each type with a next due date, soonest first. */
+function plan(animal: Animal) {
+  const latest = new Map<string, Animal['logs'][number]>();
+  for (const log of animal.logs) if (!latest.has(log.type)) latest.set(log.type, log);
+  return [...latest.values()]
+    .filter((l): l is typeof l & { nextDueDate: string } => l.nextDueDate !== null)
+    .map((l) => ({ type: l.type, date: l.nextDueDate, days: daysUntil(l.nextDueDate) }))
+    .sort((a, b) => a.days - b.days);
 }
 
 export function AnimalsPage() {
@@ -23,55 +30,77 @@ export function AnimalsPage() {
 
   return (
     <section>
-      <h1>My pets</h1>
-      <p className="muted">
-        Add a pet with its home postcode to get its own tick and heat forecast, and keep a log of
-        checks and treatments with &ldquo;next due&rdquo; reminders. Livestock lives under{' '}
-        <Link to="/farms">My farms</Link>.
-      </p>
+      <header className="page-hero">
+        <Photo name="dog" className="photo--drift" />
+        <div className="page-hero__inner">
+          <h1>My pets</h1>
+          <p>
+            Each pet gets its own tick and heat forecast at home, a health plan with reminders and a
+            weight chart. Livestock lives under <Link to="/farms">My farms</Link>.
+          </p>
+        </div>
+      </header>
 
-      <PetForm onSubmit={handleCreate} />
-
-      {loading && <p aria-live="polite">Loading…</p>}
+      {loading && (
+        <div className="pet-tiles" aria-busy="true">
+          <div className="skeleton skeleton--tile" />
+          <div className="skeleton skeleton--tile" />
+        </div>
+      )}
       {error && (
         <p className="error" role="alert">
           {error.message}
         </p>
       )}
       {data && data.animals.length === 0 && (
-        <p className="muted">No pets yet. Add one above to start a log.</p>
+        <p className="empty">No pets yet. Add one below to start a log.</p>
       )}
 
-      <div className="grid">
-        {data?.animals.map((animal) => {
-          const due = nextDue(animal);
-          const overdueCount = animal.logs.filter((l) => isOverdue(l.nextDueDate)).length;
-          return (
-            <article key={animal.id} className="card">
-              <h3>
-                <Link to={`/pets/${animal.id}`}>{animal.name}</Link>
-              </h3>
-              <p className="muted">
-                {animal.species}
-                {animal.category === 'FARM' ? ' · farm' : ''}
-                {animal.postcode ? ` · ${animal.postcode}` : ' · no postcode yet'}
-              </p>
-              {overdueCount > 0 ? (
-                <p className="pill pill--overdue">
-                  Overdue: {overdueCount} {overdueCount === 1 ? 'entry' : 'entries'}
-                </p>
-              ) : due ? (
-                <p>Next due: {shortDay(due)}</p>
-              ) : (
-                <p className="muted">Nothing due</p>
-              )}
-              <p className="muted">
-                {animal.logs.length} log {animal.logs.length === 1 ? 'entry' : 'entries'}
-              </p>
-            </article>
-          );
-        })}
-      </div>
+      {data && data.animals.length > 0 && (
+        <ul className="pet-tiles">
+          {data.animals.map((animal, i) => {
+            const items = plan(animal);
+            const overdue = items.filter((p) => p.days < 0);
+            const next = items.find((p) => p.days >= 0);
+            return (
+              <li key={animal.id} style={{ ['--i' as string]: i }}>
+                <Link to={`/pets/${animal.id}`} className="pet-tile">
+                  <span className={`pet-tile__avatar pet-tile__avatar--${animal.species}`}>
+                    <Icon name="pets" size={26} />
+                  </span>
+                  <span className="pet-tile__main">
+                    <strong className="pet-tile__name">{animal.name}</strong>
+                    <span className="muted">
+                      {animal.species}
+                      {animal.postcode ? ` · ${animal.postcode}` : ' · no postcode yet'}
+                      {animal.highExposureHabitat ? ' · walks in long grass' : ''}
+                    </span>
+                    <span className="pet-tile__chips">
+                      {overdue.map((p) => (
+                        <span key={p.type} className="tag tag--overdue">
+                          {p.type} overdue · {shortDay(p.date)}
+                        </span>
+                      ))}
+                      {next && (
+                        <span className="tag">
+                          {next.type} {dueText(next.days).toLowerCase()}
+                        </span>
+                      )}
+                      {items.length === 0 && <span className="tag tag--quiet">Nothing due</span>}
+                    </span>
+                  </span>
+                  <Icon name="arrow" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <section className="panel" aria-labelledby="add-pet">
+        <h2 id="add-pet">Add a pet</h2>
+        <PetForm onSubmit={handleCreate} />
+      </section>
     </section>
   );
 }

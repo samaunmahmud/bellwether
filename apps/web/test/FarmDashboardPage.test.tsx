@@ -2,7 +2,7 @@ import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DASHBOARD_QUERY } from '../src/graphql/v3';
-import { FarmDashboardPage } from '../src/pages/FarmDashboardPage';
+import { FarmDashboardPage, greeting } from '../src/pages/FarmDashboardPage';
 import { routerFuture } from '../src/routerFuture';
 
 const farm = (myRole = 'OWNER') => ({
@@ -113,5 +113,29 @@ describe('FarmDashboardPage (v3)', () => {
   it('says when the farm isn’t found', async () => {
     renderWith([mock(null)]);
     expect(await screen.findByText('Farm not found')).toBeInTheDocument();
+  });
+
+  it('opens with a greeting and today’s weather over the farm photo', async () => {
+    renderWith([mock(farm())]);
+    const hero = await screen.findByRole('region', { name: 'Fellside Farm' });
+    expect(within(hero).getByText(/^Good (morning|afternoon|evening)/)).toBeInTheDocument();
+    const today = within(hero).getByRole('group', { name: 'Today’s weather' });
+    expect(today).toHaveTextContent('18°');
+    expect(today).toHaveTextContent('8°');
+    expect(today).toHaveTextContent('0 mm rain');
+  });
+});
+
+describe('greeting', () => {
+  it.each([
+    [4, 'Good evening'],
+    [5, 'Good morning'],
+    [11, 'Good morning'],
+    [12, 'Good afternoon'],
+    [17, 'Good afternoon'],
+    [18, 'Good evening'],
+    [23, 'Good evening'],
+  ])('%i:00 → %s', (hour, text) => {
+    expect(greeting(hour)).toBe(text);
   });
 });
