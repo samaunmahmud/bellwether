@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ForecastView } from '../components/ForecastView';
 import { LogForm, type LogFormValues } from '../components/LogForm';
 import { PetForm, type PetFormValues } from '../components/PetForm';
+import { PetHealth } from '../components/PetHealth';
 import { isOverdue, shortDay } from '../dates';
 import {
   ADD_LOG_ENTRY,
@@ -100,6 +101,12 @@ export function PetPage() {
       {editingPet && (
         <PetForm initial={pet} onSubmit={savePet} onCancel={() => setEditingPet(false)} />
       )}
+
+      <PetHealth
+        // Remount after any log change so the plan and weights refetch.
+        key={pet.logs.map((l) => `${l.id}:${l.nextDueDate ?? ''}`).join(',')}
+        petId={pet.id}
+      />
 
       <h2>Forecast</h2>
       {pet.forecast ? (

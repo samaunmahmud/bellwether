@@ -25,6 +25,8 @@ interface FarmSettings {
   id: string;
   name: string;
   postcode: string;
+  cphNumber: string | null;
+  flockMark: string | null;
   myRole: FarmRole;
   fields: SettingsField[];
   archivedFields: SettingsField[];
@@ -44,16 +46,28 @@ function DetailsForm({
   onSave,
 }: {
   farm: FarmSettings;
-  onSave: (input: { name: string; postcode: string }) => Promise<unknown>;
+  onSave: (input: {
+    name: string;
+    postcode: string;
+    cphNumber: string;
+    flockMark: string;
+  }) => Promise<unknown>;
 }) {
   const [name, setName] = useState(farm.name);
   const [postcode, setPostcode] = useState(farm.postcode);
+  const [cphNumber, setCphNumber] = useState(farm.cphNumber ?? '');
+  const [flockMark, setFlockMark] = useState(farm.flockMark ?? '');
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     try {
-      await onSave({ name: name.trim(), postcode: postcode.trim() });
+      await onSave({
+        name: name.trim(),
+        postcode: postcode.trim(),
+        cphNumber: cphNumber.trim(),
+        flockMark: flockMark.trim(),
+      });
       setMessage({ error: false, text: 'Saved' });
     } catch (err) {
       setMessage({ error: true, text: errorMessage(err) });
@@ -70,6 +84,22 @@ function DetailsForm({
         <label>
           Postcode
           <input value={postcode} onChange={(e) => setPostcode(e.target.value)} required />
+        </label>
+        <label>
+          CPH number
+          <input
+            value={cphNumber}
+            onChange={(e) => setCphNumber(e.target.value)}
+            placeholder="e.g. 12/345/6789"
+          />
+        </label>
+        <label>
+          Flock or herd mark
+          <input
+            value={flockMark}
+            onChange={(e) => setFlockMark(e.target.value)}
+            placeholder="e.g. UK 123456"
+          />
         </label>
       </div>
       {message && (

@@ -28,6 +28,8 @@ const settings = {
   id: 'farm1',
   name: 'Hill Farm',
   postcode: 'UB8 3PH',
+  cphNumber: '12/345/6789',
+  flockMark: null,
   myRole: 'OWNER',
   fields: [field('f1', 'Fell')],
   archivedFields: [field('f2', 'Old orchard', { archivedOn: '2026-01-10' })],
@@ -64,7 +66,14 @@ describe('FarmSettingsPage', () => {
   it('saves new farm details', async () => {
     const saved = vi.fn(() => ({
       data: {
-        updateFarm: { __typename: 'Farm', id: 'farm1', name: 'High Farm', postcode: 'UB8 3PH' },
+        updateFarm: {
+          __typename: 'Farm',
+          id: 'farm1',
+          name: 'High Farm',
+          postcode: 'UB8 3PH',
+          cphNumber: '12/345/6789',
+          flockMark: null,
+        },
       },
     }));
     renderWith([
@@ -72,7 +81,15 @@ describe('FarmSettingsPage', () => {
       {
         request: {
           query: UPDATE_FARM,
-          variables: { id: 'farm1', input: { name: 'High Farm', postcode: 'UB8 3PH' } },
+          variables: {
+            id: 'farm1',
+            input: {
+              name: 'High Farm',
+              postcode: 'UB8 3PH',
+              cphNumber: '12/345/6789',
+              flockMark: '',
+            },
+          },
         },
         result: saved,
       },

@@ -1,7 +1,8 @@
 import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { CREATE_DEMO_FARM } from '../src/graphql/v3';
 import { CREATE_FARM, FARMS_QUERY } from '../src/graphql/farms';
 import { ACCEPT_INVITE, MY_INVITES_QUERY } from '../src/graphql/members';
 import { FarmsPage } from '../src/pages/FarmsPage';
@@ -135,5 +136,39 @@ describe('FarmsPage (FR-2.1)', () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Accept invitation to Low Farm' }));
     await vi.waitFor(() => expect(accepted).toHaveBeenCalled());
+  });
+
+  it('builds a demo farm near a chosen postcode and opens it (v3)', async () => {
+    render(
+      <MockedProvider
+        mocks={[
+          { request: { query: FARMS_QUERY }, result: { data: { farms: [] } } },
+          {
+            request: { query: CREATE_DEMO_FARM, variables: { postcode: 'CA12 5DJ' } },
+            result: {
+              data: {
+                createDemoFarm: { __typename: 'Farm', id: 'demo1', name: 'Fellside Farm (demo)' },
+              },
+            },
+          },
+          {
+            request: { query: FARMS_QUERY },
+            result: { data: { farms: [farm('demo1', 'Fellside Farm (demo)')] } },
+          },
+        ]}
+      >
+        <MemoryRouter initialEntries={['/farms']} future={routerFuture}>
+          <Routes>
+            <Route path="/farms" element={<FarmsPage />} />
+            <Route path="/farms/:id" element={<p>Demo dashboard</p>} />
+          </Routes>
+        </MemoryRouter>
+      </MockedProvider>,
+    );
+    const postcode = await screen.findByLabelText('Postcode for the demo');
+    await userEvent.clear(postcode);
+    await userEvent.type(postcode, 'CA12 5DJ');
+    await userEvent.click(screen.getByRole('button', { name: 'Create the demo farm' }));
+    expect(await screen.findByText('Demo dashboard')).toBeInTheDocument();
   });
 });

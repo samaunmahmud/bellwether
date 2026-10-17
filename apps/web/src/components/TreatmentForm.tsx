@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { todayIso } from '../dates';
 import { errorMessage } from '../errors';
+import type { MedicineItem } from '../types';
 
 export interface TreatmentFormValues {
   date: string;
@@ -28,7 +29,10 @@ export function TreatmentForm({
   onSubmit,
   initial,
   onCancel,
+  medicines = [],
 }: {
+  /** v3: in-stock products from the cabinet, to fill in the product fields */
+  medicines?: MedicineItem[];
   headCount: number;
   onSubmit: (values: TreatmentFormValues, changeReason?: string) => Promise<unknown>;
   initial?: TreatmentFormValues;
@@ -92,6 +96,31 @@ export function TreatmentForm({
       <p className="notice" role="note">
         Withdrawal periods must come from the product label or your vet.
       </p>
+      {!initial && medicines.length > 0 && (
+        <label>
+          Fill in from the medicine cabinet
+          <select
+            value=""
+            onChange={(e) => {
+              const item = medicines.find((m) => m.id === e.target.value);
+              if (!item) return;
+              setProductName(item.productName);
+              setBatchNumber(text(item.batchNumber));
+              setMeatDays(text(item.meatWithdrawalDays));
+              setMilkDays(text(item.milkWithdrawalDays));
+            }}
+          >
+            <option value="">Choose a product…</option>
+            {medicines.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.productName}
+                {m.batchNumber ? ` (batch ${m.batchNumber})` : ''}
+                {m.status === 'EXPIRED' ? ' – out of date' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="form--inline">
         <label>
           Date given

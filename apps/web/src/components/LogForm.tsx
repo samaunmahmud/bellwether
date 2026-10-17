@@ -6,6 +6,8 @@ export interface LogFormValues {
   type: string;
   note: string | null;
   nextDueDate: string | null;
+  /** v3: only sent when a weight is typed, or cleared from an entry that had one */
+  weightKg?: number | null;
 }
 
 export const LOG_TYPES = [
@@ -14,6 +16,8 @@ export const LOG_TYPES = [
   'Flea check',
   'Groomed',
   'Weighed',
+  'Vaccination',
+  'Worming',
   'Vet visit',
   'Other',
 ];
@@ -31,6 +35,7 @@ export function LogForm({ onSubmit, initial, submitLabel = 'Add entry', onCancel
   const [type, setType] = useState(initial?.type ?? LOG_TYPES[0]!);
   const [note, setNote] = useState(initial?.note ?? '');
   const [nextDueDate, setNextDueDate] = useState(initial?.nextDueDate ?? '');
+  const [weight, setWeight] = useState(initial?.weightKg == null ? '' : String(initial.weightKg));
   const [error, setError] = useState<string | null>(null);
   // Older entries may have a type that is no longer in the list; keep it selectable.
   const types = LOG_TYPES.includes(type) ? LOG_TYPES : [type, ...LOG_TYPES];
@@ -43,7 +48,14 @@ export function LogForm({ onSubmit, initial, submitLabel = 'Add entry', onCancel
     }
     setError(null);
     try {
-      await onSubmit({ date, type, note: note.trim() || null, nextDueDate: nextDueDate || null });
+      const hadWeight = initial?.weightKg != null;
+      await onSubmit({
+        date,
+        type,
+        note: note.trim() || null,
+        nextDueDate: nextDueDate || null,
+        ...(weight !== '' || hadWeight ? { weightKg: weight === '' ? null : Number(weight) } : {}),
+      });
     } catch (err) {
       setError((err as Error).message);
       return;
@@ -51,6 +63,7 @@ export function LogForm({ onSubmit, initial, submitLabel = 'Add entry', onCancel
     if (!initial) {
       setNote('');
       setNextDueDate('');
+      setWeight('');
     }
   }
 
@@ -79,6 +92,18 @@ export function LogForm({ onSubmit, initial, submitLabel = 'Add entry', onCancel
       <label>
         Next due
         <input type="date" value={nextDueDate} onChange={(e) => setNextDueDate(e.target.value)} />
+      </label>
+      <label>
+        Weight (kg)
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          min="0.1"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          placeholder="Optional"
+        />
       </label>
       {error && (
         <p className="error" role="alert">

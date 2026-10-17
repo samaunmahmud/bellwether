@@ -131,6 +131,7 @@ export const ADD_LOG_ENTRY = gql`
     $type: String!
     $note: String
     $nextDueDate: String
+    $weightKg: Float
   ) {
     addLogEntry(
       animalId: $animalId
@@ -138,6 +139,7 @@ export const ADD_LOG_ENTRY = gql`
       type: $type
       note: $note
       nextDueDate: $nextDueDate
+      weightKg: $weightKg
     ) {
       id
     }

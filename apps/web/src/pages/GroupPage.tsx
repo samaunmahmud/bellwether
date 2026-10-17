@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArchiveGroupForm } from '../components/ArchiveGroupForm';
 import { CLASS_LABELS, GroupForm, type GroupFormValues } from '../components/GroupForm';
+import { GroupPerformance } from '../components/GroupPerformance';
 import { ObservationForm, type ObservationFormValues } from '../components/ObservationForm';
 import { RecordHistory } from '../components/RecordHistory';
 import { TreatmentForm, type TreatmentFormValues } from '../components/TreatmentForm';
@@ -19,7 +20,8 @@ import {
   VOID_TREATMENT,
 } from '../graphql/records';
 import { canManage, canWork } from '../roles';
-import type { Correctable, GroupRecords, WithdrawalStatus } from '../types';
+import { CABINET_QUERY } from '../graphql/v3';
+import type { Correctable, GroupRecords, MedicineItem, WithdrawalStatus } from '../types';
 
 /** The group's details as edit-form values. */
 function formValues(group: GroupRecords): GroupFormValues {
@@ -109,6 +111,12 @@ export function GroupPage() {
   const { id = '' } = useParams();
   const { data, loading, error } = useQuery<{ livestockGroup: GroupRecords | null }>(GROUP_QUERY, {
     variables: { id },
+  });
+  const loadedFarm = data?.livestockGroup?.farm;
+  // v3: products in the cabinet, for filling in the treatment form
+  const cabinet = useQuery<{ medicines: MedicineItem[] }>(CABINET_QUERY, {
+    variables: { farmId: loadedFarm?.id },
+    skip: !loadedFarm || !canWork(loadedFarm.myRole),
   });
   const refetch = { refetchQueries: [{ query: GROUP_QUERY, variables: { id } }] };
   const [recordTreatment] = useMutation(RECORD_TREATMENT, refetch);
@@ -206,6 +214,7 @@ export function GroupPage() {
         />
       )}
       <Withdrawal status={group.withdrawal} />
+      <GroupPerformance groupId={group.id} farmId={group.farm.id} />
 
       <h2>Treatments</h2>
       {group.treatments.length === 0 ? (
@@ -277,6 +286,7 @@ export function GroupPage() {
       {worker && (
         <TreatmentForm
           headCount={group.headCount}
+          medicines={cabinet.data?.medicines.filter((m) => m.status !== 'FINISHED')}
           onSubmit={(values: TreatmentFormValues) =>
             recordTreatment({ variables: { input: { groupId: group.id, ...values } } })
           }

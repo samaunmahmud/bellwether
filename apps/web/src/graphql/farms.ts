@@ -118,6 +118,8 @@ export const FARM_SETTINGS_QUERY = gql`
       id
       name
       postcode
+      cphNumber
+      flockMark
       myRole
       fields {
         ...SettingsFieldFields
@@ -142,6 +144,8 @@ export const UPDATE_FARM = gql`
       id
       name
       postcode
+      cphNumber
+      flockMark
     }
   }
 `;

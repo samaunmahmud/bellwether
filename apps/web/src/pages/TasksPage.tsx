@@ -46,6 +46,8 @@ export function TasksPage() {
   const [setDone] = useMutation(SET_TASK_DONE, refetch);
   const [editing, setEditing] = useState<string | null>(null);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [view, setView] = useState<'list' | 'board'>('list');
+  const [dragOver, setDragOver] = useState<'todo' | 'done' | null>(null);
 
   if (loading) return <p aria-live="polite">Loading tasks…</p>;
   if (error)
@@ -168,7 +170,85 @@ export function TasksPage() {
         Only my tasks
       </label>
 
+      <div className="tabs" role="tablist" aria-label="View">
+        {(['list', 'board'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            className={view === v ? 'tab is-active' : 'tab'}
+            onClick={() => setView(v)}
+          >
+            {v === 'list' ? 'List' : 'Board'}
+          </button>
+        ))}
+      </div>
+
       {onlyMine && tasks.length === 0 && <p className="muted">No tasks are assigned to you.</p>}
+
+      {view === 'board' && tasks.length > 0 && (
+        <div className="board">
+          {(
+            [
+              ['overdue', 'Overdue', overdue],
+              ['todo', 'To do', todo],
+              ['done', 'Done', done],
+            ] as const
+          ).map(([key, title, list]) => {
+            const target = key === 'done' ? 'done' : 'todo';
+            return (
+              <section
+                key={key}
+                className={`board__column board__column--${key}${dragOver === target && key !== 'overdue' ? ' is-over' : ''}`}
+                aria-label={title}
+                onDragOver={(e) => {
+                  if (!worker || key === 'overdue') return;
+                  e.preventDefault();
+                  setDragOver(target);
+                }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  const taskId = e.dataTransfer.getData('text/plain');
+                  const task = tasks.find((t) => t.id === taskId);
+                  if (task && key !== 'overdue' && task.done !== (key === 'done'))
+                    void setDone({ variables: { id: task.id, done: key === 'done' } });
+                }}
+              >
+                <h2>
+                  {title} <span className="muted">{list.length}</span>
+                </h2>
+                {list.length === 0 && <p className="board__empty muted">Nothing here.</p>}
+                {list.map((task) => (
+                  <article
+                    key={task.id}
+                    className={`board__card${task.overdue ? ' board__card--overdue' : ''}`}
+                    draggable={worker}
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', task.id)}
+                  >
+                    <strong>{task.title}</strong>
+                    <span className="muted">
+                      {task.group?.name ?? 'Whole farm'} · {shortDay(task.dueDate)}
+                    </span>
+                    {assigneeLabel(task) && <span className="muted">{assigneeLabel(task)}</span>}
+                    {worker && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setDone({ variables: { id: task.id, done: !task.done } })}
+                      >
+                        {task.done ? 'Not done' : 'Mark done'}
+                      </button>
+                    )}
+                  </article>
+                ))}
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {!onlyMine && tasks.length === 0 && (
         <p className="muted">
@@ -177,7 +257,7 @@ export function TasksPage() {
         </p>
       )}
 
-      {overdue.length > 0 && (
+      {view === 'list' && overdue.length > 0 && (
         <section className="overdue">
           <h2>Overdue</h2>
           <ul className="tasks" aria-label="Overdue">
@@ -186,7 +266,7 @@ export function TasksPage() {
         </section>
       )}
 
-      {todo.length > 0 && (
+      {view === 'list' && todo.length > 0 && (
         <>
           <h2>To do</h2>
           <ul className="tasks" aria-label="To do">
@@ -195,7 +275,7 @@ export function TasksPage() {
         </>
       )}
 
-      {done.length > 0 && (
+      {view === 'list' && done.length > 0 && (
         <details className="quiet">
           <summary>Done ({done.length})</summary>
           <ul className="tasks" aria-label="Done">

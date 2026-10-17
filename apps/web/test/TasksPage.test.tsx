@@ -1,5 +1,5 @@
 import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DELETE_TASK, SET_TASK_DONE, TASKS_PAGE_QUERY } from '../src/graphql/briefing';
@@ -153,6 +153,32 @@ describe('TasksPage (FR-5.3)', () => {
       expect(screen.queryByRole('form', { name: 'Add task' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument();
       expect(screen.getByRole('checkbox', { name: 'Done: Trim feet' })).toBeDisabled();
+    });
+  });
+
+  describe('board (v3)', () => {
+    it('shows columns and marks a task done when it is dropped on Done', async () => {
+      const done = vi.fn(() => ({
+        data: { setTaskDone: { __typename: 'Task', id: 't2', done: true } },
+      }));
+      renderWith([
+        pageMock,
+        { request: { query: SET_TASK_DONE, variables: { id: 't2', done: true } }, result: done },
+        pageMock,
+      ]);
+      await userEvent.click(await screen.findByRole('tab', { name: 'Board' }));
+      const todo = screen.getByRole('region', { name: 'To do' });
+      const card = within(todo).getByText('Trim feet').closest('article')!;
+      const data = new Map<string, string>();
+      const dataTransfer = {
+        setData: (k: string, v: string) => data.set(k, v),
+        getData: (k: string) => data.get(k) ?? '',
+      };
+      fireEvent.dragStart(card, { dataTransfer });
+      const doneColumn = screen.getByRole('region', { name: 'Done' });
+      fireEvent.dragOver(doneColumn, { dataTransfer });
+      fireEvent.drop(doneColumn, { dataTransfer });
+      await vi.waitFor(() => expect(done).toHaveBeenCalled());
     });
   });
 });

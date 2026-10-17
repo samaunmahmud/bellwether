@@ -229,3 +229,113 @@ export interface FarmTask {
   assignee: { id: string; email: string } | null;
   assignedToMe: boolean;
 }
+
+// --- v3: dashboard, register, medicines ---
+
+export interface FarmStats {
+  totalHead: number;
+  sheep: number;
+  cattle: number;
+  bornAlive: number;
+  bornDead: number;
+  deaths: number;
+  movedOn: number;
+  movedOff: number;
+  mortalityPct: number | null;
+  birthSurvivalPct: number | null;
+  groupsInWithdrawal: number;
+  openTasks: number;
+  overdueTasks: number;
+}
+
+export type AlertLevel = 'URGENT' | 'WARNING' | 'INFO';
+
+export interface FarmAlert {
+  level: AlertLevel;
+  title: string;
+  detail: string;
+  link: string;
+}
+
+export interface ActivityItem {
+  date: string;
+  kind: string;
+  title: string;
+  detail: string | null;
+  groupId: string | null;
+  groupName: string | null;
+}
+
+export interface WeatherDay {
+  date: string;
+  tempMeanC?: number;
+  tempMaxC: number;
+  tempMinC: number;
+  humidityMeanPct?: number;
+  precipitationMm: number;
+}
+
+export interface HeatmapRisk {
+  riskId: string;
+  name: string;
+  days: Array<{ date: string; level: RiskLevel; reason: string }>;
+}
+
+export interface HeatmapGroup {
+  id: string;
+  name: string;
+  forecast: { risks: HeatmapRisk[] };
+}
+
+export type RegisterEventKind =
+  | 'BIRTH'
+  | 'DEATH'
+  | 'MOVE_ON'
+  | 'MOVE_OFF'
+  | 'WEIGHING'
+  | 'FEC'
+  | 'BODY_CONDITION'
+  | 'TAG_REPLACEMENT'
+  | 'HEAD_COUNT';
+
+export interface RegisterEvent {
+  id: string;
+  kind: RegisterEventKind;
+  date: string;
+  count: number | null;
+  bornDead: number | null;
+  value: number | null;
+  otherParty: string | null;
+  reference: string | null;
+  cause: string | null;
+  note: string | null;
+  recordedBy: string;
+  voided: boolean;
+  voidReason: string | null;
+  group: { id: string; name: string };
+}
+
+export type MedicineStatus = 'OK' | 'EXPIRING' | 'EXPIRED' | 'FINISHED';
+
+export interface MedicineItem {
+  id: string;
+  productName: string;
+  batchNumber: string | null;
+  quantity: string | null;
+  expiryDate: string | null;
+  supplier: string | null;
+  purchasedOn: string | null;
+  meatWithdrawalDays: number | null;
+  milkWithdrawalDays: number | null;
+  note: string | null;
+  finishedOn: string | null;
+  status: MedicineStatus;
+}
+
+export type GrazingStatus = 'GRAZED' | 'RESTING' | 'NEVER_USED';
+
+export interface WeightPoint {
+  date: string;
+  averageKg: number;
+  dailyGainKg: number | null;
+}

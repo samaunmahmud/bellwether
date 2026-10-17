@@ -1,10 +1,17 @@
 import type { ReactNode } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { NavBar } from './components/NavBar';
+import { AppShell } from './components/AppShell';
 import { RequireAuth } from './components/RequireAuth';
+import { ToastProvider } from './components/Toasts';
 import { AnimalsPage } from './pages/AnimalsPage';
 import { AuthPage } from './pages/AuthPage';
 import { BriefingPage } from './pages/BriefingPage';
+import { CalendarPage } from './pages/CalendarPage';
+import { FarmDashboardPage } from './pages/FarmDashboardPage';
+import { FarmMapPage } from './pages/FarmMapPage';
+import { MedicinesPage } from './pages/MedicinesPage';
+import { OutlookPage } from './pages/OutlookPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { FarmPage } from './pages/FarmPage';
 import { FarmSettingsPage } from './pages/FarmSettingsPage';
 import { FarmsPage } from './pages/FarmsPage';
@@ -20,9 +27,8 @@ const signedIn = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>;
 
 export function App() {
   return (
-    <div className="shell">
-      <NavBar />
-      <main className="content">
+    <ToastProvider>
+      <AppShell>
         <Routes>
           {/* Public: the postcode forecast reads no user data (A15) */}
           <Route path="/" element={<HomePage />} />
@@ -31,7 +37,13 @@ export function App() {
           <Route path="/signup" element={<AuthPage mode="signup" />} />
 
           <Route path="/farms" element={signedIn(<FarmsPage />)} />
-          <Route path="/farms/:id" element={signedIn(<FarmPage />)} />
+          <Route path="/farms/:id" element={signedIn(<FarmDashboardPage />)} />
+          <Route path="/farms/:id/livestock" element={signedIn(<FarmPage />)} />
+          <Route path="/farms/:id/map" element={signedIn(<FarmMapPage />)} />
+          <Route path="/farms/:id/outlook" element={signedIn(<OutlookPage />)} />
+          <Route path="/farms/:id/calendar" element={signedIn(<CalendarPage />)} />
+          <Route path="/farms/:id/register" element={signedIn(<RegisterPage />)} />
+          <Route path="/farms/:id/medicines" element={signedIn(<MedicinesPage />)} />
           <Route path="/farms/:id/briefing" element={signedIn(<BriefingPage />)} />
           <Route path="/farms/:id/records" element={signedIn(<RecordsPage />)} />
           <Route path="/farms/:id/tasks" element={signedIn(<TasksPage />)} />
@@ -41,7 +53,7 @@ export function App() {
           <Route path="/animals" element={signedIn(<AnimalsPage />)} />
           <Route path="/pets/:id" element={signedIn(<PetPage />)} />
         </Routes>
-      </main>
-    </div>
+      </AppShell>
+    </ToastProvider>
   );
 }
