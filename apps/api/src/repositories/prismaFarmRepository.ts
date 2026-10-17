@@ -28,7 +28,13 @@ const DATE_KEYS = [
   'archivedOn',
 ] as const;
 
-const farmSelect = { id: true, name: true, postcode: true } as const;
+const farmSelect = {
+  id: true,
+  name: true,
+  postcode: true,
+  cphNumber: true,
+  flockMark: true,
+} as const;
 const fieldSelect = {
   id: true,
   farmId: true,

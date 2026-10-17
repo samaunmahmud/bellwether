@@ -22,8 +22,10 @@ import {
 } from './repositories/prismaBriefingRepository';
 import { PrismaFarmRepository } from './repositories/prismaFarmRepository';
 import { PrismaRecordsRepository } from './repositories/prismaRecordsRepository';
+import { PrismaRegisterRepository } from './repositories/prismaRegisterRepository';
 import { PrismaUserRepository } from './repositories/prismaUserRepository';
 import { InMemoryRecordsRepository } from './repositories/recordsRepository';
+import { InMemoryRegisterRepository } from './repositories/registerRepository';
 import { InMemoryUserRepository } from './repositories/userRepository';
 
 // Local dev: npm runs workspace scripts from apps/api, so the repo-root .env is two levels up.
@@ -47,6 +49,7 @@ const deps: AppDeps = {
   farms: prisma ? new PrismaFarmRepository(prisma) : new InMemoryFarmRepository(),
   users: prisma ? new PrismaUserRepository(prisma) : new InMemoryUserRepository(),
   records: prisma ? new PrismaRecordsRepository(prisma) : new InMemoryRecordsRepository(),
+  register: prisma ? new PrismaRegisterRepository(prisma) : new InMemoryRegisterRepository(),
   tasks: prisma ? new PrismaTaskRepository(prisma) : new InMemoryTaskRepository(),
   briefings: prisma ? new PrismaBriefingRepository(prisma) : new InMemoryBriefingRepository(),
   email: config.smtpUrl

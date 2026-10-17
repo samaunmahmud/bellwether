@@ -136,6 +136,14 @@ export function createForecastService(deps: ForecastDeps) {
       return { location, generatedAt: now().toISOString(), risks: assess(modules, days, ctx) };
     },
 
+    /** v3: the forecast days with their hourly detail, for the walk planner. */
+    getDaysAt: (latitude: number, longitude: number) => forecastDays(latitude, longitude),
+
+    /** v3: the 14-day daily weather at a point, for the farm weather chart. */
+    async getWeatherAt(latitude: number, longitude: number): Promise<DailyWeather[]> {
+      return (await forecastDays(latitude, longitude)).map(({ hours: _hours, ...day }) => day);
+    },
+
     /** FR-3.0: risks for one livestock group at a point (e.g. a field pin), using its details. */
     async getGroupForecastAt(latitude: number, longitude: number, group: GroupContext) {
       const days = await forecastDays(latitude, longitude);

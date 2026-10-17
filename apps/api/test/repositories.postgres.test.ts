@@ -7,11 +7,13 @@ import {
 } from '../src/repositories/prismaBriefingRepository';
 import { PrismaFarmRepository } from '../src/repositories/prismaFarmRepository';
 import { PrismaRecordsRepository } from '../src/repositories/prismaRecordsRepository';
+import { PrismaRegisterRepository } from '../src/repositories/prismaRegisterRepository';
 import { PrismaUserRepository } from '../src/repositories/prismaUserRepository';
 import { animalRepositoryContract } from './animalRepository.contract';
 import { farmRepositoryContract } from './farmRepository.contract';
 import { sheepGroup } from './farmRepository.contract';
 import { recordsRepositoryContract } from './recordsRepository.contract';
+import { registerRepositoryContract } from './registerRepository.contract';
 import { briefingRepositoryContract } from './briefingRepository.contract';
 import { userRepositoryContract } from './userRepository.contract';
 
@@ -59,6 +61,25 @@ describe.skipIf(!testDatabaseUrl)('Postgres repositories', () => {
         newGroup: async () => {
           const user = await prisma.user.create({
             data: { email: `records${++n}@example.com`, passwordHash: 'x' },
+          });
+          const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
+          const group = await farms.createGroup(sheepGroup(farm.id), null);
+          return { farmId: farm.id, groupId: group.id };
+        },
+      };
+    });
+  });
+
+  describe('PrismaRegisterRepository', () => {
+    registerRepositoryContract(async () => {
+      await reset();
+      const farms = new PrismaFarmRepository(prisma);
+      let n = 0;
+      return {
+        repo: new PrismaRegisterRepository(prisma),
+        newGroup: async () => {
+          const user = await prisma.user.create({
+            data: { email: `register${++n}@example.com`, passwordHash: 'x' },
           });
           const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
           const group = await farms.createGroup(sheepGroup(farm.id), null);

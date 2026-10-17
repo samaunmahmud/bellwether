@@ -1,5 +1,6 @@
 import type { AnimalCategory } from '@bellwether/risk-engine';
-import { isIsoDate } from '../dates';
+import { isIsoDate, londonToday } from '../dates';
+import { walkPlan } from '../domain/walkPlanner';
 import { appError } from '../errors';
 import type {
   Animal,
@@ -14,6 +15,7 @@ export interface PetDeps {
   animals: AnimalRepository;
   locations: LocationService;
   forecastService: ForecastService;
+  now?: () => Date;
 }
 
 export interface NewPetInput {
@@ -35,7 +37,12 @@ export interface LogInput {
   type?: string | null;
   note?: string | null;
   nextDueDate?: string | null;
+  /** v3; null clears */
+  weightKg?: number | null;
 }
+
+/** Sanity limit to catch typos, not a veterinary value */
+const MAX_PET_WEIGHT_KG = 150;
 
 function cleanName(name: string) {
   const trimmed = name.trim();
@@ -80,6 +87,11 @@ export function createPetService(deps: PetDeps) {
     }
     if (input.note !== undefined) patch.note = input.note?.trim() || null;
     if (input.nextDueDate !== undefined) patch.nextDueDate = input.nextDueDate || null;
+    if (input.weightKg !== undefined) {
+      if (input.weightKg !== null && !(input.weightKg > 0 && input.weightKg <= MAX_PET_WEIGHT_KG))
+        throw appError('BAD_INPUT', `Weight must be more than 0 and up to ${MAX_PET_WEIGHT_KG} kg`);
+      patch.weightKg = input.weightKg === null ? null : Math.round(input.weightKg * 10) / 10;
+    }
 
     const date = patch.date ?? current.date;
     const due = patch.nextDueDate === undefined ? current.nextDueDate : patch.nextDueDate;
@@ -131,6 +143,14 @@ export function createPetService(deps: PetDeps) {
         ...forecast,
         risks: forecast.risks.filter((r) => r.animals.includes(animal.species)),
       };
+    },
+
+    /** v3: today's best hours for a dog walk at its postcode; null without hourly data. */
+    async walkPlanner(animal: Animal) {
+      if (!animal.postcode || animal.species !== 'dog') return null;
+      const { latitude, longitude } = await locations.findPostcode(animal.postcode);
+      const days = await deps.forecastService.getDaysAt(latitude, longitude);
+      return walkPlan(days, londonToday((deps.now ?? (() => new Date()))()));
     },
 
     logs: (animalId: string) => animals.listLogs(animalId),

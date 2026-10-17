@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLocationRef, type Farm, type Field } from '../src/domain/farm';
 
-const farm: Farm = { id: 'f1', name: 'Hill Farm', postcode: 'UB8 3PH' };
+const farm: Farm = {
+  id: 'f1',
+  name: 'Hill Farm',
+  postcode: 'UB8 3PH',
+  cphNumber: null,
+  flockMark: null,
+};
 const field = (overrides: Partial<Field> = {}): Field => ({
   id: 'fd1',
   farmId: 'f1',

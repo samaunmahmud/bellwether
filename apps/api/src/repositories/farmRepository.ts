@@ -8,10 +8,11 @@ import type {
   LivestockGroup,
 } from '../domain/farm';
 
-export type NewFarm = Omit<Farm, 'id'>;
+export type NewFarm = Omit<Farm, 'id' | 'cphNumber' | 'flockMark'> &
+  Partial<Pick<Farm, 'cphNumber' | 'flockMark'>>;
 export type NewField = Omit<Field, 'id' | 'archivedOn'>;
 export type NewGroup = Omit<LivestockGroup, 'id' | 'archivedOn' | 'archiveReason'>;
-export type FarmPatch = Partial<NewFarm>;
+export type FarmPatch = Partial<Omit<Farm, 'id'>>;
 export type NewInvite = Omit<FarmInvite, 'id'>;
 export type FieldPatch = Partial<Omit<Field, 'id' | 'farmId'>>;
 export type NewMovement = Omit<GroupMovement, 'id'>;
@@ -90,7 +91,7 @@ export class InMemoryFarmRepository implements FarmRepository {
   constructor(private newId: () => string = randomUUID) {}
 
   async createFarm(input: NewFarm, ownerId: string) {
-    const farm = { ...input, id: this.newId() };
+    const farm: Farm = { cphNumber: null, flockMark: null, ...input, id: this.newId() };
     this.farms.set(farm.id, farm);
     this.members.push({ farmId: farm.id, userId: ownerId, role: 'OWNER' });
     return { ...farm };

@@ -11,6 +11,7 @@ import type { AnimalRepository } from './repositories/animalRepository';
 import type { BriefingRepository, TaskRepository } from './repositories/briefingRepository';
 import type { FarmRepository } from './repositories/farmRepository';
 import type { RecordsRepository } from './repositories/recordsRepository';
+import type { RegisterRepository } from './repositories/registerRepository';
 import type { UserRepository } from './repositories/userRepository';
 import { createResolvers } from './resolvers';
 import { createAuthResolvers } from './resolvers/auth';
@@ -18,8 +19,12 @@ import { createBriefingResolvers } from './resolvers/briefing';
 import { createFarmResolvers } from './resolvers/farms';
 import { createMemberResolvers } from './resolvers/members';
 import { createRecordsResolvers } from './resolvers/records';
+import { createRegisterResolvers } from './resolvers/register';
 import { typeDefs } from './schema/typeDefs';
 import { createAuthService } from './services/authService';
+import { createDemoFarmService } from './services/demoFarmService';
+import { createInsightsService } from './services/insightsService';
+import { createRegisterService } from './services/registerService';
 import { createBriefingService } from './services/briefingService';
 import { createFarmService } from './services/farmService';
 import { createForecastService } from './services/forecastService';
@@ -36,6 +41,7 @@ export interface AppDeps {
   animals: AnimalRepository;
   farms: FarmRepository;
   records: RecordsRepository;
+  register: RegisterRepository;
   tasks: TaskRepository;
   briefings: BriefingRepository;
   users: UserRepository;
@@ -53,7 +59,12 @@ export interface AppDeps {
 export function createServices(deps: AppDeps) {
   const locations = createLocationService(deps);
   const forecastService = createForecastService({ ...deps, locations });
-  const petService = createPetService({ animals: deps.animals, locations, forecastService });
+  const petService = createPetService({
+    animals: deps.animals,
+    locations,
+    forecastService,
+    now: deps.now,
+  });
   const farmService = createFarmService({ repo: deps.farms, locations, now: deps.now });
   const recordsService = createRecordsService({
     records: deps.records,
@@ -82,8 +93,35 @@ export function createServices(deps: AppDeps) {
     hasher: deps.hasher ?? createScryptHasher(),
     now: deps.now,
   });
+  const registerService = createRegisterService({
+    register: deps.register,
+    farms: deps.farms,
+    farmService,
+    now: deps.now,
+  });
+  const insightsService = createInsightsService({
+    farms: deps.farms,
+    records: deps.records,
+    tasks: deps.tasks,
+    recordsService,
+    registerService,
+    forecastService,
+    locations,
+    now: deps.now,
+  });
+  const demoFarmService = createDemoFarmService({
+    farmService,
+    registerService,
+    recordsService,
+    taskService,
+    locations,
+    now: deps.now,
+  });
   return {
     forecastService,
+    registerService,
+    insightsService,
+    demoFarmService,
     petService,
     farmService,
     recordsService,
@@ -111,6 +149,12 @@ export function createApp(deps: AppDeps, services: AppServices = createServices(
       farmService,
       memberService: services.memberService,
       users: deps.users,
+    }),
+    createRegisterResolvers({
+      farmService,
+      registerService: services.registerService,
+      insightsService: services.insightsService,
+      demoFarmService: services.demoFarmService,
     }),
     createBriefingResolvers({
       farmService,

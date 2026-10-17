@@ -8,6 +8,8 @@ export interface LogEntry {
   type: string;
   note: string | null;
   nextDueDate: string | null;
+  /** v3: weight on the day, kg */
+  weightKg: number | null;
 }
 
 export interface Animal {
@@ -32,9 +34,12 @@ export interface NewLogEntry {
   type: string;
   note?: string | null;
   nextDueDate?: string | null;
+  weightKg?: number | null;
 }
 
-export type LogEntryPatch = Partial<Pick<LogEntry, 'date' | 'type' | 'note' | 'nextDueDate'>>;
+export type LogEntryPatch = Partial<
+  Pick<LogEntry, 'date' | 'type' | 'note' | 'nextDueDate' | 'weightKg'>
+>;
 
 /** Storage for pets and their logs (FR-2.6). Unknown or malformed ids mean "not found". */
 export interface AnimalRepository {
@@ -118,6 +123,7 @@ export class InMemoryAnimalRepository implements AnimalRepository {
       type: input.type,
       note: input.note ?? null,
       nextDueDate: input.nextDueDate ?? null,
+      weightKg: input.weightKg ?? null,
     };
     this.logs.set(entry.id, { ...entry, seq: ++this.seq });
     return entry;

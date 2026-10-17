@@ -30,6 +30,8 @@ interface AnnsData {
   observationId: string;
   inviteId: string;
   userId: string;
+  registerEventId: string;
+  medicineId: string;
 }
 
 interface BobsData {
@@ -338,12 +340,79 @@ const CROSS_USER: Record<string, Attempt> = {
       'NOT_FOUND',
     );
   },
+  // v3: holding register, medicine cabinet and demo farm
+  holdingRegister: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { holdingRegister(farmId: $id) { headCountAfter } }`, {
+      id: ann.farmId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  registerEvents: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { registerEvents(farmId: $id) { id } }`, {
+      id: ann.farmId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  medicines: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { medicines(farmId: $id) { id } }`, { id: ann.farmId });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  recordRegisterEvent: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($groupId: ID!) {
+        recordRegisterEvent(input: { groupId: $groupId, kind: DEATH, date: "2026-06-01", count: 1 }) { id }
+      }`,
+      { groupId: ann.groupId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  voidRegisterEvent: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { voidRegisterEvent(id: $id, reason: "Mine") { id } }`,
+      { id: ann.registerEventId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  addMedicine: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { addMedicine(farmId: $id, input: { productName: "X" }) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateMedicine: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateMedicine(id: $id, input: { productName: "Mine" }) { id } }`,
+      { id: ann.medicineId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteMedicine: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteMedicine(id: $id) }`, {
+      id: ann.medicineId,
+    });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  // Creates Bob's own demo farm; the snapshot proves Ann's data is untouched.
+  createDemoFarm: async (bob) => {
+    const res = await bob(`mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`);
+    expect(res.errors).toBeUndefined();
+  },
 };
 
 // A minimal call to each protected operation, used to check it refuses anonymous users.
 const ANONYMOUS_CALLS: Record<string, string> = {
   farms: `query { farms { id } }`,
   farm: `query { farm(id: "x") { id } }`,
+  holdingRegister: `query { holdingRegister(farmId: "x") { headCountAfter } }`,
+  registerEvents: `query { registerEvents(farmId: "x") { id } }`,
+  medicines: `query { medicines(farmId: "x") { id } }`,
+  recordRegisterEvent: `mutation { recordRegisterEvent(input: { groupId: "x", kind: DEATH, date: "2026-06-01", count: 1 }) { id } }`,
+  voidRegisterEvent: `mutation { voidRegisterEvent(id: "x", reason: "x") { id } }`,
+  addMedicine: `mutation { addMedicine(farmId: "x", input: { productName: "X" }) { id } }`,
+  updateMedicine: `mutation { updateMedicine(id: "x", input: { productName: "X" }) { id } }`,
+  deleteMedicine: `mutation { deleteMedicine(id: "x") }`,
+  createDemoFarm: `mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`,
   animals: `query { animals { id } }`,
   animal: `query { animal(id: "x") { id } }`,
   createAnimal: `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
@@ -491,6 +560,16 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     { farmId },
   );
   const me = await ann<{ me: Id }>(`query { me { id } }`);
+  const registerEvent = await ann<{ recordRegisterEvent: Id }>(
+    `mutation ($groupId: ID!) {
+      recordRegisterEvent(input: { groupId: $groupId, kind: DEATH, date: "2026-05-30", count: 1 }) { id }
+    }`,
+    { groupId },
+  );
+  const medicine = await ann<{ addMedicine: Id }>(
+    `mutation ($farmId: ID!) { addMedicine(farmId: $farmId, input: { productName: "Label product" }) { id } }`,
+    { farmId },
+  );
   const animal = await ann<{ createAnimal: Id }>(
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
@@ -511,6 +590,8 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     observationId: observation.data!.recordObservation.id,
     inviteId: invite.data!.inviteMember.id,
     userId: me.data!.me.id,
+    registerEventId: registerEvent.data!.recordRegisterEvent.id,
+    medicineId: medicine.data!.addMedicine.id,
   };
 }
 
@@ -564,6 +645,8 @@ describe('farm and owner scoping (FR-8.4)', () => {
     await ann(
       `query ($farmId: ID!) {
         tasks(farmId: $farmId) { id title done }
+        holdingRegister(farmId: $farmId) { headCountAfter event { id voided } }
+        medicines(farmId: $farmId) { id productName finishedOn }
         briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
       }`,
       { farmId: annsData.farmId },

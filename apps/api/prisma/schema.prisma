@@ -103,10 +103,15 @@ model Farm {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
   postcode  String
+  // v3 holding details: County Parish Holding number and flock/herd mark
+  cphNumber String?
+  flockMark String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   members        FarmMember[]
+  registerEvents RegisterEvent[]
+  medicines      MedicineItem[]
   invites        FarmInvite[]
   fields         Field[]
   groups         LivestockGroup[]
@@ -169,10 +174,11 @@ model LivestockGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  movements    GroupMovement[]
-  treatments   Treatment[]
-  observations Observation[]
-  tasks        Task[]
+  movements      GroupMovement[]
+  treatments     Treatment[]
+  observations   Observation[]
+  tasks          Task[]
+  registerEvents RegisterEvent[]
 
   @@index([farmId])
 }
@@ -362,7 +368,68 @@ model PetLogEntry {
   type        String
   note        String?
   nextDueDate DateTime? @db.Date
+  // v3: weight on the day, for the pet's weight chart
+  weightKg    Float?
   createdAt   DateTime  @default(now())
 
   @@index([petId, date])
+}
+
+// --- v3: holding register and medicine cabinet ---
+
+enum RegisterEventKind {
+  BIRTH
+  DEATH
+  MOVE_ON
+  MOVE_OFF
+  WEIGHING
+  FEC
+  BODY_CONDITION
+  TAG_REPLACEMENT
+  HEAD_COUNT
+}
+
+// Births, deaths, moves on/off the holding and measurements. Voided, never deleted.
+model RegisterEvent {
+  id         String            @id @default(uuid()) @db.Uuid
+  seq        Int               @default(autoincrement())
+  farmId     String            @db.Uuid
+  farm       Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  groupId    String            @db.Uuid
+  group      LivestockGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  kind       RegisterEventKind
+  date       DateTime          @db.Date
+  count      Int?
+  bornDead   Int?
+  value      Float?
+  otherParty String?
+  reference  String?
+  cause      String?
+  note       String?
+  recordedBy String
+  recordedAt DateTime
+  voidedAt   DateTime?
+  voidReason String?
+
+  @@index([farmId, date])
+}
+
+// Products on hand, typed by the farmer from the label
+model MedicineItem {
+  id                 String    @id @default(uuid()) @db.Uuid
+  farmId             String    @db.Uuid
+  farm               Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  productName        String
+  batchNumber        String?
+  quantity           String?
+  expiryDate         DateTime? @db.Date
+  supplier           String?
+  purchasedOn        DateTime? @db.Date
+  meatWithdrawalDays Int?
+  milkWithdrawalDays Int?
+  note               String?
+  finishedOn         DateTime? @db.Date
+  createdAt          DateTime  @default(now())
+
+  @@index([farmId])
 }

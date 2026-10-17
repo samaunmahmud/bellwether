@@ -504,7 +504,13 @@ describe('farmService', () => {
           name: ' High Farm ',
           postcode: 'sw1a1aa',
         });
-        expect(updated).toEqual({ id: farmId, name: 'High Farm', postcode: 'SW1A 1AA' });
+        expect(updated).toEqual({
+          id: farmId,
+          name: 'High Farm',
+          postcode: 'SW1A 1AA',
+          cphNumber: null,
+          flockMark: null,
+        });
       });
 
       it('rejects a blank name or unknown postcode, and other users', async () => {

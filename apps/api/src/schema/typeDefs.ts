@@ -53,6 +53,8 @@ export const typeDefs = /* GraphQL */ `
     logs: [LogEntry!]!
     "Risks for this species at its postcode; null without a postcode"
     forecast: Forecast
+    "v3: dogs only; null without a postcode or hourly forecast"
+    walkPlanner: WalkPlan
   }
 
   "Omitted fields are unchanged; a null postcode clears it."
@@ -68,6 +70,28 @@ export const typeDefs = /* GraphQL */ `
     type: String
     note: String
     nextDueDate: String
+    "v3; null clears"
+    weightKg: Float
+  }
+
+  enum WalkLevel {
+    GOOD
+    WARM
+    HOT
+  }
+
+  type WalkHour {
+    time: String!
+    tempC: Float!
+    level: WalkLevel!
+  }
+
+  "v3: the best hours for a dog walk, by temperature"
+  type WalkPlan {
+    date: String!
+    hours: [WalkHour!]!
+    "Runs of good hours, e.g. 06:00–09:00"
+    bestTimes: [String!]!
   }
 
   type LogEntry {
@@ -76,6 +100,8 @@ export const typeDefs = /* GraphQL */ `
     type: String!
     note: String
     nextDueDate: String
+    "v3: weight on the day, kg"
+    weightKg: Float
   }
 
   # --- Farms, fields and livestock groups (FR-2) ---
@@ -123,6 +149,187 @@ export const typeDefs = /* GraphQL */ `
     members: [FarmMember!]!
     "Invitations not yet accepted"
     invites: [FarmInvite!]!
+    "v3 holding details"
+    cphNumber: String
+    flockMark: String
+    "v3: where the farm postcode is, for the map"
+    location: GeoPoint!
+    "v3: 14-day daily weather at the farm postcode"
+    weather: [WeatherDay!]!
+    "v3: twelve-month figures for the dashboard"
+    stats: FarmStats!
+    "v3: things that need attention, most urgent first"
+    alerts: [Alert!]!
+    "v3: recent records, moves and register entries, newest first"
+    activity(limit: Int = 20): [ActivityItem!]!
+  }
+
+  type GeoPoint {
+    latitude: Float!
+    longitude: Float!
+  }
+
+  type WeatherDay {
+    date: String!
+    tempMeanC: Float!
+    tempMaxC: Float!
+    tempMinC: Float!
+    humidityMeanPct: Float!
+    precipitationMm: Float!
+  }
+
+  type FarmStats {
+    totalHead: Int!
+    sheep: Int!
+    cattle: Int!
+    "The following are for the last 12 months"
+    bornAlive: Int!
+    bornDead: Int!
+    deaths: Int!
+    movedOn: Int!
+    movedOff: Int!
+    "Deaths as a % of animals kept over the year"
+    mortalityPct: Float
+    "Born alive as a % of all born"
+    birthSurvivalPct: Float
+    groupsInWithdrawal: Int!
+    openTasks: Int!
+    overdueTasks: Int!
+  }
+
+  enum AlertLevel {
+    URGENT
+    WARNING
+    INFO
+  }
+
+  type Alert {
+    level: AlertLevel!
+    title: String!
+    detail: String!
+    "Path in the web app"
+    link: String!
+  }
+
+  type ActivityItem {
+    date: String!
+    "TREATMENT, CHECK, MOVE or a register entry kind"
+    kind: String!
+    title: String!
+    detail: String
+    groupId: ID
+    groupName: String
+  }
+
+  enum GrazingStatus {
+    GRAZED
+    RESTING
+    NEVER_USED
+  }
+
+  type Grazing {
+    status: GrazingStatus!
+    "Days grazed so far, or rested since the last group left"
+    days: Int
+    "Groups in the field now"
+    groups: [String!]!
+  }
+
+  "v3 holding register: births, deaths, moves on and off the holding, and measurements"
+  enum RegisterEventKind {
+    BIRTH
+    DEATH
+    MOVE_ON
+    MOVE_OFF
+    WEIGHING
+    FEC
+    BODY_CONDITION
+    TAG_REPLACEMENT
+    HEAD_COUNT
+  }
+
+  type RegisterEvent {
+    id: ID!
+    kind: RegisterEventKind!
+    date: String!
+    group: LivestockGroup!
+    "Animals (born alive for births; the counted total for a head count)"
+    count: Int
+    bornDead: Int
+    "Average kg (weighing), eggs per gram (FEC) or average score (body condition)"
+    value: Float
+    "The other holding, market or abattoir for a move"
+    otherParty: String
+    reference: String
+    cause: String
+    note: String
+    recordedBy: String!
+    recordedAt: String!
+    voided: Boolean!
+    voidReason: String
+  }
+
+  input RegisterEventInput {
+    groupId: ID!
+    kind: RegisterEventKind!
+    date: String!
+    count: Int
+    bornDead: Int
+    value: Float
+    otherParty: String
+    reference: String
+    cause: String
+    note: String
+  }
+
+  type RegisterRow {
+    event: RegisterEvent!
+    "The group's head count straight after this entry, when known"
+    headCountAfter: Int
+  }
+
+  type WeightPoint {
+    date: String!
+    averageKg: Float!
+    "Daily live-weight gain since the previous weighing"
+    dailyGainKg: Float
+  }
+
+  enum MedicineStatus {
+    OK
+    EXPIRING
+    EXPIRED
+    FINISHED
+  }
+
+  "A product in the medicine cabinet, typed by the farmer from the label"
+  type MedicineItem {
+    id: ID!
+    productName: String!
+    batchNumber: String
+    quantity: String
+    expiryDate: String
+    supplier: String
+    purchasedOn: String
+    meatWithdrawalDays: Int
+    milkWithdrawalDays: Int
+    note: String
+    finishedOn: String
+    status: MedicineStatus!
+  }
+
+  "Omitted fields are unchanged on update; null clears an optional one"
+  input MedicineInput {
+    productName: String
+    batchNumber: String
+    quantity: String
+    expiryDate: String
+    supplier: String
+    purchasedOn: String
+    meatWithdrawalDays: Int
+    milkWithdrawalDays: Int
+    note: String
+    finishedOn: String
   }
 
   "FR-8.2: OWNER manages everything; WORKER records, moves and does tasks; VIEWER can only look."
@@ -162,6 +369,8 @@ export const typeDefs = /* GraphQL */ `
     longitude: Float
     archived: Boolean!
     archivedOn: String
+    "v3 grazing rotation"
+    grazing: Grazing!
   }
 
   type LivestockGroup {
@@ -194,6 +403,10 @@ export const typeDefs = /* GraphQL */ `
     "Set when the group was sold or finished"
     archivedOn: String
     archiveReason: String
+    "v3: births, deaths, moves and measurements, newest first"
+    registerEvents: [RegisterEvent!]!
+    "v3: weighings, oldest first, with daily live-weight gain"
+    weights: [WeightPoint!]!
   }
 
   # --- Records (FR-6) ---
@@ -473,6 +686,10 @@ export const typeDefs = /* GraphQL */ `
   input UpdateFarmInput {
     name: String
     postcode: String
+    "County Parish Holding number; blank clears"
+    cphNumber: String
+    "Flock or herd mark; blank clears"
+    flockMark: String
   }
 
   "Omitted fields are unchanged; null clears the postcode or map pin."
@@ -520,6 +737,12 @@ export const typeDefs = /* GraphQL */ `
     briefingPreferences(farmId: ID!): BriefingPreferences!
     "Farm invitations for the signed-in user's email (FR-8.2)"
     myInvites: [MyInvite!]!
+    "v3: the holding register, newest first"
+    holdingRegister(farmId: ID!): [RegisterRow!]!
+    "v3: every register entry and measurement, newest first, voided ones included"
+    registerEvents(farmId: ID!): [RegisterEvent!]!
+    "v3: the medicine cabinet, soonest expiry first"
+    medicines(farmId: ID!): [MedicineItem!]!
   }
 
   type Mutation {
@@ -539,6 +762,7 @@ export const typeDefs = /* GraphQL */ `
       type: String!
       note: String
       nextDueDate: String
+      weightKg: Float
     ): LogEntry!
     updateLogEntry(id: ID!, input: UpdateLogEntryInput!): LogEntry!
     deleteLogEntry(id: ID!): Boolean!
@@ -589,5 +813,14 @@ export const typeDefs = /* GraphQL */ `
     setMemberRole(farmId: ID!, userId: ID!, role: FarmRole!): Boolean!
     "Owners can remove anyone; members can remove themselves to leave"
     removeMember(farmId: ID!, userId: ID!): Boolean!
+    "v3: workers and owners. Births, deaths and moves change the group's head count."
+    recordRegisterEvent(input: RegisterEventInput!): RegisterEvent!
+    "v3: kept and struck through; its head count change is undone"
+    voidRegisterEvent(id: ID!, reason: String!): RegisterEvent!
+    addMedicine(farmId: ID!, input: MedicineInput!): MedicineItem!
+    updateMedicine(id: ID!, input: MedicineInput!): MedicineItem!
+    deleteMedicine(id: ID!): Boolean!
+    "v3: a ready-made farm to explore, owned by the signed-in user"
+    createDemoFarm(postcode: String!): Farm!
   }
 `;

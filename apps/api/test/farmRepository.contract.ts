@@ -63,7 +63,13 @@ export function farmRepositoryContract(makeFixture: () => Promise<FarmRepository
   describe('farms', () => {
     it('creates, gets and lists farms', async () => {
       const farm = await repo.createFarm({ name: 'Hill Farm', postcode: 'UB8 3PH' }, owner);
-      expect(farm).toEqual({ id: expect.any(String), name: 'Hill Farm', postcode: 'UB8 3PH' });
+      expect(farm).toEqual({
+        id: expect.any(String),
+        name: 'Hill Farm',
+        postcode: 'UB8 3PH',
+        cphNumber: null,
+        flockMark: null,
+      });
       expect(await repo.getFarm(farm.id)).toEqual(farm);
     });
 

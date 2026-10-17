@@ -14,6 +14,7 @@ import { silentLogger } from '../src/logger';
 import { InMemoryAnimalRepository } from '../src/repositories/animalRepository';
 import { InMemoryFarmRepository } from '../src/repositories/farmRepository';
 import { InMemoryRecordsRepository } from '../src/repositories/recordsRepository';
+import { InMemoryRegisterRepository } from '../src/repositories/registerRepository';
 import { InMemoryUserRepository } from '../src/repositories/userRepository';
 
 export const UXBRIDGE: Location = {
@@ -114,6 +115,7 @@ export function buildTestApp(overrides: Partial<AppDeps> = {}) {
     farms: new InMemoryFarmRepository(),
     users: new InMemoryUserRepository(),
     records: new InMemoryRecordsRepository(),
+    register: new InMemoryRegisterRepository(),
     tasks: new InMemoryTaskRepository(),
     briefings: new InMemoryBriefingRepository(),
     email: email.sender,

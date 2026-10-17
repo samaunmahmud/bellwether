@@ -35,6 +35,20 @@ export interface FarmInput {
 export interface FarmUpdate {
   name?: string | null;
   postcode?: string | null;
+  /** v3 holding details; blank clears */
+  cphNumber?: string | null;
+  flockMark?: string | null;
+}
+
+const MAX_HOLDING_ID = 40;
+
+/** Trims a holding detail; blank means none. Undefined stays undefined (unchanged). */
+function holdingDetail(value: string | null | undefined, label: string) {
+  if (value === undefined) return undefined;
+  const trimmed = value?.trim() ?? '';
+  if (trimmed.length > MAX_HOLDING_ID)
+    throw appError('BAD_INPUT', `${label} must be at most ${MAX_HOLDING_ID} characters`);
+  return trimmed || null;
 }
 
 /** Omitted fields are unchanged; null clears the postcode or pin. */
@@ -305,6 +319,8 @@ export function createFarmService(deps: FarmServiceDeps) {
           update.postcode == null
             ? undefined
             : (await locations.findPostcode(update.postcode)).postcode,
+        cphNumber: holdingDetail(update.cphNumber, 'CPH number'),
+        flockMark: holdingDetail(update.flockMark, 'Flock or herd mark'),
       });
       if (!updated) throw appError('NOT_FOUND', `Farm ${id} not found`);
       return updated;

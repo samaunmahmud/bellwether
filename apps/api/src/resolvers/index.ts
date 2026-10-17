@@ -66,6 +66,7 @@ export function createResolvers({ forecastService, petService }: ResolverDeps) {
       category: (parent: Animal) => toGql(parent.category),
       logs: (parent: Animal) => petService.logs(parent.id),
       forecast: (parent: Animal) => petService.forecast(parent),
+      walkPlanner: (parent: Animal) => petService.walkPlanner(parent),
     },
   };
 }

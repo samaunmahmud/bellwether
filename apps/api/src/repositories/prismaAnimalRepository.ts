@@ -35,6 +35,7 @@ const logSelect = {
   type: true,
   note: true,
   nextDueDate: true,
+  weightKg: true,
 } as const;
 
 type PetRow = Omit<Animal, 'category'> & { category: string };
@@ -45,6 +46,7 @@ type LogRow = {
   type: string;
   note: string | null;
   nextDueDate: Date | null;
+  weightKg: number | null;
 };
 
 const toAnimal = (row: PetRow): Animal => ({ ...row, category: row.category as AnimalCategory });
@@ -116,6 +118,7 @@ export class PrismaAnimalRepository implements AnimalRepository {
         type: input.type,
         note: input.note ?? null,
         nextDueDate: toDbOrNull(input.nextDueDate ?? null),
+        weightKg: input.weightKg ?? null,
       },
       select: logSelect,
     });
@@ -131,6 +134,7 @@ export class PrismaAnimalRepository implements AnimalRepository {
         note: patch.note,
         date: patch.date === undefined ? undefined : toDb(patch.date),
         nextDueDate: toDbOrNull(patch.nextDueDate),
+        weightKg: patch.weightKg,
       }),
     });
     return count ? this.getLog(id) : null;

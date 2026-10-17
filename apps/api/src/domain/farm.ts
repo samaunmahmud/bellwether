@@ -23,6 +23,10 @@ export interface Farm {
   name: string;
   /** Normalised UK postcode, e.g. "UB8 3PH" */
   postcode: string;
+  /** v3: County Parish Holding number, e.g. "12/345/6789" */
+  cphNumber: string | null;
+  /** v3: flock or herd mark, e.g. "UK 123456" */
+  flockMark: string | null;
 }
 
 /** FR-2.2: a field's location is a map pin, else its own postcode, else the farm postcode. */
