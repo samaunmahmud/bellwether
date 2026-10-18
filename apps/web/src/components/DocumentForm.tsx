@@ -141,7 +141,7 @@ export function DocumentForm({
           <input
             value={values.title}
             onChange={(e) => set('title', e.target.value)}
-            placeholder={uploading ? 'Optional: the name of the upload' : undefined}
+            placeholder={uploading ? 'Optional' : undefined}
             required={!uploading}
           />
         </label>

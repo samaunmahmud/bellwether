@@ -44,10 +44,10 @@ export function DocumentCard({
           <Icon name="file" size={22} />
         </span>
         <div>
+          <span className="doc__kind">{DOCUMENT_KIND_LABELS[doc.kind]}</span>
           <h3 id={id}>{doc.title}</h3>
           <p className="muted doc__meta">{meta}</p>
         </div>
-        <span className="doc__kind">{DOCUMENT_KIND_LABELS[doc.kind]}</span>
       </header>
       {links && <p className="doc__links">For {links}</p>}
       {expiry && <span className={`badge badge--${expiry.level}`}>{expiry.text}</span>}

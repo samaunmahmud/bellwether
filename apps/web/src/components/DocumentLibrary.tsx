@@ -153,7 +153,7 @@ export function DocumentLibrary({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Title, tag, group or notes"
+            placeholder="e.g. TB test or UK 1"
           />
         </label>
         <label>

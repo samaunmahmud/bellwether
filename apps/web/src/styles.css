@@ -5118,7 +5118,7 @@ a.contact__call--urgent {
 
 .doc__head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   width: 100%;
@@ -5148,7 +5148,8 @@ a.contact__call--urgent {
 }
 
 .doc__kind {
-  font-size: 0.8rem;
+  display: block;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
