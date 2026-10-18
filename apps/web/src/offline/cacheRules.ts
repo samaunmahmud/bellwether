@@ -44,6 +44,14 @@ export function isQueryBody(body: string): boolean {
   }
 }
 
+/**
+ * v4: a stored document's contents are never kept for offline use. They can be large, and a
+ * vet report or passport shouldn't sit in the browser's cache.
+ */
+export function keepsOffline(body: string): boolean {
+  return !/\bdocumentFile\s*\(/.test(body);
+}
+
 /** A GET URL standing in for a POSTed query and its variables, since caches only store GETs. */
 export async function gqlCacheKey(body: string, origin: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));

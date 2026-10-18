@@ -6,6 +6,7 @@ import { ForecastView } from '../components/ForecastView';
 import { LogForm, type LogFormValues } from '../components/LogForm';
 import { PetForm, type PetFormValues } from '../components/PetForm';
 import { PetRecordCard, type PetDetails } from '../components/PetRecordCard';
+import { PetDocuments } from '../components/PetDocuments';
 import { PetHealth } from '../components/PetHealth';
 import { isOverdue, shortDay } from '../dates';
 import {
@@ -167,6 +168,9 @@ export function PetPage() {
           )}
         </ul>
       )}
+
+      <h2>Documents</h2>
+      <PetDocuments petId={pet.id} />
     </section>
   );
 }

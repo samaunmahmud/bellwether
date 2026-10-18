@@ -10,6 +10,7 @@ import {
   PRECACHE,
   gqlCacheKey,
   isQueryBody,
+  keepsOffline,
   offlineError,
   requestKind,
   shouldStore,
@@ -84,7 +85,7 @@ async function graphql(request: Request) {
   const isQuery = isQueryBody(body);
   try {
     const response = await fetch(request);
-    if (isQuery) {
+    if (isQuery && keepsOffline(body)) {
       const copy = response.clone();
       if (shouldStore(copy.status, (await copy.json()) as { errors?: unknown })) {
         await (

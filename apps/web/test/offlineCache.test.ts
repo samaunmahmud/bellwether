@@ -2,6 +2,7 @@ import {
   DATA_CACHE,
   gqlCacheKey,
   isQueryBody,
+  keepsOffline,
   offlineError,
   requestKind,
   shouldStore,
@@ -95,5 +96,18 @@ describe('clearing offline data on log out', () => {
 
   it('does nothing where the browser has no cache storage', async () => {
     await expect(clearOfflineData()).resolves.toBeUndefined();
+  });
+});
+
+describe('what the offline cache keeps', () => {
+  it('keeps ordinary queries but never the contents of a stored document', () => {
+    expect(keepsOffline(JSON.stringify({ query: 'query { farms { id } }' }))).toBe(true);
+    expect(
+      keepsOffline(
+        JSON.stringify({
+          query: 'query DocumentFile($id: ID!) { documentFile(id: $id) { contentBase64 } }',
+        }),
+      ),
+    ).toBe(false);
   });
 });

@@ -5065,3 +5065,135 @@ a.contact__call--urgent {
   cursor: default;
   gap: 0;
 }
+
+/* ---- v4: documents ---- */
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.doc {
+  --tone: var(--accent);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  justify-items: start;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--tone);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: rise 0.45s ease-out both;
+  min-width: 0;
+}
+
+.doc[aria-busy='true'] {
+  opacity: 0.7;
+}
+
+.doc--health {
+  --tone: var(--high);
+}
+
+.doc--certificate {
+  --tone: var(--low);
+}
+
+.doc--movement {
+  --tone: var(--series-1);
+}
+
+.doc--receipt {
+  --tone: var(--medium);
+}
+
+.doc--other,
+.doc--insurance {
+  --tone: var(--muted);
+}
+
+.doc__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+}
+
+.doc__head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.doc__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--tone);
+  background: var(--accent-soft);
+}
+
+.doc__meta {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+}
+
+.doc__kind {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.doc__links {
+  margin: 0;
+  font-weight: 600;
+}
+
+.doc p {
+  margin: 0;
+}
+
+.doc__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.doc__actions button:not(.link-button) {
+  gap: 6px;
+}
+
+.doc-expiring {
+  border-left: 4px solid var(--medium);
+}
+
+.doc-expiring h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-expiring ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.document-form__file input[type='file'] {
+  min-height: 48px;
+  padding: 10px;
+}

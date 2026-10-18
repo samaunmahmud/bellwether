@@ -383,3 +383,26 @@ export interface TaggedAnimal {
   notes: string | null;
   group: { id: string; name: string } | null;
 }
+
+// --- v4: documents ---
+
+export type DocumentKind =
+  'HEALTH' | 'CERTIFICATE' | 'MOVEMENT' | 'INSURANCE' | 'RECEIPT' | 'OTHER';
+
+export interface StoredDocument {
+  id: string;
+  kind: DocumentKind;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  documentDate: string | null;
+  expiresOn: string | null;
+  daysToExpiry: number | null;
+  notes: string | null;
+  uploadedAt: string;
+  farmName: string | null;
+  petName: string | null;
+  group: { id: string; name: string } | null;
+  taggedAnimal: { id: string; tag: string } | null;
+}

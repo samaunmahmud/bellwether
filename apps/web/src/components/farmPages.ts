@@ -13,6 +13,7 @@ export const FARM_PAGES: ReadonlyArray<{ label: string; path: string; icon: Icon
   { label: 'Holding register', path: '/register', icon: 'register' },
   { label: 'Medicine cabinet', path: '/medicines', icon: 'medicine' },
   { label: 'Treatment records', path: '/records', icon: 'records' },
+  { label: 'Documents', path: '/documents', icon: 'file' },
   { label: 'Contacts', path: '/contacts', icon: 'phone' },
   { label: 'People', path: '/people', icon: 'people' },
   { label: 'Farm settings', path: '/settings', icon: 'settings' },

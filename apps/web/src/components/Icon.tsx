@@ -46,6 +46,8 @@ const PATHS = {
   drop: 'M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z',
   tag: 'M3 12V4h8l10 10-8 8zm5-4.5a1 1 0 1 0 0 .1',
   scale: 'M4 20h16M6 20l2-12h8l2 12M12 8V5m-3 0h6',
+  file: 'M6 3h8l4 4v14H6zm8 0v4h4M9 12h6m-6 4h6',
+  download: 'M12 4v11m-5-5 5 5 5-5M5 20h14',
 } as const;
 
 export type IconName = keyof typeof PATHS;
