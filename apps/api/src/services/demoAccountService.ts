@@ -7,6 +7,7 @@ import type { UserRepository } from '../repositories/userRepository';
 import type { PasswordHasher } from '../auth/passwords';
 import type { AuthService } from './authService';
 import type { DemoFarmService } from './demoFarmService';
+import { demoPdf } from './demoPdf';
 import type { ContactInput, KeepingService } from './keepingService';
 import type { PetService } from './petService';
 import type { RecordsService } from './recordsService';
@@ -133,9 +134,11 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
       const dairy = await deps.demoFarmService.createDairy(owner, postcode);
       await addContacts(owner.id, dairy.id, FARM_CONTACTS.slice(0, 2));
       await addTaggedCows(owner.id, dairy.id);
+      await addFarmDocuments(owner.id, dairy.id);
     }
     if (input.pets) {
       await addPets(owner.id, postcode);
+      await addPetDocuments(owner.id);
       await addContacts(owner.id, null, PET_CONTACTS);
     }
     return signedIn;
@@ -188,6 +191,93 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
         sex: 'FEMALE',
         breed: cow.breed,
         dateOfBirth: addDays(today, -Math.round(cow.years * 365.25) - 40 * i),
+      });
+  }
+
+  /** v4: made-up example files, clearly marked so nobody takes them for real records. */
+  function demoDocument(title: string, lines: string[]) {
+    const pdf = demoPdf(title, [
+      ...lines,
+      '',
+      'Example document for the Bellwether demo. Not a real record.',
+    ]);
+    return {
+      fileName: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`,
+      contentBase64: Buffer.from(pdf).toString('base64'),
+    };
+  }
+
+  async function addFarmDocuments(ownerId: string, farmId: string) {
+    const today = londonToday(now());
+    const herd = (await deps.farms.listGroups(farmId)).find((g) => g.name === 'Milking herd');
+    const clover = (await deps.keepingService.taggedAnimals(ownerId, farmId)).find(
+      (a) => a.name === 'Clover',
+    );
+    const docs = [
+      {
+        kind: 'HEALTH' as const,
+        title: 'Herd TB test result',
+        groupId: herd?.id,
+        documentDate: addDays(today, -40),
+        lines: ['Herd: Milking herd', 'Result: all clear'],
+      },
+      {
+        kind: 'HEALTH' as const,
+        title: 'Lameness check - Clover',
+        taggedAnimalId: clover?.id,
+        documentDate: addDays(today, -12),
+        lines: ['Animal: Clover', 'Left hind: mild, recheck in two weeks'],
+      },
+      {
+        kind: 'RECEIPT' as const,
+        title: 'Feed invoice',
+        documentDate: addDays(today, -6),
+        lines: ['Dairy nuts, 4 tonnes', 'Paid'],
+      },
+      {
+        kind: 'CERTIFICATE' as const,
+        title: 'Dairy hygiene inspection',
+        documentDate: addDays(today, -340),
+        expiresOn: addDays(today, 25),
+        lines: ['Milking parlour and dairy', 'Satisfactory'],
+      },
+    ];
+    for (const { lines, ...doc } of docs)
+      await deps.keepingService.addDocument(ownerId, {
+        farmId,
+        ...doc,
+        ...demoDocument(doc.title, lines),
+      });
+  }
+
+  async function addPetDocuments(ownerId: string) {
+    const today = londonToday(now());
+    const pets = await deps.petService.list(ownerId);
+    const bess = pets.find((p) => p.name === 'Bess');
+    const tom = pets.find((p) => p.name === 'Tom');
+    if (bess) {
+      await deps.keepingService.addDocument(ownerId, {
+        petId: bess.id,
+        kind: 'INSURANCE',
+        title: 'Pet insurance policy',
+        expiresOn: addDays(today, 18),
+        ...demoDocument('Pet insurance policy', ['Pet: Bess, Border collie', 'Renews each year']),
+      });
+      await deps.keepingService.addDocument(ownerId, {
+        petId: bess.id,
+        kind: 'CERTIFICATE',
+        title: 'Vaccination record',
+        documentDate: addDays(today, -330),
+        ...demoDocument('Vaccination record', ['Pet: Bess', 'Annual booster given']),
+      });
+    }
+    if (tom)
+      await deps.keepingService.addDocument(ownerId, {
+        petId: tom.id,
+        kind: 'HEALTH',
+        title: 'Dental check notes',
+        documentDate: addDays(today, -20),
+        ...demoDocument('Dental check notes', ['Pet: Tom', 'All fine']),
       });
   }
 

@@ -79,6 +79,18 @@ describe('one-click demo account (v3.2)', () => {
     );
     expect(bess.logs.filter((l) => l.weightKg !== null).length).toBeGreaterThanOrEqual(4);
 
+    // Documents on the farms and pets, some expiring soon (v4)
+    const docs = await gql<{ documents: Array<{ kind: string; mimeType: string }> }>(
+      `query ($id: ID!) { documents(farmId: $id) { kind mimeType } }`,
+      { id: dairy.id },
+    );
+    expect(docs.data!.documents.map((d) => d.kind)).toContain('HEALTH');
+    expect(docs.data!.documents.every((d) => d.mimeType === 'application/pdf')).toBe(true);
+    const expiring = await gql<{ expiringDocuments: Array<{ petName: string | null }> }>(
+      `query { expiringDocuments { petName } }`,
+    );
+    expect(expiring.data!.expiringDocuments.map((d) => d.petName)).toContain('Bess');
+
     // Vets to call in an emergency, from the farms and the pets' own contacts
     const vets = await gql<{ emergencyContacts: Array<{ emergencyPhone: string | null }> }>(
       `query { emergencyContacts { emergencyPhone } }`,
