@@ -39,6 +39,7 @@ Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether doe
 | v3.2 | Photo login with live conditions and one-click demo accounts, farm hero dashboard, photo farm/pet/livestock cards, 14-day day strip, task summary, motion                                                 | Done                                                                                                                       |
 | v3.1 | Pet reminder emails, install on a phone, read offline                                                                                                                                                     | Done                                                                                                                       |
 | v4   | Contacts and suppliers, emergency page with one-tap calls, find vets nearby; individually tagged animals with ages; pet record card (date of birth, breed, sex, microchip)                                | Done                                                                                                                       |
+| v4.1 | Documents: PDFs and photos for a farm, group, tagged animal or pet, with search, expiry warnings, open and save                                                                                           | Done                                                                                                                       |
 
 ## Architecture
 
@@ -79,7 +80,9 @@ Farm (name, postcode)
  ├── GroupMovement (group, from field → to field, date)   one row per move, so history is kept
  ├── TaggedAnimal (ear tag or ID, name, sex, breed, date of birth, group,
  │                 on farm / sold / died with a date)   v4, beside the group head counts
- └── Contact (vet, feed merchant, supplier: phones, email, website)   v4
+ ├── Contact (vet, feed merchant, supplier: phones, email, website)   v4
+ └── Document (PDF or photo up to 5 MB, kind, dates, expiry; optionally for a group
+               or tagged animal)   v4.1; a pet can have its own, private to its owner
 ```
 
 Groups stay the unit for head counts, treatments and forecasts. A **tagged animal** is an optional record for one animal you want to follow on its own (a cow, a ram, a pedigree ewe); its tag is unique on the farm, ignoring case and spaces.
