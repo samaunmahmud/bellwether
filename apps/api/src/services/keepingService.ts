@@ -5,20 +5,27 @@ import {
   type AnimalStatus,
   type Contact,
   type ContactKind,
+  type DocumentKind,
+  type StoredDocument,
   type TaggedAnimal,
   type TaggedSpecies,
 } from '../domain/keeping';
 import { appError } from '../errors';
+import type { AnimalRepository } from '../repositories/animalRepository';
 import type {
   ContactPatch,
+  DocumentPatch,
   KeepingRepository,
   NewTaggedAnimal,
 } from '../repositories/keepingRepository';
+import { daysBetween, decodeDocument, tidyFileName, titleFromFileName } from './documentFiles';
 import type { FarmService } from './farmService';
 import { checkedDateOfBirth } from './petService';
 
 export interface KeepingDeps {
   keeping: KeepingRepository;
+  /** Pets, for their documents */
+  animals: AnimalRepository;
   farmService: FarmService;
   now?: () => Date;
 }
@@ -60,6 +67,37 @@ export interface TaggedAnimalUpdate {
   statusDate?: string | null;
   notes?: string | null;
 }
+
+export interface DocumentInput {
+  /** Exactly one of farmId or petId */
+  farmId?: string | null;
+  petId?: string | null;
+  /** Farm documents only */
+  groupId?: string | null;
+  taggedAnimalId?: string | null;
+  kind: DocumentKind;
+  /** Defaults to the file name without its extension */
+  title?: string | null;
+  fileName: string;
+  /** The file, base64 or a data: URL */
+  contentBase64: string;
+  documentDate?: string | null;
+  expiresOn?: string | null;
+  notes?: string | null;
+}
+
+/** Omitted fields are unchanged; null clears an optional one. The file itself can't change. */
+export interface DocumentUpdate {
+  kind?: DocumentKind | null;
+  title?: string | null;
+  documentDate?: string | null;
+  expiresOn?: string | null;
+  notes?: string | null;
+}
+
+/** Documents expiring within this many days (or already expired) are flagged. Heuristic. */
+export const EXPIRY_WARNING_DAYS = 30;
+const MAX_TITLE = 120;
 
 /** Catches a mistyped year; older than any working sheep or cow. Heuristic, not a lifespan. */
 const MAX_LIVESTOCK_AGE_YEARS = 25;
@@ -131,7 +169,7 @@ const forEmergency = (a: Contact, b: Contact) =>
   Number(!a.emergencyPhone) - Number(!b.emergencyPhone) || a.name.localeCompare(b.name);
 
 /**
- * v4: contacts (vets, feed merchants, suppliers). A farm's contacts are shared with its members
+ * v4: contacts (vets, feed merchants, suppliers), tagged animals and documents. A farm's contacts are shared with its members
  * (workers and owners can change them); personal ones belong to one user, e.g. for their pets.
  */
 export function createKeepingService(deps: KeepingDeps) {
@@ -188,6 +226,63 @@ export function createKeepingService(deps: KeepingDeps) {
 
   const dob = (raw: string | null | undefined) =>
     checkedDateOfBirth(raw, today(), MAX_LIVESTOCK_AGE_YEARS);
+
+  async function ownPet(userId: string, id: string) {
+    const pet = await deps.animals.getAnimal(id);
+    if (pet?.ownerId !== userId) throw appError('NOT_FOUND', `Pet ${id} not found`);
+    return pet;
+  }
+
+  /** A farm member (at the given level) or the pet's owner; anyone else gets "not found". */
+  async function requireDocument(userId: string, id: string, level: 'view' | 'work') {
+    const doc = await keeping.getDocument(id);
+    if (doc?.farmId) {
+      await farmService.requireFarm(userId, doc.farmId, level);
+      return doc;
+    }
+    if (doc?.petId && (await deps.animals.getAnimal(doc.petId))?.ownerId === userId) return doc;
+    throw appError('NOT_FOUND', `Document ${id} not found`);
+  }
+
+  function checkedTitle(raw: string | null | undefined, fileName: string) {
+    const title = raw?.trim() || titleFromFileName(fileName);
+    if (title.length > MAX_TITLE)
+      throw appError('BAD_INPUT', `Keep the title under ${MAX_TITLE} characters`);
+    return title;
+  }
+
+  function checkedDocDate(raw: string | null | undefined) {
+    if (!raw) return null;
+    if (!isIsoDate(raw)) throw appError('BAD_INPUT', 'Dates must be YYYY-MM-DD');
+    if (raw > today()) throw appError('BAD_INPUT', 'The document date cannot be in the future');
+    return raw;
+  }
+
+  function checkedExpiry(raw: string | null | undefined) {
+    if (!raw) return null;
+    if (!isIsoDate(raw)) throw appError('BAD_INPUT', 'Dates must be YYYY-MM-DD');
+    return raw;
+  }
+
+  /** A group or animal to link must be on the document's farm. */
+  async function checkedLinks(userId: string, farmId: string, input: DocumentInput) {
+    let groupId = input.groupId || null;
+    let taggedAnimalId: string | null = null;
+    if (groupId) {
+      const group = await farmService.getGroup(userId, groupId);
+      if (!group || group.farmId !== farmId)
+        throw appError('NOT_FOUND', `Group ${groupId} not found on this farm`);
+    }
+    if (input.taggedAnimalId) {
+      const animal = await keeping.getTagged(input.taggedAnimalId);
+      if (!animal || animal.farmId !== farmId)
+        throw appError('NOT_FOUND', `Animal ${input.taggedAnimalId} not found on this farm`);
+      taggedAnimalId = animal.id;
+      // The animal's group comes with it, so the document shows on the group too.
+      groupId ??= animal.groupId;
+    }
+    return { groupId, taggedAnimalId };
+  }
 
   async function requireContact(userId: string, id: string, level: 'view' | 'work') {
     const contact = await keeping.getContact(id);
@@ -252,6 +347,9 @@ export function createKeepingService(deps: KeepingDeps) {
         (a) => a.groupId === groupId && a.status === 'ON_FARM',
       ),
 
+    /** Only for an animal linked to a document the caller can see. */
+    taggedById: (id: string) => keeping.getTagged(id),
+
     async addTaggedAnimal(userId: string, input: TaggedAnimalInput) {
       await farmService.requireFarm(userId, input.farmId, 'work');
       const tag = checkedTag(input.tag);
@@ -307,6 +405,115 @@ export function createKeepingService(deps: KeepingDeps) {
     ageMonths(animal: { dateOfBirth: string | null }) {
       return animal.dateOfBirth ? monthsBetween(animal.dateOfBirth, today()) : null;
     },
+
+    async documents(userId: string, scope: { farmId?: string | null; petId?: string | null }) {
+      if (scope.farmId && !scope.petId) {
+        await farmService.requireFarm(userId, scope.farmId, 'view');
+        return keeping.listDocuments({ farmId: scope.farmId });
+      }
+      if (scope.petId && !scope.farmId) {
+        await ownPet(userId, scope.petId);
+        return keeping.listDocuments({ petId: scope.petId });
+      }
+      throw appError('BAD_INPUT', 'Choose a farm or a pet');
+    },
+
+    /** A pet's documents. Only for a pet the caller was already allowed to see. */
+    petDocuments: (petId: string) => keeping.listDocuments({ petId }),
+
+    async documentFile(userId: string, id: string) {
+      const doc = await requireDocument(userId, id, 'view');
+      const content = await keeping.getDocumentContent(id);
+      if (!content) throw appError('NOT_FOUND', `Document ${id} not found`);
+      return {
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        contentBase64: Buffer.from(content).toString('base64'),
+      };
+    },
+
+    /** Expired or expiring soon, across the user's farms and pets: soonest first. */
+    async expiringDocuments(userId: string) {
+      const farms = await farmService.listFarms(userId);
+      const pets = await deps.animals.listAnimals(userId);
+      const all = [
+        ...(await Promise.all(farms.map((f) => keeping.listDocuments({ farmId: f.id })))),
+        ...(await Promise.all(pets.map((p) => keeping.listDocuments({ petId: p.id })))),
+      ].flat();
+      const limit = today();
+      return all
+        .filter((d) => d.expiresOn && daysBetween(limit, d.expiresOn) <= EXPIRY_WARNING_DAYS)
+        .sort((a, b) => a.expiresOn!.localeCompare(b.expiresOn!));
+    },
+
+    async addDocument(userId: string, input: DocumentInput) {
+      if (!input.farmId === !input.petId)
+        throw appError('BAD_INPUT', 'A document belongs to a farm or a pet: choose one');
+      if (input.farmId) await farmService.requireFarm(userId, input.farmId, 'work');
+      else {
+        await ownPet(userId, input.petId!);
+        if (input.groupId || input.taggedAnimalId)
+          throw appError('BAD_INPUT', 'Only a farm document can be linked to a group or animal');
+      }
+      const fileName = tidyFileName(input.fileName);
+      const title = checkedTitle(input.title, fileName);
+      const documentDate = checkedDocDate(input.documentDate);
+      const expiresOn = checkedExpiry(input.expiresOn);
+      const notes = clean(input.notes);
+      const links = input.farmId
+        ? await checkedLinks(userId, input.farmId, input)
+        : { groupId: null, taggedAnimalId: null };
+      const { bytes, mimeType } = decodeDocument(input.contentBase64);
+      return keeping.addDocument(
+        {
+          farmId: input.farmId || null,
+          petId: input.petId || null,
+          ...links,
+          kind: input.kind,
+          title,
+          fileName,
+          mimeType,
+          sizeBytes: bytes.length,
+          documentDate,
+          expiresOn,
+          notes,
+          uploadedById: userId,
+          uploadedAt: (deps.now ?? (() => new Date()))().toISOString(),
+        },
+        bytes,
+      );
+    },
+
+    async updateDocument(userId: string, id: string, input: DocumentUpdate) {
+      const doc = await requireDocument(userId, id, 'work');
+      const patch: DocumentPatch = {};
+      if (input.kind != null) patch.kind = input.kind;
+      if (input.title !== undefined) {
+        if (!input.title?.trim()) throw appError('BAD_INPUT', 'Give the document a title');
+        patch.title = checkedTitle(input.title, doc.fileName);
+      }
+      if (input.documentDate !== undefined) patch.documentDate = checkedDocDate(input.documentDate);
+      if (input.expiresOn !== undefined) patch.expiresOn = checkedExpiry(input.expiresOn);
+      if (input.notes !== undefined) patch.notes = clean(input.notes);
+      const updated = await keeping.updateDocument(id, patch);
+      if (!updated) throw appError('NOT_FOUND', `Document ${id} not found`);
+      return updated;
+    },
+
+    async deleteDocument(userId: string, id: string) {
+      try {
+        await requireDocument(userId, id, 'work');
+      } catch (err) {
+        if ((err as { extensions?: { code?: string } }).extensions?.code === 'NOT_FOUND')
+          return false;
+        throw err;
+      }
+      return keeping.deleteDocument(id);
+    },
+
+    /** Days until it expires (negative once expired), or null with no expiry. */
+    daysToExpiry: (doc: StoredDocument) =>
+      doc.expiresOn ? daysBetween(today(), doc.expiresOn) : null,
 
     async deleteContact(userId: string, id: string) {
       try {

@@ -1,11 +1,25 @@
 import { randomUUID } from 'node:crypto';
-import { byTag, tagKey, type Contact, type TaggedAnimal } from '../domain/keeping';
+import {
+  byNewestUpload,
+  byTag,
+  tagKey,
+  type Contact,
+  type StoredDocument,
+  type TaggedAnimal,
+} from '../domain/keeping';
 import { definedOnly } from './animalRepository';
 
 export type NewContact = Omit<Contact, 'id'>;
 export type ContactPatch = Partial<Omit<Contact, 'id' | 'farmId' | 'ownerId'>>;
 export type NewTaggedAnimal = Omit<TaggedAnimal, 'id'>;
 export type TaggedPatch = Partial<Omit<TaggedAnimal, 'id' | 'farmId'>>;
+export type NewDocument = Omit<StoredDocument, 'id'>;
+export type DocumentPatch = Partial<
+  Pick<StoredDocument, 'kind' | 'title' | 'documentDate' | 'expiresOn' | 'notes'>
+>;
+
+/** Whose documents to list: a farm's or a pet's. */
+export type DocumentScope = { farmId: string } | { petId: string };
 
 /** Whose contacts to list: a user's own, or those of some farms. */
 export type ContactScope = { ownerId: string } | { farmIds: string[] };
@@ -14,8 +28,7 @@ export const byName = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base' });
 
 /**
- * v4 storage for what a keeper keeps beside the records: contacts (and, later, tagged animals,
- * documents and cameras). Unknown or malformed ids mean "not found".
+ * v4 storage for what a keeper keeps beside the records: contacts, tagged animals and documents. Unknown or malformed ids mean "not found".
  */
 export interface KeepingRepository {
   addContact(input: NewContact): Promise<Contact>;
@@ -33,11 +46,23 @@ export interface KeepingRepository {
   findTaggedByTag(farmId: string, tag: string): Promise<TaggedAnimal | null>;
   updateTagged(id: string, patch: TaggedPatch): Promise<TaggedAnimal | null>;
   deleteTagged(id: string): Promise<boolean>;
+
+  /** Stores the details and the file's bytes together. */
+  addDocument(input: NewDocument, content: Uint8Array): Promise<StoredDocument>;
+  getDocument(id: string): Promise<StoredDocument | null>;
+  /** The file itself, kept apart so lists stay light */
+  getDocumentContent(id: string): Promise<Uint8Array | null>;
+  /** Newest upload first */
+  listDocuments(scope: DocumentScope): Promise<StoredDocument[]>;
+  updateDocument(id: string, patch: DocumentPatch): Promise<StoredDocument | null>;
+  /** Deletes the file too */
+  deleteDocument(id: string): Promise<boolean>;
 }
 
 export class InMemoryKeepingRepository implements KeepingRepository {
   private contacts = new Map<string, Contact>();
   private tagged = new Map<string, TaggedAnimal>();
+  private documents = new Map<string, { doc: StoredDocument; content: Uint8Array }>();
 
   constructor(private newId: () => string = randomUUID) {}
 
@@ -104,5 +129,38 @@ export class InMemoryKeepingRepository implements KeepingRepository {
 
   async deleteTagged(id: string) {
     return this.tagged.delete(id);
+  }
+
+  async addDocument(input: NewDocument, content: Uint8Array) {
+    const doc = { ...input, id: this.newId() };
+    this.documents.set(doc.id, { doc, content: Uint8Array.from(content) });
+    return doc;
+  }
+
+  async getDocument(id: string) {
+    return this.documents.get(id)?.doc ?? null;
+  }
+
+  async getDocumentContent(id: string) {
+    return this.documents.get(id)?.content ?? null;
+  }
+
+  async listDocuments(scope: DocumentScope) {
+    return [...this.documents.values()]
+      .map((d) => d.doc)
+      .filter((d) => ('farmId' in scope ? d.farmId === scope.farmId : d.petId === scope.petId))
+      .sort(byNewestUpload);
+  }
+
+  async updateDocument(id: string, patch: DocumentPatch) {
+    const stored = this.documents.get(id);
+    if (!stored) return null;
+    const doc = { ...stored.doc, ...definedOnly(patch) };
+    this.documents.set(id, { ...stored, doc });
+    return doc;
+  }
+
+  async deleteDocument(id: string) {
+    return this.documents.delete(id);
   }
 }

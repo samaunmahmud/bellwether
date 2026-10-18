@@ -49,7 +49,7 @@ export interface AppDeps {
   tasks: TaskRepository;
   briefings: BriefingRepository;
   users: UserRepository;
-  /** v4: contacts, tagged animals, documents, cameras */
+  /** v4: contacts, tagged animals and documents */
   keeping: KeepingRepository;
   email: EmailSender;
   logger: Logger;
@@ -124,6 +124,7 @@ export function createServices(deps: AppDeps) {
   });
   const keepingService = createKeepingService({
     keeping: deps.keeping,
+    animals: deps.animals,
     farmService,
     now: deps.now,
   });
@@ -182,7 +183,11 @@ export function createApp(deps: AppDeps, services: AppServices = createServices(
       insightsService: services.insightsService,
       demoFarmService: services.demoFarmService,
     }),
-    createKeepingResolvers({ farms: deps.farms, keepingService: services.keepingService }),
+    createKeepingResolvers({
+      farms: deps.farms,
+      animals: deps.animals,
+      keepingService: services.keepingService,
+    }),
     createBriefingResolvers({
       farmService,
       taskService,

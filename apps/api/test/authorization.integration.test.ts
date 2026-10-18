@@ -13,6 +13,9 @@ const PUBLIC = ['forecast', 'me', 'signUp', 'logIn', 'logOut', 'startDemo'];
 // Scoped to the signed-in user's own email rather than a farm; covered in sharing.integration.test.ts
 const OWN_INVITES = ['myInvites', 'acceptInvite', 'declineInvite'];
 
+/** A tiny PDF, base64 */
+const DOC = Buffer.from('%PDF-1.7').toString('base64');
+
 const TREATMENT_FIELDS = `
   groupId: $groupId, date: "2026-06-01", productName: "X", animalsTreated: 1,
   administeredBy: "Bob", meatWithdrawalDays: 0
@@ -35,6 +38,8 @@ interface AnnsData {
   contactId: string;
   personalContactId: string;
   taggedId: string;
+  documentId: string;
+  petDocumentId: string;
 }
 
 interface BobsData {
@@ -454,6 +459,53 @@ const CROSS_USER: Record<string, Attempt> = {
     });
     expect(res.data).toEqual({ deleteTaggedAnimal: false });
   },
+  documents: async (bob, ann) => {
+    for (const vars of [{ farmId: ann.farmId }, { petId: ann.animalId }]) {
+      const res = await bob(
+        `query ($farmId: ID, $petId: ID) { documents(farmId: $farmId, petId: $petId) { id } }`,
+        vars,
+      );
+      expect(code(res)).toBe('NOT_FOUND');
+    }
+  },
+  documentFile: async (bob, ann) => {
+    for (const id of [ann.documentId, ann.petDocumentId]) {
+      const res = await bob(`query ($id: ID!) { documentFile(id: $id) { contentBase64 } }`, { id });
+      expect(code(res)).toBe('NOT_FOUND');
+    }
+  },
+  expiringDocuments: async (bob) => {
+    expect((await bob(`query { expiringDocuments { id } }`)).data).toEqual({
+      expiringDocuments: [],
+    });
+  },
+  addDocument: async (bob, ann) => {
+    for (const [scope, id] of [
+      ['farmId', ann.farmId],
+      ['petId', ann.animalId],
+    ] as const) {
+      const res = await bob(
+        `mutation ($id: ID!) { addDocument(input: { ${scope}: $id, kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}" }) { id } }`,
+        { id },
+      );
+      expect(code(res)).toBe('NOT_FOUND');
+    }
+  },
+  updateDocument: async (bob, ann) => {
+    for (const id of [ann.documentId, ann.petDocumentId]) {
+      const res = await bob(
+        `mutation ($id: ID!) { updateDocument(id: $id, input: { title: "Mine" }) { id } }`,
+        { id },
+      );
+      expect(code(res)).toBe('NOT_FOUND');
+    }
+  },
+  deleteDocument: async (bob, ann) => {
+    for (const id of [ann.documentId, ann.petDocumentId]) {
+      const res = await bob(`mutation ($id: ID!) { deleteDocument(id: $id) }`, { id });
+      expect(res.data).toEqual({ deleteDocument: false });
+    }
+  },
   // Creates Bob's own demo farm; the snapshot proves Ann's data is untouched.
   createDemoFarm: async (bob) => {
     const res = await bob(`mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`);
@@ -483,6 +535,12 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   addTaggedAnimal: `mutation { addTaggedAnimal(input: { farmId: "x", tag: "X", species: SHEEP, sex: FEMALE }) { id } }`,
   updateTaggedAnimal: `mutation { updateTaggedAnimal(id: "x", input: { name: "X" }) { id } }`,
   deleteTaggedAnimal: `mutation { deleteTaggedAnimal(id: "x") }`,
+  documents: `query { documents(farmId: "x") { id } }`,
+  documentFile: `query { documentFile(id: "x") { contentBase64 } }`,
+  expiringDocuments: `query { expiringDocuments { id } }`,
+  addDocument: `mutation { addDocument(input: { farmId: "x", kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}" }) { id } }`,
+  updateDocument: `mutation { updateDocument(id: "x", input: { title: "X" }) { id } }`,
+  deleteDocument: `mutation { deleteDocument(id: "x") }`,
   animals: `query { animals { id } }`,
   animal: `query { animal(id: "x") { id } }`,
   createAnimal: `mutation { createAnimal(name: "Rex", species: "dog", category: PET) { id } }`,
@@ -655,6 +713,14 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     `mutation { createAnimal(name: "Bella", species: "dog", category: PET) { id } }`,
   );
   const animalId = animal.data!.createAnimal.id;
+  const document = await ann<{ addDocument: Id }>(
+    `mutation ($farmId: ID!) { addDocument(input: { farmId: $farmId, kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}", expiresOn: "2026-06-05" }) { id } }`,
+    { farmId },
+  );
+  const petDocument = await ann<{ addDocument: Id }>(
+    `mutation ($id: ID!) { addDocument(input: { petId: $id, kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}", expiresOn: "2026-06-05" }) { id } }`,
+    { id: animalId },
+  );
   const log = await ann<{ addLogEntry: Id }>(
     `mutation ($id: ID!) { addLogEntry(animalId: $id, date: "2026-05-01", type: "Tick check") { id } }`,
     { id: animalId },
@@ -676,6 +742,8 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     contactId: contact.data!.addContact.id,
     personalContactId: personalContact.data!.addContact.id,
     taggedId: tagged.data!.addTaggedAnimal.id,
+    documentId: document.data!.addDocument.id,
+    petDocumentId: petDocument.data!.addDocument.id,
   };
 }
 
@@ -734,6 +802,8 @@ describe('farm and owner scoping (FR-8.4)', () => {
         contacts(farmId: $farmId) { id name phone }
         personal: contacts { id name phone }
         taggedAnimals(farmId: $farmId) { id tag name status }
+        documents(farmId: $farmId) { id title }
+        expiringDocuments { id title }
         briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
       }`,
       { farmId: annsData.farmId },

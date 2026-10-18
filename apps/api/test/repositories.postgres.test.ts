@@ -141,6 +141,15 @@ describe.skipIf(!testDatabaseUrl)('Postgres repositories', () => {
           const farm = await farms.createFarm({ name: 'Farm', postcode: 'UB8 3PH' }, user.id);
           return { farmId: farm.id, userId: user.id };
         },
+        newPet: async () => {
+          const user = await prisma.user.create({
+            data: { email: `keeping${++n}@example.com`, passwordHash: 'x' },
+          });
+          const pet = await prisma.pet.create({
+            data: { ownerId: user.id, name: 'Bess', species: 'dog' },
+          });
+          return pet.id;
+        },
       };
     });
   });

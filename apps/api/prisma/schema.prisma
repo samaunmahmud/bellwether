@@ -47,6 +47,7 @@ model User {
   pets           Pet[]
   petReminders   PetReminderEmail[]
   contacts       Contact[]
+  documents      Document[]
   revisions      RecordRevision[]
   invitesSent    FarmInvite[]
   assignedTasks  Task[]
@@ -127,6 +128,7 @@ model Farm {
   briefingEmails BriefingEmail[]
   contacts       Contact[]
   taggedAnimals  TaggedAnimal[]
+  documents      Document[]
 }
 
 model Field {
@@ -183,6 +185,7 @@ model LivestockGroup {
   observations   Observation[]
   tasks          Task[]
   taggedAnimals  TaggedAnimal[]
+  documents      Document[]
   registerEvents RegisterEvent[]
 
   @@index([farmId])
@@ -345,28 +348,29 @@ model BriefingEmail {
 // --- Pets (FR-2.6) ---
 
 model Pet {
-  id                  String   @id @default(uuid()) @db.Uuid
-  seq                 Int      @default(autoincrement())
-  ownerId             String   @db.Uuid
-  owner               User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(uuid()) @db.Uuid
+  seq                 Int       @default(autoincrement())
+  ownerId             String    @db.Uuid
+  owner               User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   name                String
   species             String
   // 'pet' or 'farm', as in the risk engine
-  category            String   @default("pet")
+  category            String    @default("pet")
   // Normalised UK postcode for the pet's own forecast
   postcode            String?
-  highExposureHabitat Boolean  @default(false)
+  highExposureHabitat Boolean   @default(false)
   // v4: details for the pet's record
   dateOfBirth         DateTime? @db.Date
   breed               String?
   sex                 String?
   microchip           String?
   // v3: email the owner when health-plan items fall due
-  remindersEnabled    Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  remindersEnabled    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  logs PetLogEntry[]
+  logs      PetLogEntry[]
+  documents Document[]
 
   @@index([ownerId])
 }
@@ -518,5 +522,52 @@ model TaggedAnimal {
   notes       String?
   createdAt   DateTime        @default(now())
 
+  documents Document[]
+
   @@unique([farmId, tagKey])
+}
+
+// v4: a stored file (vet report, certificate, movement licence…) for a farm or a pet
+enum DocumentKind {
+  HEALTH
+  CERTIFICATE
+  MOVEMENT
+  INSURANCE
+  RECEIPT
+  OTHER
+}
+
+model Document {
+  id             String          @id @default(uuid()) @db.Uuid
+  // Exactly one of farmId (shared with the farm's members) or petId (private to its owner) is set
+  farmId         String?         @db.Uuid
+  farm           Farm?           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  petId          String?         @db.Uuid
+  pet            Pet?            @relation(fields: [petId], references: [id], onDelete: Cascade)
+  groupId        String?         @db.Uuid
+  group          LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  taggedAnimalId String?         @db.Uuid
+  taggedAnimal   TaggedAnimal?   @relation(fields: [taggedAnimalId], references: [id], onDelete: SetNull)
+  kind           DocumentKind
+  title          String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  documentDate   DateTime?       @db.Date
+  expiresOn      DateTime?       @db.Date
+  notes          String?
+  uploadedById   String?         @db.Uuid
+  uploadedBy     User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedAt     DateTime        @default(now())
+  file           DocumentFile?
+
+  @@index([farmId])
+  @@index([petId])
+}
+
+// The bytes, apart from the details so lists never load them
+model DocumentFile {
+  documentId String   @id @db.Uuid
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    Bytes
 }

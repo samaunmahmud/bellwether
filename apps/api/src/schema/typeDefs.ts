@@ -64,6 +64,8 @@ export const typeDefs = /* GraphQL */ `
     forecast: Forecast
     "v3: dogs only; null without a postcode or hourly forecast"
     walkPlanner: WalkPlan
+    "v4: newest upload first"
+    documents: [Document!]!
   }
 
   "Omitted fields are unchanged; null clears a postcode or a v4 detail."
@@ -816,6 +818,76 @@ export const typeDefs = /* GraphQL */ `
     notes: String
   }
 
+  enum DocumentKind {
+    "Vet report, test result"
+    HEALTH
+    "Passport, vaccination or health certificate"
+    CERTIFICATE
+    "Movement licence or record"
+    MOVEMENT
+    INSURANCE
+    "Invoice or receipt"
+    RECEIPT
+    OTHER
+  }
+
+  "v4: a stored PDF or photo for a farm (shared with its members) or a pet (private)"
+  type Document {
+    id: ID!
+    kind: DocumentKind!
+    title: String!
+    fileName: String!
+    "Taken from the file's contents: application/pdf, image/jpeg, image/png or image/webp"
+    mimeType: String!
+    sizeBytes: Int!
+    "The date on the document, YYYY-MM-DD"
+    documentDate: String
+    expiresOn: String
+    "Days until it expires, negative once expired; null with no expiry"
+    daysToExpiry: Int
+    notes: String
+    "ISO date-time"
+    uploadedAt: String!
+    "Null for a pet's document"
+    farmName: String
+    "Null for a farm's document"
+    petName: String
+    group: LivestockGroup
+    taggedAnimal: TaggedAnimal
+  }
+
+  type DocumentFile {
+    fileName: String!
+    mimeType: String!
+    contentBase64: String!
+  }
+
+  "Exactly one of farmId or petId. Groups and animals can only be linked on a farm. Up to 5 MB."
+  input DocumentInput {
+    farmId: ID
+    petId: ID
+    groupId: ID
+    taggedAnimalId: ID
+    kind: DocumentKind!
+    "Defaults to the file name without its extension"
+    title: String
+    fileName: String!
+    "The file as base64, or a data: URL. PDF, JPEG, PNG or WebP."
+    contentBase64: String!
+    documentDate: String
+    expiresOn: String
+    notes: String
+  }
+
+  "Omitted fields are unchanged; null clears an optional one. The file itself can't change."
+  input UpdateDocumentInput {
+    kind: DocumentKind
+    title: String
+    documentDate: String
+    expiresOn: String
+    notes: String
+  }
+
   "Omit farmId for a personal contact (e.g. your pet's vet)."
   input ContactInput {
     farmId: ID
@@ -836,6 +908,12 @@ export const typeDefs = /* GraphQL */ `
     emergencyContacts: [Contact!]!
     "v4: a farm's individually tagged animals, by tag"
     taggedAnimals(farmId: ID!): [TaggedAnimal!]!
+    "v4: a farm's or a pet's documents (give one), newest upload first"
+    documents(farmId: ID, petId: ID): [Document!]!
+    "v4: the file itself, to open or save"
+    documentFile(id: ID!): DocumentFile!
+    "v4: documents across your farms and pets that expired or expire within 30 days, soonest first"
+    expiringDocuments: [Document!]!
     "The signed-in user, or null."
     me: User
     forecast(postcode: String!, category: AnimalCategory!, highExposureHabitat: Boolean): Forecast!
@@ -948,5 +1026,10 @@ export const typeDefs = /* GraphQL */ `
     addTaggedAnimal(input: TaggedAnimalInput!): TaggedAnimal!
     updateTaggedAnimal(id: ID!, input: UpdateTaggedAnimalInput!): TaggedAnimal!
     deleteTaggedAnimal(id: ID!): Boolean!
+    "v4: workers and owners on a farm; a pet's owner"
+    addDocument(input: DocumentInput!): Document!
+    updateDocument(id: ID!, input: UpdateDocumentInput!): Document!
+    "False if it isn't found or isn't yours"
+    deleteDocument(id: ID!): Boolean!
   }
 `;

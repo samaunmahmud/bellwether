@@ -7,5 +7,6 @@ describe('InMemoryKeepingRepository', () => {
   keepingRepositoryContract(async () => ({
     repo: new InMemoryKeepingRepository(),
     newFarm: async () => ({ farmId: randomUUID(), userId: randomUUID() }),
+    newPet: async () => randomUUID(),
   }));
 });

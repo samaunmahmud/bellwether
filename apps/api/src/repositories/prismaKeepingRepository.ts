@@ -1,11 +1,15 @@
 import type { PrismaClient } from '../db/prisma';
 import { isUuid } from '../db/ids';
 import {
+  byNewestUpload,
   byTag,
   tagKey,
   type AnimalSex,
   type AnimalStatus,
   type Contact,
+  type DocumentKind,
+  type DocumentMimeType,
+  type StoredDocument,
   type TaggedAnimal,
   type TaggedSpecies,
 } from '../domain/keeping';
@@ -14,8 +18,11 @@ import {
   byName,
   type ContactPatch,
   type ContactScope,
+  type DocumentPatch,
+  type DocumentScope,
   type KeepingRepository,
   type NewContact,
+  type NewDocument,
   type NewTaggedAnimal,
   type TaggedPatch,
 } from './keepingRepository';
@@ -79,6 +86,51 @@ const contactSelect = {
   address: true,
   notes: true,
 } as const;
+
+const documentSelect = {
+  id: true,
+  farmId: true,
+  petId: true,
+  groupId: true,
+  taggedAnimalId: true,
+  kind: true,
+  title: true,
+  fileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  documentDate: true,
+  expiresOn: true,
+  notes: true,
+  uploadedById: true,
+  uploadedAt: true,
+} as const;
+
+type DocumentRow = Omit<
+  StoredDocument,
+  'kind' | 'mimeType' | 'documentDate' | 'expiresOn' | 'uploadedAt'
+> & {
+  kind: string;
+  mimeType: string;
+  documentDate: Date | null;
+  expiresOn: Date | null;
+  uploadedAt: Date;
+};
+
+const toDocument = (row: DocumentRow): StoredDocument => ({
+  ...row,
+  kind: row.kind as DocumentKind,
+  mimeType: row.mimeType as DocumentMimeType,
+  documentDate: fromDb(row.documentDate),
+  expiresOn: fromDb(row.expiresOn),
+  uploadedAt: row.uploadedAt.toISOString(),
+});
+
+const documentData = (patch: DocumentPatch) =>
+  definedOnly({
+    ...patch,
+    documentDate: toDbOrNull(patch.documentDate),
+    expiresOn: toDbOrNull(patch.expiresOn),
+  });
 
 /** Postgres-backed KeepingRepository (v4). Shares its contract tests with the in-memory fake. */
 export class PrismaKeepingRepository implements KeepingRepository {
@@ -157,6 +209,53 @@ export class PrismaKeepingRepository implements KeepingRepository {
   async deleteTagged(id: string) {
     if (!isUuid(id)) return false;
     const { count } = await this.db.taggedAnimal.deleteMany({ where: { id } });
+    return count > 0;
+  }
+
+  async addDocument(input: NewDocument, content: Uint8Array) {
+    const row = await this.db.document.create({
+      data: {
+        ...input,
+        ...documentData(input),
+        uploadedAt: new Date(input.uploadedAt),
+        file: { create: { content: Uint8Array.from(content) } },
+      } as never,
+      select: documentSelect,
+    });
+    return toDocument(row);
+  }
+
+  async getDocument(id: string) {
+    if (!isUuid(id)) return null;
+    const row = await this.db.document.findUnique({ where: { id }, select: documentSelect });
+    return row ? toDocument(row) : null;
+  }
+
+  async getDocumentContent(id: string) {
+    if (!isUuid(id)) return null;
+    const file = await this.db.documentFile.findUnique({ where: { documentId: id } });
+    return file ? Uint8Array.from(file.content) : null;
+  }
+
+  async listDocuments(scope: DocumentScope) {
+    const where = 'farmId' in scope ? { farmId: scope.farmId } : { petId: scope.petId };
+    if (!isUuid(Object.values(where)[0]!)) return [];
+    const rows = await this.db.document.findMany({ where, select: documentSelect });
+    return rows.map(toDocument).sort(byNewestUpload);
+  }
+
+  async updateDocument(id: string, patch: DocumentPatch) {
+    if (!isUuid(id)) return null;
+    const { count } = await this.db.document.updateMany({
+      where: { id },
+      data: documentData(patch) as never,
+    });
+    return count ? this.getDocument(id) : null;
+  }
+
+  async deleteDocument(id: string) {
+    if (!isUuid(id)) return false;
+    const { count } = await this.db.document.deleteMany({ where: { id } });
     return count > 0;
   }
 }

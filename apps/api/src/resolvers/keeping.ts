@@ -1,9 +1,12 @@
 import { requireUser, type GraphQLContext } from '../auth/context';
 import type { LivestockGroup } from '../domain/farm';
-import type { Contact, TaggedAnimal } from '../domain/keeping';
+import type { Contact, StoredDocument, TaggedAnimal } from '../domain/keeping';
+import type { Animal, AnimalRepository } from '../repositories/animalRepository';
 import type { FarmRepository } from '../repositories/farmRepository';
 import type {
   ContactInput,
+  DocumentInput,
+  DocumentUpdate,
   KeepingService,
   TaggedAnimalInput,
   TaggedAnimalUpdate,
@@ -11,11 +14,12 @@ import type {
 
 export interface KeepingResolverDeps {
   farms: FarmRepository;
+  animals: AnimalRepository;
   keepingService: KeepingService;
 }
 
-/** v4: contacts, emergency numbers and tagged animals. */
-export function createKeepingResolvers({ farms, keepingService }: KeepingResolverDeps) {
+/** v4: contacts, emergency numbers, tagged animals and documents. */
+export function createKeepingResolvers({ farms, animals, keepingService }: KeepingResolverDeps) {
   return {
     Query: {
       contacts: (_: unknown, args: { farmId?: string | null }, ctx: GraphQLContext) =>
@@ -24,6 +28,15 @@ export function createKeepingResolvers({ farms, keepingService }: KeepingResolve
         keepingService.emergencyContacts(requireUser(ctx).id),
       taggedAnimals: (_: unknown, args: { farmId: string }, ctx: GraphQLContext) =>
         keepingService.taggedAnimals(requireUser(ctx).id, args.farmId),
+      documents: (
+        _: unknown,
+        args: { farmId?: string | null; petId?: string | null },
+        ctx: GraphQLContext,
+      ) => keepingService.documents(requireUser(ctx).id, args),
+      documentFile: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        keepingService.documentFile(requireUser(ctx).id, args.id),
+      expiringDocuments: (_: unknown, __: unknown, ctx: GraphQLContext) =>
+        keepingService.expiringDocuments(requireUser(ctx).id),
     },
     Mutation: {
       addContact: (_: unknown, args: { input: ContactInput }, ctx: GraphQLContext) =>
@@ -41,6 +54,29 @@ export function createKeepingResolvers({ farms, keepingService }: KeepingResolve
       ) => keepingService.updateTaggedAnimal(requireUser(ctx).id, args.id, args.input),
       deleteTaggedAnimal: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
         keepingService.deleteTaggedAnimal(requireUser(ctx).id, args.id),
+      addDocument: (_: unknown, args: { input: DocumentInput }, ctx: GraphQLContext) =>
+        keepingService.addDocument(requireUser(ctx).id, args.input),
+      updateDocument: (
+        _: unknown,
+        args: { id: string; input: DocumentUpdate },
+        ctx: GraphQLContext,
+      ) => keepingService.updateDocument(requireUser(ctx).id, args.id, args.input),
+      deleteDocument: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        keepingService.deleteDocument(requireUser(ctx).id, args.id),
+    },
+    // Only reached for a document the caller was already allowed to see.
+    Document: {
+      daysToExpiry: (d: StoredDocument) => keepingService.daysToExpiry(d),
+      farmName: async (d: StoredDocument) =>
+        d.farmId ? ((await farms.getFarm(d.farmId))?.name ?? null) : null,
+      petName: async (d: StoredDocument) =>
+        d.petId ? ((await animals.getAnimal(d.petId))?.name ?? null) : null,
+      group: async (d: StoredDocument) => (d.groupId ? farms.getGroup(d.groupId) : null),
+      taggedAnimal: async (d: StoredDocument) =>
+        d.taggedAnimalId ? keepingService.taggedById(d.taggedAnimalId) : null,
+    },
+    Animal: {
+      documents: (a: Animal) => keepingService.petDocuments(a.id),
     },
     // Only reached for an animal or group the caller was already allowed to see.
     TaggedAnimal: {

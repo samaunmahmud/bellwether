@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type {
   KeepingRepository,
   NewContact,
+  NewDocument,
   NewTaggedAnimal,
 } from '../src/repositories/keepingRepository';
 
@@ -9,6 +10,8 @@ export interface KeepingFixture {
   repo: KeepingRepository;
   /** A farm and a user who owns it (real rows in Postgres). */
   newFarm(): Promise<{ farmId: string; userId: string }>;
+  /** A pet (a real row in Postgres) */
+  newPet(): Promise<string>;
 }
 
 export const contactInput = (overrides: Partial<NewContact> = {}): NewContact => ({
@@ -42,6 +45,30 @@ export const taggedInput = (
   notes: null,
   ...overrides,
 });
+
+export const documentInput = (
+  scope: { farmId: string } | { petId: string },
+  overrides: Partial<NewDocument> = {},
+): NewDocument => ({
+  farmId: null,
+  petId: null,
+  ...scope,
+  groupId: null,
+  taggedAnimalId: null,
+  kind: 'HEALTH',
+  title: 'Blood test',
+  fileName: 'blood-test.pdf',
+  mimeType: 'application/pdf',
+  sizeBytes: 9,
+  documentDate: '2026-05-01',
+  expiresOn: null,
+  notes: null,
+  uploadedById: null,
+  uploadedAt: '2026-05-02T10:00:00.000Z',
+  ...overrides,
+});
+
+const PDF_BYTES = new TextEncoder().encode('%PDF-1.7\n');
 
 /** Behaviour every KeepingRepository must have (v4), run against the in-memory fake and Postgres. */
 export function keepingRepositoryContract(setup: () => Promise<KeepingFixture>) {
@@ -129,6 +156,53 @@ export function keepingRepositoryContract(setup: () => Promise<KeepingFixture>) 
       expect(await repo.getTagged('nope')).toBeNull();
       expect(await repo.updateTagged('nope', { name: 'x' })).toBeNull();
       expect(await repo.listTagged('nope')).toEqual([]);
+    });
+  });
+
+  describe('documents', () => {
+    it('stores a document with its file, and lists a farm’s newest first', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId, userId } = await newFarm();
+      const other = await newFarm();
+      const older = await repo.addDocument(
+        documentInput({ farmId }, { title: 'Old', uploadedById: userId }),
+        PDF_BYTES,
+      );
+      await repo.addDocument(
+        documentInput({ farmId }, { title: 'New', uploadedAt: '2026-05-03T10:00:00.000Z' }),
+        PDF_BYTES,
+      );
+      await repo.addDocument(documentInput({ farmId: other.farmId }), PDF_BYTES);
+      expect(older).toMatchObject({ farmId, petId: null, title: 'Old', uploadedById: userId });
+      expect(await repo.getDocument(older.id)).toEqual(older);
+      expect([...((await repo.getDocumentContent(older.id)) ?? [])]).toEqual([...PDF_BYTES]);
+      expect((await repo.listDocuments({ farmId })).map((d) => d.title)).toEqual(['New', 'Old']);
+    });
+
+    it('lists a pet’s documents', async () => {
+      const { repo, newPet } = await setup();
+      const petId = await newPet();
+      await repo.addDocument(documentInput({ petId }, { kind: 'INSURANCE' }), PDF_BYTES);
+      expect(await repo.listDocuments({ petId })).toMatchObject([{ petId, kind: 'INSURANCE' }]);
+    });
+
+    it('updates details, deletes with the file, and treats malformed ids as not found', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId } = await newFarm();
+      const d = await repo.addDocument(documentInput({ farmId }), PDF_BYTES);
+      const updated = await repo.updateDocument(d.id, {
+        title: 'Renamed',
+        expiresOn: '2027-01-01',
+      });
+      expect(updated).toEqual({ ...d, title: 'Renamed', expiresOn: '2027-01-01' });
+      expect(await repo.deleteDocument(d.id)).toBe(true);
+      expect(await repo.getDocument(d.id)).toBeNull();
+      expect(await repo.getDocumentContent(d.id)).toBeNull();
+      expect(await repo.deleteDocument(d.id)).toBe(false);
+      expect(await repo.getDocument('nope')).toBeNull();
+      expect(await repo.getDocumentContent('nope')).toBeNull();
+      expect(await repo.updateDocument('nope', { title: 'x' })).toBeNull();
+      expect(await repo.listDocuments({ farmId: 'nope' })).toEqual([]);
     });
   });
 }
