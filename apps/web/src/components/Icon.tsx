@@ -48,6 +48,8 @@ const PATHS = {
   scale: 'M4 20h16M6 20l2-12h8l2 12M12 8V5m-3 0h6',
   file: 'M6 3h8l4 4v14H6zm8 0v4h4M9 12h6m-6 4h6',
   download: 'M12 4v11m-5-5 5 5 5-5M5 20h14',
+  camera: 'M4 8h3l2-3h6l2 3h3v11H4zm8 2.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z',
+  cctv: 'M3 7l13-3 2 6-13 3zm4 5 1 4H4m14-7 3 1',
 } as const;
 
 export type IconName = keyof typeof PATHS;

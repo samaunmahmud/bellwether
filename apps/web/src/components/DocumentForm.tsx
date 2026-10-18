@@ -9,6 +9,7 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   MOVEMENT: 'Movement',
   INSURANCE: 'Insurance',
   RECEIPT: 'Receipt',
+  PHOTO: 'Photo',
   OTHER: 'Other',
 };
 
@@ -18,6 +19,7 @@ const KIND_HINTS: Record<DocumentKind, string> = {
   MOVEMENT: 'Movement (licence or record)',
   INSURANCE: 'Insurance',
   RECEIPT: 'Receipt or invoice',
+  PHOTO: 'Photo',
   OTHER: 'Other',
 };
 

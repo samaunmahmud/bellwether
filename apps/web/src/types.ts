@@ -387,7 +387,7 @@ export interface TaggedAnimal {
 // --- v4: documents ---
 
 export type DocumentKind =
-  'HEALTH' | 'CERTIFICATE' | 'MOVEMENT' | 'INSURANCE' | 'RECEIPT' | 'OTHER';
+  'HEALTH' | 'CERTIFICATE' | 'MOVEMENT' | 'INSURANCE' | 'RECEIPT' | 'PHOTO' | 'OTHER';
 
 export interface StoredDocument {
   id: string;
@@ -405,4 +405,15 @@ export interface StoredDocument {
   petName: string | null;
   group: { id: string; name: string } | null;
   taggedAnimal: { id: string; tag: string } | null;
+}
+
+// --- v4.2: cameras ---
+
+export interface Camera {
+  id: string;
+  name: string;
+  url: string;
+  notes: string | null;
+  field: { id: string; name: string } | null;
+  group: { id: string; name: string } | null;
 }
