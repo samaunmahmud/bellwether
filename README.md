@@ -40,6 +40,7 @@ Free UK forecasts from bodies like SCOPS and NADIS already exist. Bellwether doe
 | v3.1 | Pet reminder emails, install on a phone, read offline                                                                                                                                                     | Done                                                                                                                       |
 | v4   | Contacts and suppliers, emergency page with one-tap calls, find vets nearby; individually tagged animals with ages; pet record card (date of birth, breed, sex, microchip)                                | Done                                                                                                                       |
 | v4.1 | Documents: PDFs and photos for a farm, group, tagged animal or pet, with search, expiry warnings, open and save                                                                                           | Done                                                                                                                       |
+| v4.2 | Cameras and counting: phone camera with snapshots saved to documents, tap-to-count tally against the head count, CCTV viewer links. No machine learning (A98)                                             | Done                                                                                                                       |
 
 ## Architecture
 
@@ -81,6 +82,7 @@ Farm (name, postcode)
  ├── TaggedAnimal (ear tag or ID, name, sex, breed, date of birth, group,
  │                 on farm / sold / died with a date)   v4, beside the group head counts
  ├── Contact (vet, feed merchant, supplier: phones, email, website)   v4
+ ├── Camera (link to a CCTV viewer page; optionally for a field or group)   v4.2
  └── Document (PDF or photo up to 5 MB, kind, dates, expiry; optionally for a group
                or tagged animal)   v4.1; a pet can have its own, private to its owner
 ```
