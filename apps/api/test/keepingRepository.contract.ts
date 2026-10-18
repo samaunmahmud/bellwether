@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   KeepingRepository,
+  NewCamera,
   NewContact,
   NewDocument,
   NewTaggedAnimal,
@@ -65,6 +66,16 @@ export const documentInput = (
   notes: null,
   uploadedById: null,
   uploadedAt: '2026-05-02T10:00:00.000Z',
+  ...overrides,
+});
+
+export const cameraInput = (farmId: string, overrides: Partial<NewCamera> = {}): NewCamera => ({
+  farmId,
+  name: 'Calving shed',
+  url: 'https://cams.example.com/shed',
+  fieldId: null,
+  groupId: null,
+  notes: null,
   ...overrides,
 });
 
@@ -203,6 +214,34 @@ export function keepingRepositoryContract(setup: () => Promise<KeepingFixture>) 
       expect(await repo.getDocumentContent('nope')).toBeNull();
       expect(await repo.updateDocument('nope', { title: 'x' })).toBeNull();
       expect(await repo.listDocuments({ farmId: 'nope' })).toEqual([]);
+    });
+  });
+
+  describe('cameras', () => {
+    it('adds, gets, lists by name, updates and deletes a farm’s cameras', async () => {
+      const { repo, newFarm } = await setup();
+      const { farmId } = await newFarm();
+      const other = await newFarm();
+      const shed = await repo.addCamera(cameraInput(farmId));
+      await repo.addCamera(cameraInput(farmId, { name: 'Bottom gate' }));
+      await repo.addCamera(cameraInput(other.farmId, { name: 'Elsewhere' }));
+      expect(await repo.getCamera(shed.id)).toEqual(shed);
+      expect((await repo.listCameras(farmId)).map((c) => c.name)).toEqual([
+        'Bottom gate',
+        'Calving shed',
+      ]);
+      const updated = await repo.updateCamera(shed.id, { notes: 'Night vision' });
+      expect(updated).toEqual({ ...shed, notes: 'Night vision' });
+      expect(await repo.deleteCamera(shed.id)).toBe(true);
+      expect(await repo.getCamera(shed.id)).toBeNull();
+      expect(await repo.deleteCamera(shed.id)).toBe(false);
+    });
+
+    it('treats malformed ids as not found', async () => {
+      const { repo } = await setup();
+      expect(await repo.getCamera('nope')).toBeNull();
+      expect(await repo.updateCamera('nope', { name: 'x' })).toBeNull();
+      expect(await repo.listCameras('nope')).toEqual([]);
     });
   });
 }

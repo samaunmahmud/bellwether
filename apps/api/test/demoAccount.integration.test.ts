@@ -91,6 +91,14 @@ describe('one-click demo account (v3.2)', () => {
     );
     expect(expiring.data!.expiringDocuments.map((d) => d.petName)).toContain('Bess');
 
+    // An example camera link on the hill farm (v4.2)
+    const cams = await gql<{ cameras: Array<{ url: string; notes: string }> }>(
+      `query ($id: ID!) { cameras(farmId: $id) { url notes } }`,
+      { id: fellside.id },
+    );
+    expect(cams.data!.cameras).toHaveLength(1);
+    expect(cams.data!.cameras[0]!.notes).toMatch(/example/i);
+
     // Vets to call in an emergency, from the farms and the pets' own contacts
     const vets = await gql<{ emergencyContacts: Array<{ emergencyPhone: string | null }> }>(
       `query { emergencyContacts { emergencyPhone } }`,

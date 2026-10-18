@@ -3,6 +3,7 @@ import {
   byNewestUpload,
   byTag,
   tagKey,
+  type Camera,
   type Contact,
   type StoredDocument,
   type TaggedAnimal,
@@ -18,6 +19,9 @@ export type DocumentPatch = Partial<
   Pick<StoredDocument, 'kind' | 'title' | 'documentDate' | 'expiresOn' | 'notes'>
 >;
 
+export type NewCamera = Omit<Camera, 'id'>;
+export type CameraPatch = Partial<Omit<Camera, 'id' | 'farmId'>>;
+
 /** Whose documents to list: a farm's or a pet's. */
 export type DocumentScope = { farmId: string } | { petId: string };
 
@@ -28,7 +32,7 @@ export const byName = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base' });
 
 /**
- * v4 storage for what a keeper keeps beside the records: contacts, tagged animals and documents. Unknown or malformed ids mean "not found".
+ * v4 storage for what a keeper keeps beside the records: contacts, tagged animals, documents and camera links. Unknown or malformed ids mean "not found".
  */
 export interface KeepingRepository {
   addContact(input: NewContact): Promise<Contact>;
@@ -57,11 +61,19 @@ export interface KeepingRepository {
   updateDocument(id: string, patch: DocumentPatch): Promise<StoredDocument | null>;
   /** Deletes the file too */
   deleteDocument(id: string): Promise<boolean>;
+
+  addCamera(input: NewCamera): Promise<Camera>;
+  getCamera(id: string): Promise<Camera | null>;
+  /** By name */
+  listCameras(farmId: string): Promise<Camera[]>;
+  updateCamera(id: string, patch: CameraPatch): Promise<Camera | null>;
+  deleteCamera(id: string): Promise<boolean>;
 }
 
 export class InMemoryKeepingRepository implements KeepingRepository {
   private contacts = new Map<string, Contact>();
   private tagged = new Map<string, TaggedAnimal>();
+  private cameras = new Map<string, Camera>();
   private documents = new Map<string, { doc: StoredDocument; content: Uint8Array }>();
 
   constructor(private newId: () => string = randomUUID) {}
@@ -162,5 +174,31 @@ export class InMemoryKeepingRepository implements KeepingRepository {
 
   async deleteDocument(id: string) {
     return this.documents.delete(id);
+  }
+
+  async addCamera(input: NewCamera) {
+    const camera = { ...input, id: this.newId() };
+    this.cameras.set(camera.id, camera);
+    return camera;
+  }
+
+  async getCamera(id: string) {
+    return this.cameras.get(id) ?? null;
+  }
+
+  async listCameras(farmId: string) {
+    return [...this.cameras.values()].filter((c) => c.farmId === farmId).sort(byName);
+  }
+
+  async updateCamera(id: string, patch: CameraPatch) {
+    const camera = this.cameras.get(id);
+    if (!camera) return null;
+    const updated = { ...camera, ...definedOnly(patch) };
+    this.cameras.set(id, updated);
+    return updated;
+  }
+
+  async deleteCamera(id: string) {
+    return this.cameras.delete(id);
   }
 }

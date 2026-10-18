@@ -13,6 +13,7 @@ import {
 import { appError } from '../errors';
 import type { AnimalRepository } from '../repositories/animalRepository';
 import type {
+  CameraPatch,
   ContactPatch,
   DocumentPatch,
   KeepingRepository,
@@ -92,6 +93,25 @@ export interface DocumentUpdate {
   title?: string | null;
   documentDate?: string | null;
   expiresOn?: string | null;
+  notes?: string | null;
+}
+
+export interface CameraInput {
+  farmId: string;
+  name: string;
+  /** The camera's own web viewer: http(s) only */
+  url: string;
+  fieldId?: string | null;
+  groupId?: string | null;
+  notes?: string | null;
+}
+
+/** Omitted fields are unchanged; null clears a link or the notes. */
+export interface CameraUpdate {
+  name?: string | null;
+  url?: string | null;
+  fieldId?: string | null;
+  groupId?: string | null;
   notes?: string | null;
 }
 
@@ -282,6 +302,48 @@ export function createKeepingService(deps: KeepingDeps) {
       groupId ??= animal.groupId;
     }
     return { groupId, taggedAnimalId };
+  }
+
+  async function requireCamera(userId: string, id: string, level: 'view' | 'work') {
+    const camera = await keeping.getCamera(id);
+    if (!camera) throw appError('NOT_FOUND', `Camera ${id} not found`);
+    await farmService.requireFarm(userId, camera.farmId, level);
+    return camera;
+  }
+
+  function checkedCameraName(raw: string | null | undefined) {
+    const name = clean(raw);
+    if (!name) throw appError('BAD_INPUT', 'Give the camera a name, e.g. Lambing shed');
+    return name;
+  }
+
+  /** A browser can only open web pages, so stream addresses such as rtsp:// are refused. */
+  function checkedCameraUrl(raw: string | null | undefined) {
+    const url = clean(raw) ? checkedWebsite(raw) : null;
+    if (!url)
+      throw appError(
+        'BAD_INPUT',
+        'Give the web address of the camera’s viewer page, e.g. cams.example.com',
+      );
+    return url;
+  }
+
+  /** A field or group to link must be on the camera's farm. */
+  async function checkedCameraLinks(userId: string, farmId: string, input: CameraUpdate) {
+    const links: CameraPatch = {};
+    if (input.fieldId !== undefined) {
+      const field = input.fieldId ? await farmService.getField(input.fieldId) : null;
+      if (input.fieldId && field?.farmId !== farmId)
+        throw appError('NOT_FOUND', `Field ${input.fieldId} not found on this farm`);
+      links.fieldId = field?.id ?? null;
+    }
+    if (input.groupId !== undefined) {
+      const group = input.groupId ? await farmService.getGroup(userId, input.groupId) : null;
+      if (input.groupId && group?.farmId !== farmId)
+        throw appError('NOT_FOUND', `Group ${input.groupId} not found on this farm`);
+      links.groupId = group?.id ?? null;
+    }
+    return links;
   }
 
   async function requireContact(userId: string, id: string, level: 'view' | 'work') {
@@ -514,6 +576,51 @@ export function createKeepingService(deps: KeepingDeps) {
     /** Days until it expires (negative once expired), or null with no expiry. */
     daysToExpiry: (doc: StoredDocument) =>
       doc.expiresOn ? daysBetween(today(), doc.expiresOn) : null,
+
+    async cameras(userId: string, farmId: string) {
+      await farmService.requireFarm(userId, farmId, 'view');
+      return keeping.listCameras(farmId);
+    },
+
+    async addCamera(userId: string, input: CameraInput) {
+      await farmService.requireFarm(userId, input.farmId, 'work');
+      const name = checkedCameraName(input.name);
+      const url = checkedCameraUrl(input.url);
+      const links = await checkedCameraLinks(userId, input.farmId, {
+        fieldId: input.fieldId ?? null,
+        groupId: input.groupId ?? null,
+      });
+      return keeping.addCamera({
+        farmId: input.farmId,
+        name,
+        url,
+        fieldId: links.fieldId ?? null,
+        groupId: links.groupId ?? null,
+        notes: clean(input.notes),
+      });
+    },
+
+    async updateCamera(userId: string, id: string, input: CameraUpdate) {
+      const camera = await requireCamera(userId, id, 'work');
+      const patch: CameraPatch = await checkedCameraLinks(userId, camera.farmId, input);
+      if (input.name !== undefined) patch.name = checkedCameraName(input.name);
+      if (input.url !== undefined) patch.url = checkedCameraUrl(input.url);
+      if (input.notes !== undefined) patch.notes = clean(input.notes);
+      const updated = await keeping.updateCamera(id, patch);
+      if (!updated) throw appError('NOT_FOUND', `Camera ${id} not found`);
+      return updated;
+    },
+
+    async deleteCamera(userId: string, id: string) {
+      try {
+        await requireCamera(userId, id, 'work');
+      } catch (err) {
+        if ((err as { extensions?: { code?: string } }).extensions?.code === 'NOT_FOUND')
+          return false;
+        throw err;
+      }
+      return keeping.deleteCamera(id);
+    },
 
     async deleteContact(userId: string, id: string) {
       try {

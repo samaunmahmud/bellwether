@@ -101,3 +101,19 @@ export function sniffDocumentType(bytes: Uint8Array): DocumentMimeType | null {
 /** Newest upload first. */
 export const byNewestUpload = (a: StoredDocument, b: StoredDocument) =>
   b.uploadedAt.localeCompare(a.uploadedAt) || a.title.localeCompare(b.title);
+
+/**
+ * v4.2: a link to a farm camera's own web viewer (CCTV app or cloud page). Bellwether doesn't
+ * stream video itself; it opens the camera maker's page.
+ */
+export interface Camera {
+  id: string;
+  farmId: string;
+  name: string;
+  /** Always http(s) */
+  url: string;
+  /** Where it points, optionally */
+  fieldId: string | null;
+  groupId: string | null;
+  notes: string | null;
+}

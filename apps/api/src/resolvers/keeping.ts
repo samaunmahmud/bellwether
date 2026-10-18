@@ -1,9 +1,11 @@
 import { requireUser, type GraphQLContext } from '../auth/context';
 import type { LivestockGroup } from '../domain/farm';
-import type { Contact, StoredDocument, TaggedAnimal } from '../domain/keeping';
+import type { Camera, Contact, StoredDocument, TaggedAnimal } from '../domain/keeping';
 import type { Animal, AnimalRepository } from '../repositories/animalRepository';
 import type { FarmRepository } from '../repositories/farmRepository';
 import type {
+  CameraInput,
+  CameraUpdate,
   ContactInput,
   DocumentInput,
   DocumentUpdate,
@@ -37,6 +39,8 @@ export function createKeepingResolvers({ farms, animals, keepingService }: Keepi
         keepingService.documentFile(requireUser(ctx).id, args.id),
       expiringDocuments: (_: unknown, __: unknown, ctx: GraphQLContext) =>
         keepingService.expiringDocuments(requireUser(ctx).id),
+      cameras: (_: unknown, args: { farmId: string }, ctx: GraphQLContext) =>
+        keepingService.cameras(requireUser(ctx).id, args.farmId),
     },
     Mutation: {
       addContact: (_: unknown, args: { input: ContactInput }, ctx: GraphQLContext) =>
@@ -63,6 +67,17 @@ export function createKeepingResolvers({ farms, animals, keepingService }: Keepi
       ) => keepingService.updateDocument(requireUser(ctx).id, args.id, args.input),
       deleteDocument: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
         keepingService.deleteDocument(requireUser(ctx).id, args.id),
+      addCamera: (_: unknown, args: { input: CameraInput }, ctx: GraphQLContext) =>
+        keepingService.addCamera(requireUser(ctx).id, args.input),
+      updateCamera: (_: unknown, args: { id: string; input: CameraUpdate }, ctx: GraphQLContext) =>
+        keepingService.updateCamera(requireUser(ctx).id, args.id, args.input),
+      deleteCamera: (_: unknown, args: { id: string }, ctx: GraphQLContext) =>
+        keepingService.deleteCamera(requireUser(ctx).id, args.id),
+    },
+    // Only reached for a camera the caller was already allowed to see.
+    Camera: {
+      field: async (c: Camera) => (c.fieldId ? farms.getField(c.fieldId) : null),
+      group: async (c: Camera) => (c.groupId ? farms.getGroup(c.groupId) : null),
     },
     // Only reached for a document the caller was already allowed to see.
     Document: {

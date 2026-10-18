@@ -40,6 +40,7 @@ interface AnnsData {
   taggedId: string;
   documentId: string;
   petDocumentId: string;
+  cameraId: string;
 }
 
 interface BobsData {
@@ -506,6 +507,28 @@ const CROSS_USER: Record<string, Attempt> = {
       expect(res.data).toEqual({ deleteDocument: false });
     }
   },
+  cameras: async (bob, ann) => {
+    const res = await bob(`query ($id: ID!) { cameras(farmId: $id) { id } }`, { id: ann.farmId });
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  addCamera: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { addCamera(input: { farmId: $id, name: "Bob", url: "https://x.example.com" }) { id } }`,
+      { id: ann.farmId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  updateCamera: async (bob, ann) => {
+    const res = await bob(
+      `mutation ($id: ID!) { updateCamera(id: $id, input: { name: "Mine" }) { id } }`,
+      { id: ann.cameraId },
+    );
+    expect(code(res)).toBe('NOT_FOUND');
+  },
+  deleteCamera: async (bob, ann) => {
+    const res = await bob(`mutation ($id: ID!) { deleteCamera(id: $id) }`, { id: ann.cameraId });
+    expect(res.data).toEqual({ deleteCamera: false });
+  },
   // Creates Bob's own demo farm; the snapshot proves Ann's data is untouched.
   createDemoFarm: async (bob) => {
     const res = await bob(`mutation { createDemoFarm(postcode: "UB8 3PH") { id } }`);
@@ -536,6 +559,10 @@ const ANONYMOUS_CALLS: Record<string, string> = {
   updateTaggedAnimal: `mutation { updateTaggedAnimal(id: "x", input: { name: "X" }) { id } }`,
   deleteTaggedAnimal: `mutation { deleteTaggedAnimal(id: "x") }`,
   documents: `query { documents(farmId: "x") { id } }`,
+  cameras: `query { cameras(farmId: "x") { id } }`,
+  addCamera: `mutation { addCamera(input: { farmId: "x", name: "X", url: "https://x.example.com" }) { id } }`,
+  updateCamera: `mutation { updateCamera(id: "x", input: { name: "X" }) { id } }`,
+  deleteCamera: `mutation { deleteCamera(id: "x") }`,
   documentFile: `query { documentFile(id: "x") { contentBase64 } }`,
   expiringDocuments: `query { expiringDocuments { id } }`,
   addDocument: `mutation { addDocument(input: { farmId: "x", kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}" }) { id } }`,
@@ -721,6 +748,10 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     `mutation ($id: ID!) { addDocument(input: { petId: $id, kind: OTHER, fileName: "a.pdf", contentBase64: "${DOC}", expiresOn: "2026-06-05" }) { id } }`,
     { id: animalId },
   );
+  const camera = await ann<{ addCamera: Id }>(
+    `mutation ($farmId: ID!) { addCamera(input: { farmId: $farmId, name: "Shed", url: "https://cams.example.com" }) { id } }`,
+    { farmId },
+  );
   const log = await ann<{ addLogEntry: Id }>(
     `mutation ($id: ID!) { addLogEntry(animalId: $id, date: "2026-05-01", type: "Tick check") { id } }`,
     { id: animalId },
@@ -744,6 +775,7 @@ async function setUpAnn(ann: Gql): Promise<AnnsData> {
     taggedId: tagged.data!.addTaggedAnimal.id,
     documentId: document.data!.addDocument.id,
     petDocumentId: petDocument.data!.addDocument.id,
+    cameraId: camera.data!.addCamera.id,
   };
 }
 
@@ -803,6 +835,7 @@ describe('farm and owner scoping (FR-8.4)', () => {
         personal: contacts { id name phone }
         taggedAnimals(farmId: $farmId) { id tag name status }
         documents(farmId: $farmId) { id title }
+        cameras(farmId: $farmId) { id name url }
         expiringDocuments { id title }
         briefingPreferences(farmId: $farmId) { emailEnabled sendAt alwaysSend }
       }`,

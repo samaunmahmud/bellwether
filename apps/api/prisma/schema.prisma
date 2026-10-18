@@ -128,6 +128,7 @@ model Farm {
   briefingEmails BriefingEmail[]
   contacts       Contact[]
   taggedAnimals  TaggedAnimal[]
+  cameras        Camera[]
   documents      Document[]
 }
 
@@ -146,6 +147,7 @@ model Field {
   currentGroups LivestockGroup[] @relation("CurrentField")
   movesFrom     GroupMovement[]  @relation("FromField")
   movesTo       GroupMovement[]  @relation("ToField")
+  cameras       Camera[]
 
   @@index([farmId])
 }
@@ -185,6 +187,7 @@ model LivestockGroup {
   observations   Observation[]
   tasks          Task[]
   taggedAnimals  TaggedAnimal[]
+  cameras        Camera[]
   documents      Document[]
   registerEvents RegisterEvent[]
 
@@ -534,6 +537,7 @@ enum DocumentKind {
   MOVEMENT
   INSURANCE
   RECEIPT
+  PHOTO
   OTHER
 }
 
@@ -570,4 +574,21 @@ model DocumentFile {
   documentId String   @id @db.Uuid
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   content    Bytes
+}
+
+// v4.2: a link to a farm camera's own web viewer; Bellwether doesn't stream video itself
+model Camera {
+  id        String          @id @default(uuid()) @db.Uuid
+  farmId    String          @db.Uuid
+  farm      Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  fieldId   String?         @db.Uuid
+  field     Field?          @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  groupId   String?         @db.Uuid
+  group     LivestockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  notes     String?
+  createdAt DateTime        @default(now())
+
+  @@index([farmId])
 }

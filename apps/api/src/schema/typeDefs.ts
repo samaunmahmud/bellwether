@@ -828,7 +828,40 @@ export const typeDefs = /* GraphQL */ `
     INSURANCE
     "Invoice or receipt"
     RECEIPT
+    "v4.2: a snapshot from the phone camera"
+    PHOTO
     OTHER
+  }
+
+  "v4.2: a link to a farm camera's own web viewer (CCTV app or cloud page)"
+  type Camera {
+    id: ID!
+    name: String!
+    "Always http(s)"
+    url: String!
+    notes: String
+    field: Field
+    group: LivestockGroup
+  }
+
+  "The field and group, if given, must be on the same farm."
+  input CameraInput {
+    farmId: ID!
+    name: String!
+    "The viewer page's web address; rtsp:// and other stream addresses can't open in a browser"
+    url: String!
+    fieldId: ID
+    groupId: ID
+    notes: String
+  }
+
+  "Omitted fields are unchanged; null clears a link or the notes."
+  input UpdateCameraInput {
+    name: String
+    url: String
+    fieldId: ID
+    groupId: ID
+    notes: String
   }
 
   "v4: a stored PDF or photo for a farm (shared with its members) or a pet (private)"
@@ -914,6 +947,8 @@ export const typeDefs = /* GraphQL */ `
     documentFile(id: ID!): DocumentFile!
     "v4: documents across your farms and pets that expired or expire within 30 days, soonest first"
     expiringDocuments: [Document!]!
+    "v4.2: a farm's camera links, by name"
+    cameras(farmId: ID!): [Camera!]!
     "The signed-in user, or null."
     me: User
     forecast(postcode: String!, category: AnimalCategory!, highExposureHabitat: Boolean): Forecast!
@@ -1031,5 +1066,10 @@ export const typeDefs = /* GraphQL */ `
     updateDocument(id: ID!, input: UpdateDocumentInput!): Document!
     "False if it isn't found or isn't yours"
     deleteDocument(id: ID!): Boolean!
+    "v4.2: workers and owners"
+    addCamera(input: CameraInput!): Camera!
+    updateCamera(id: ID!, input: UpdateCameraInput!): Camera!
+    "False if it isn't found or isn't yours"
+    deleteCamera(id: ID!): Boolean!
   }
 `;

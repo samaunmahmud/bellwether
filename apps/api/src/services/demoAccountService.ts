@@ -117,6 +117,7 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
     if (input.farms.includes('hill')) {
       const fellside = await deps.demoFarmService.create(owner, postcode);
       await addContacts(owner.id, fellside.id, FARM_CONTACTS);
+      await addCamera(owner.id, fellside.id);
       if (input.team) {
         // A worker who does the day-to-day jobs, and a viewer (e.g. the farm's vet or adviser).
         const worker = await teammate('alex', tag);
@@ -192,6 +193,19 @@ export function createDemoAccountService(deps: DemoAccountDeps) {
         breed: cow.breed,
         dateOfBirth: addDays(today, -Math.round(cow.years * 365.25) - 40 * i),
       });
+  }
+
+  /** v4.2: an example CCTV link, to show where a real camera's viewer page goes. */
+  async function addCamera(ownerId: string, farmId: string) {
+    const groups = await deps.farms.listGroups(farmId);
+    const ewes = groups.find((g) => g.species === 'SHEEP');
+    await deps.keepingService.addCamera(ownerId, {
+      farmId,
+      name: 'Lambing shed',
+      url: 'https://cameras.example.com/lambing-shed',
+      groupId: ewes?.id ?? null,
+      notes: 'Example link: replace it with your camera app’s viewer page.',
+    });
   }
 
   /** v4: made-up example files, clearly marked so nobody takes them for real records. */

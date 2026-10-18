@@ -6,6 +6,7 @@ import {
   tagKey,
   type AnimalSex,
   type AnimalStatus,
+  type Camera,
   type Contact,
   type DocumentKind,
   type DocumentMimeType,
@@ -16,11 +17,13 @@ import {
 import { definedOnly } from './animalRepository';
 import {
   byName,
+  type CameraPatch,
   type ContactPatch,
   type ContactScope,
   type DocumentPatch,
   type DocumentScope,
   type KeepingRepository,
+  type NewCamera,
   type NewContact,
   type NewDocument,
   type NewTaggedAnimal,
@@ -131,6 +134,16 @@ const documentData = (patch: DocumentPatch) =>
     documentDate: toDbOrNull(patch.documentDate),
     expiresOn: toDbOrNull(patch.expiresOn),
   });
+
+const cameraSelect = {
+  id: true,
+  farmId: true,
+  name: true,
+  url: true,
+  fieldId: true,
+  groupId: true,
+  notes: true,
+} as const;
 
 /** Postgres-backed KeepingRepository (v4). Shares its contract tests with the in-memory fake. */
 export class PrismaKeepingRepository implements KeepingRepository {
@@ -256,6 +269,34 @@ export class PrismaKeepingRepository implements KeepingRepository {
   async deleteDocument(id: string) {
     if (!isUuid(id)) return false;
     const { count } = await this.db.document.deleteMany({ where: { id } });
+    return count > 0;
+  }
+
+  async addCamera(input: NewCamera): Promise<Camera> {
+    return this.db.camera.create({ data: input, select: cameraSelect });
+  }
+
+  async getCamera(id: string) {
+    if (!isUuid(id)) return null;
+    return this.db.camera.findUnique({ where: { id }, select: cameraSelect });
+  }
+
+  async listCameras(farmId: string) {
+    if (!isUuid(farmId)) return [];
+    return (await this.db.camera.findMany({ where: { farmId }, select: cameraSelect })).sort(
+      byName,
+    );
+  }
+
+  async updateCamera(id: string, patch: CameraPatch) {
+    if (!isUuid(id)) return null;
+    const { count } = await this.db.camera.updateMany({ where: { id }, data: definedOnly(patch) });
+    return count ? this.getCamera(id) : null;
+  }
+
+  async deleteCamera(id: string) {
+    if (!isUuid(id)) return false;
+    const { count } = await this.db.camera.deleteMany({ where: { id } });
     return count > 0;
   }
 }
