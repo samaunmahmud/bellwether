@@ -6,7 +6,8 @@ import { App } from './App';
 import { applyStoredPalette } from './components/PalettePicker';
 import { registerOffline } from './offline/registerOffline';
 import { routerFuture } from './routerFuture';
-import '@fontsource-variable/fraunces';
+// All of Fraunces' axes, so the wordmark can use its soft, characterful style (SOFT and WONK).
+import '@fontsource-variable/fraunces/full.css';
 import './styles.css';
 
 const client = new ApolloClient({

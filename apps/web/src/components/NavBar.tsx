@@ -22,7 +22,7 @@ export function NavBar() {
   return (
     <header className="topbar">
       <NavLink to="/" className="brand topbar__brand">
-        <BrandMark /> Bellwether
+        <BrandMark /> <span className="brand__word">Bellwether</span>
       </NavLink>
       <nav>
         <NavLink to="/" end>

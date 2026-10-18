@@ -84,7 +84,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       <aside className="auth__scene">
         <div className="auth__scene-inner">
           <Link to="/" className="auth__brand">
-            <BrandMark /> Bellwether
+            <BrandMark size={40} /> <span className="brand__word">Bellwether</span>
           </Link>
           <div className="auth__pitch">
             <h2>Know what the weather means for your animals, before it happens.</h2>

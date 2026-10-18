@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Icon name={menuOpen ? 'close' : 'menu'} />
         </button>
         <Link to={farm ? `/farms/${farm.id}` : '/farms'} className="brand">
-          <BrandMark /> Bellwether
+          <BrandMark /> <span className="brand__word">Bellwether</span>
         </Link>
         <span className="mobilebar__right">
           <Link to="/emergency" className="icon-button mobilebar__sos" aria-label="Emergency">
@@ -152,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside className="sidebar" id="sidebar" aria-label="Main">
         <Link to={farm ? `/farms/${farm.id}` : '/farms'} className="brand sidebar__brand">
-          <BrandMark /> Bellwether
+          <BrandMark /> <span className="brand__word">Bellwether</span>
         </Link>
 
         <button type="button" className="sidebar__search" onClick={() => setPaletteOpen(true)}>

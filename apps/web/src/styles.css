@@ -1093,6 +1093,21 @@ h1 {
 
 .brand__mark {
   flex: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* The wordmark: Fraunces at its softest and most characterful (see main.tsx). */
+.brand__word {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 1,
+    'opsz' 72;
 }
 
 .sidebar__search {
@@ -3003,12 +3018,8 @@ h1 {
   text-decoration: none;
 }
 
-.auth__brand .brand__mark circle {
-  fill: rgba(255, 255, 255, 0.95);
-}
-
-.auth__brand .brand__mark path {
-  stroke: #2f6b4f;
+.auth__brand .brand__word {
+  font-size: 1.8rem;
 }
 
 .auth__pitch h2 {
