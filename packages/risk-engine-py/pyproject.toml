@@ -1,7 +1,7 @@
 [project]
 name = "bellwether-risk"
 version = "0.1.0"
-description = "Python port of selected Bellwether risk modules"
+description = "Python port of the Bellwether risk modules"
 requires-python = ">=3.11"
 
 [project.optional-dependencies]

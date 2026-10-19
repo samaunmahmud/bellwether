@@ -14,9 +14,13 @@ def raise_level(level: RiskLevel) -> RiskLevel:
     return _ORDER[min(_ORDER.index(level) + 1, len(_ORDER) - 1)]
 
 
+def js_round(value: float) -> int:
+    """JavaScript's Math.round (Python's round() rounds half to even)."""
+    return math.floor(value + 0.5)
+
+
 def clamp_score(value: float) -> int:
-    # floor(x + 0.5) matches JavaScript's Math.round (Python's round() rounds half to even).
-    return max(0, min(100, math.floor(value + 0.5)))
+    return max(0, min(100, js_round(value)))
 
 
 def to_fixed(value: float, digits: int) -> str:

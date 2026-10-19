@@ -12,6 +12,31 @@ class DailyWeather:
     temp_min_c: float
     humidity_mean_pct: float
     precipitation_mm: float
+    # Optional extras. Modules must still work when they are missing.
+    wind_speed_mean_ms: float | None = None  # mean wind speed at 10 m, m/s
+    et0_mm: float | None = None  # FAO reference evapotranspiration, mm/day
+
+
+Species = Literal["cattle", "sheep"]
+
+
+@dataclass(frozen=True)
+class GroupContext:
+    """What we know about a livestock group. Dates are ISO (YYYY-MM-DD)."""
+
+    species: Species
+    housed: bool = False
+    last_shearing_date: str | None = None
+    lambing_start: str | None = None
+    lambing_end: str | None = None
+
+
+@dataclass(frozen=True)
+class DateRange:
+    """Inclusive ISO dates."""
+
+    start: str
+    end: str
 
 
 @dataclass(frozen=True)
