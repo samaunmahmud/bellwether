@@ -12,3 +12,9 @@ apps/api/src/generated/
 
 # Local agent brief (not published)
 CLAUDE.md
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/

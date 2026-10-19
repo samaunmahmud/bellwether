@@ -4,3 +4,4 @@ coverage
 package-lock.json
 apps/api/src/generated
 apps/api/prisma/migrations
+packages/risk-engine-py/.pytest_cache

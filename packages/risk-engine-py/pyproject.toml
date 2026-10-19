@@ -1,0 +1,11 @@
+[project]
+name = "bellwether-risk"
+version = "0.1.0"
+description = "Python port of selected Bellwether risk modules"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

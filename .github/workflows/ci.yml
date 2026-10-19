@@ -41,6 +41,19 @@ jobs:
       - run: npm run test:coverage
       - run: npm run build
 
+  python-risk-engine:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/risk-engine-py
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[dev]'
+      - run: pytest
+
   # The production images must keep building (deploy prep, step 7).
   docker:
     runs-on: ubuntu-24.04
