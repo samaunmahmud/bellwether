@@ -19,6 +19,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // IPv4 explicitly: on some machines `localhost` binds to ::1 only and browsers can't connect.
+    host: '127.0.0.1',
     proxy: {
       '/graphql': 'http://localhost:4000',
     },
